@@ -1,0 +1,579 @@
+@model List<CampusVault.Models.Student.StudentDocumentItem>
+@{
+    ViewBag.Title = "My Documents — CampusVault";
+    ViewBag.Role = "Student";
+    ViewBag.UserName = Session["UserName"] as string ?? "Student";
+    ViewBag.UserInitials = Session["UserInitials"] as string ?? "ST";
+    ViewBag.UserRoleDisplay = Session["UserRoleDisplay"] as string ?? "Enrolled Student";
+
+    var docs = Model ?? new List<CampusVault.Models.Student.StudentDocumentItem>();
+    var availableTasks = ViewBag.AvailableTasks as List<CampusVault.Models.Student.StudentTaskItem> ?? new List<CampusVault.Models.Student.StudentTaskItem>();
+
+    // Helper functions for status
+    Func<string, bool> isApproved = s => !string.IsNullOrEmpty(s) &&
+        (s.Equals("Approved", StringComparison.OrdinalIgnoreCase) ||
+         s.Equals("Reviewed", StringComparison.OrdinalIgnoreCase) ||
+         s.Equals("Graded", StringComparison.OrdinalIgnoreCase));
+
+    Func<string, bool> isReview = s => !string.IsNullOrEmpty(s) &&
+        (s.Equals("Submitted", StringComparison.OrdinalIgnoreCase) ||
+         s.Equals("PendingReview", StringComparison.OrdinalIgnoreCase) ||
+         s.Equals("Under Review", StringComparison.OrdinalIgnoreCase));
+
+    Func<string, bool> isRevision = s => !string.IsNullOrEmpty(s) &&
+        s.IndexOf("Revision", StringComparison.OrdinalIgnoreCase) >= 0;
+
+    int totalDocs = docs.Count;
+}
+
+<div class="cv-documents-container" style="max-width:1100px;margin:0 auto;padding-bottom:var(--space-8);">
+
+    @* ==================== 1. PAGE HEADER ==================== *@
+    <div class="cv-page-header animate-slide-up" style="display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-4);flex-wrap:wrap;margin-bottom:var(--space-5);">
+        <div>
+            <h1 style="font-family:var(--font-heading);font-size:26px;font-weight:800;color:var(--cv-navy);margin:0 0 4px 0;letter-spacing:-0.015em;">
+                My Documents
+            </h1>
+            <p style="font-size:var(--fs-sm);color:var(--cv-slate);margin:0;">
+                View and manage your uploaded documents and assignment submissions.
+            </p>
+        </div>
+
+        <button type="button" class="cv-btn cv-btn-gold" onclick="openUploadModal()" style="display:inline-flex;align-items:center;gap:8px;font-weight:700;padding:9px 18px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <span>Upload Document</span>
+        </button>
+    </div>
+
+    @* ==================== 2. SEARCH & FILTER TOOLBAR ==================== *@
+    <div class="cv-card animate-slide-up stagger-1" style="margin-bottom:var(--space-5);padding:var(--space-3) var(--space-4);background:var(--cv-white);border:1px solid var(--cv-border);border-radius:var(--radius-xl);">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);flex-wrap:wrap;">
+            
+            <!-- Live Search -->
+            <div style="position:relative;flex:1;min-width:240px;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--cv-slate);pointer-events:none;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="text" id="docSearchInput" class="cv-input" placeholder="Search by filename, subject, or task..." oninput="applyFilters()" style="padding-left:36px;font-size:var(--fs-xs);border-radius:var(--radius-md);height:38px;" />
+            </div>
+
+            <!-- Filters -->
+            <div style="display:flex;align-items:center;gap:var(--space-2);flex-wrap:wrap;">
+                <select class="cv-input cv-select" id="docFilterStatus" onchange="applyFilters()" style="font-size:var(--fs-xs);height:38px;padding:0 30px 0 10px;width:auto;min-width:140px;">
+                    <option value="all">All Statuses</option>
+                    <option value="Approved">Approved</option>
+                    <option value="Under Review">Under Review / Submitted</option>
+                    <option value="Revision Required">Revision Required</option>
+                </select>
+
+                <select class="cv-input cv-select" id="docFilterType" onchange="applyFilters()" style="font-size:var(--fs-xs);height:38px;padding:0 30px 0 10px;width:auto;min-width:130px;">
+                    <option value="all">All Formats</option>
+                    <option value="PDF">PDF</option>
+                    <option value="DOCX">Word (DOC/DOCX)</option>
+                    <option value="ZIP">Archive (ZIP/RAR)</option>
+                    <option value="CODE">Source Code</option>
+                </select>
+
+                <select class="cv-input cv-select" id="docFilterSort" onchange="applyFilters()" style="font-size:var(--fs-xs);height:38px;padding:0 30px 0 10px;width:auto;min-width:130px;">
+                    <option value="recent">Newest First</option>
+                    <option value="oldest">Oldest First</option>
+                    <option value="alpha">Name (A → Z)</option>
+                </select>
+
+                <button type="button" class="cv-btn cv-btn-ghost cv-btn-sm" onclick="resetFilters()" style="font-size:12px;color:var(--cv-slate);">
+                    Reset
+                </button>
+            </div>
+        </div>
+    </div>
+
+    @* ==================== 3. DOCUMENTS LIST / TABLE ==================== *@
+    <div class="cv-card animate-slide-up stagger-2" style="background:var(--cv-white);border:1px solid var(--cv-border);border-radius:var(--radius-xl);overflow:hidden;box-shadow:var(--shadow-sm);">
+        <div style="padding:var(--space-3) var(--space-4);background:var(--cv-bg-alt);border-bottom:1px solid var(--cv-border);display:flex;align-items:center;justify-content:space-between;font-size:12px;color:var(--cv-slate);">
+            <span>
+                Showing <strong id="docVisibleCount" style="color:var(--cv-navy);">@totalDocs</strong> @(totalDocs == 1 ? "document" : "documents")
+            </span>
+            <span style="font-size:11.5px;color:var(--cv-slate-light);">
+                Verified student uploads
+            </span>
+        </div>
+
+        <div style="overflow-x:auto;">
+            <table class="cv-table" id="docTable" style="margin:0;width:100%;border-collapse:collapse;@(totalDocs == 0 ? "display:none;" : "")">
+                <thead>
+                    <tr style="border-bottom:1px solid var(--cv-border);text-align:left;font-size:11.5px;text-transform:uppercase;color:var(--cv-slate);letter-spacing:0.04em;">
+                        <th style="padding:12px 18px;min-width:280px;">Document</th>
+                        <th style="padding:12px 14px;">Classroom / Task</th>
+                        <th style="padding:12px 14px;">Submitted</th>
+                        <th style="padding:12px 14px;">Status</th>
+                        <th style="padding:12px 18px;text-align:right;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="docTableBody">
+                    @foreach (var doc in docs)
+                    {
+                        bool isApp = isApproved(doc.Status);
+                        bool isRev = isReview(doc.Status);
+                        bool isRvs = isRevision(doc.Status);
+
+                        string statusText = isApp ? "Approved" : isRvs ? "Revision Required" : "Under Review";
+                        string statusBadgeBg = isApp ? "#dcfce7" : isRvs ? "#fef3c7" : "#e0e7ff";
+                        string statusBadgeColor = isApp ? "#15803d" : isRvs ? "#b45309" : "#4338ca";
+
+                        var ext = (System.IO.Path.GetExtension(doc.FileName ?? "")?.TrimStart('.')?.ToUpperInvariant()) ?? "FILE";
+                        if (string.IsNullOrEmpty(ext)) { ext = "FILE"; }
+
+                        string typeCategory = (ext == "PDF") ? "PDF" : (ext == "DOC" || ext == "DOCX") ? "DOCX" : (ext == "ZIP" || ext == "RAR") ? "ZIP" : (ext == "CPP" || ext == "CS" || ext == "JAVA" || ext == "PY" || ext == "TXT") ? "CODE" : "OTHER";
+
+                        string badgeBg = (ext == "PDF") ? "#fee2e2" : (ext == "ZIP" || ext == "RAR") ? "#fef3c7" : (ext == "DOC" || ext == "DOCX") ? "#dbeafe" : "#e0e7ff";
+                        string badgeColor = (ext == "PDF") ? "#dc2626" : (ext == "ZIP" || ext == "RAR") ? "#d97706" : (ext == "DOC" || ext == "DOCX") ? "#2563eb" : "#4338ca";
+
+                        bool canDelete = !isApp; // permitted if not graded/approved
+
+                        <tr class="doc-row"
+                            id="doc-row-@doc.SubmissionId"
+                            data-filename="@(doc.FileName ?? "")"
+                            data-subject="@(doc.CourseName ?? "")"
+                            data-code="@(doc.CourseCode ?? "")"
+                            data-task="@(doc.TaskTitle ?? "")"
+                            data-status="@statusText"
+                            data-type="@typeCategory"
+                            data-date="@doc.SubmittedAt.ToString("yyyy-MM-ddTHH:mm:ss")"
+                            data-search="@((doc.FileName + " " + doc.CourseCode + " " + doc.CourseName + " " + doc.TaskTitle).ToLowerInvariant())"
+                            style="border-bottom:1px solid var(--cv-border);transition:background 0.15s ease;">
+                            
+                            <!-- Document Info -->
+                            <td style="padding:14px 18px;">
+                                <div style="display:flex;align-items:center;gap:12px;">
+                                    <div style="width:38px;height:42px;border-radius:6px;background:@badgeBg;color:@badgeColor;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:10.5px;letter-spacing:0.02em;flex-shrink:0;">
+                                        @ext
+                                    </div>
+                                    <div style="min-width:0;">
+                                        <div style="font-weight:600;font-size:13.5px;color:var(--cv-navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:280px;" title="@doc.FileName">
+                                            @(doc.FileName ?? "Coursework Document")
+                                        </div>
+                                        <div style="font-size:11.5px;color:var(--cv-slate);margin-top:2px;display:flex;align-items:center;gap:6px;">
+                                            <span>@(!string.IsNullOrEmpty(doc.FileSize) ? doc.FileSize : "Document")</span>
+                                            @if (!string.IsNullOrEmpty(doc.FilePath))
+                                            {
+                                                <span>•</span>
+                                                <span style="color:#16a34a;display:inline-flex;align-items:center;gap:3px;">
+                                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                                                    Stored
+                                                </span>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+
+                            <!-- Subject / Task -->
+                            <td style="padding:14px;">
+                                <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">
+                                    <span class="cv-badge" style="background:var(--cv-indigo-pale);color:var(--cv-indigo);font-size:10.5px;font-weight:700;padding:1px 6px;">
+                                        @doc.CourseCode
+                                    </span>
+                                </div>
+                                <div style="font-size:12.5px;color:var(--cv-navy);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px;" title="@doc.TaskTitle">
+                                    @doc.TaskTitle
+                                </div>
+                            </td>
+
+                            <!-- Submitted Date -->
+                            <td style="padding:14px;white-space:nowrap;">
+                                <div style="font-size:12.5px;color:var(--cv-navy);font-weight:500;">
+                                    @doc.SubmittedAt.ToString("dd MMM yyyy")
+                                </div>
+                                <div style="font-size:11px;color:var(--cv-slate-light);">
+                                    @doc.SubmittedAt.ToString("hh:mm tt")
+                                </div>
+                            </td>
+
+                            <!-- Status Badge -->
+                            <td style="padding:14px;white-space:nowrap;">
+                                <span class="cv-badge" style="background:@statusBadgeBg;color:@statusBadgeColor;font-size:11px;font-weight:600;padding:3px 9px;border-radius:12px;">
+                                    @statusText
+                                </span>
+                                @if (doc.Score.HasValue)
+                                {
+                                    <div style="font-size:11px;color:var(--cv-slate);margin-top:3px;font-weight:600;">
+                                        @doc.Score / @doc.MaxScore pts
+                                    </div>
+                                }
+                            </td>
+
+                            <!-- Actions -->
+                            <td style="padding:14px 18px;text-align:right;white-space:nowrap;">
+                                <div style="display:inline-flex;align-items:center;gap:6px;">
+                                    @if (!string.IsNullOrEmpty(doc.FilePath))
+                                    {
+                                        <a href="@doc.FilePath" target="_blank" rel="noopener noreferrer" class="cv-btn cv-btn-secondary cv-btn-sm" style="font-size:11.5px;padding:5px 10px;display:inline-flex;align-items:center;gap:4px;" title="View or Download Document">
+                                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                            <span>View</span>
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <a href="@Url.Action("DocumentDetails", "Student", new { id = doc.SubmissionId })" class="cv-btn cv-btn-secondary cv-btn-sm" style="font-size:11.5px;padding:5px 10px;display:inline-flex;align-items:center;gap:4px;">
+                                            <span>Details</span>
+                                        </a>
+                                    }
+
+                                    @if (canDelete)
+                                    {
+                                        <button type="button" class="cv-btn cv-btn-ghost cv-btn-sm" onclick="confirmDeleteDocument(@doc.SubmissionId, '@(doc.FileName ?? "document")')" style="color:var(--cv-danger);font-size:11.5px;padding:5px 8px;" title="Withdraw/Delete this pending submission">
+                                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                                        </button>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @* ==================== 4. CLEAN EMPTY STATE ==================== *@
+        <div id="docEmptyState" style="@(totalDocs == 0 ? "display:block;" : "display:none;")padding:var(--space-8) var(--space-4);text-align:center;">
+            <div style="width:64px;height:64px;border-radius:50%;background:var(--cv-bg-alt);color:var(--cv-slate);display:inline-flex;align-items:center;justify-content:center;margin-bottom:var(--space-3);">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            </div>
+            <h3 style="font-family:var(--font-heading);font-size:17px;font-weight:700;color:var(--cv-navy);margin:0 0 6px 0;">
+                No documents yet
+            </h3>
+            <p style="font-size:13.5px;color:var(--cv-slate);max-width:420px;margin:0 auto var(--space-4) auto;line-height:1.5;">
+                Upload a document or submit an assignment to see your files here.
+            </p>
+            <button type="button" class="cv-btn cv-btn-gold" onclick="openUploadModal()" style="display:inline-flex;align-items:center;gap:8px;font-weight:700;padding:8px 20px;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                <span>Upload Document</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+@* ==================== 5. UPLOAD DOCUMENT MODAL ==================== *@
+<div id="uploadDocModal" class="cv-modal-backdrop" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(11,25,44,0.6);z-index:1100;align-items:center;justify-content:center;padding:16px;">
+    <div class="cv-modal-content animate-slide-up" style="background:#ffffff;border-radius:var(--radius-xl);max-width:520px;width:100%;box-shadow:0 20px 40px -10px rgba(11,25,44,0.3);overflow:hidden;border:1px solid var(--cv-border);">
+        <div style="padding:16px 22px;border-bottom:1px solid var(--cv-border);display:flex;align-items:center;justify-content:space-between;background:var(--cv-bg-alt);">
+            <div style="font-family:var(--font-heading);font-weight:700;font-size:16px;color:var(--cv-navy);">
+                Upload Document
+            </div>
+            <button type="button" onclick="closeUploadModal()" style="background:none;border:none;cursor:pointer;color:var(--cv-slate);font-size:20px;line-height:1;">&times;</button>
+        </div>
+
+        <form id="uploadDocForm" onsubmit="handleDocUpload(event)" method="post" enctype="multipart/form-data" style="padding:22px;">
+            @Html.AntiForgeryToken()
+
+            <!-- Task / Classroom Selection (if active tasks exist) -->
+            @if (availableTasks.Count > 0)
+            {
+                <div class="cv-form-group" style="margin-bottom:var(--space-4);">
+                    <label class="cv-form-label" for="uploadTargetTask" style="font-size:12.5px;">
+                        Associated Assignment / Coursework <span style="color:var(--cv-danger);">*</span>
+                    </label>
+                    <div class="cv-input-wrapper">
+                        <select id="uploadTargetTask" name="taskId" class="cv-input cv-select" style="font-size:13px;">
+                            @foreach (var t in availableTasks)
+                            {
+                                <option value="@t.TaskId">@t.CourseCode — @t.Title (@t.CourseName)</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+            }
+
+            <!-- File Dropzone -->
+            <div class="cv-form-group" style="margin-bottom:var(--space-4);">
+                <label class="cv-form-label" style="font-size:12.5px;">
+                    Select Coursework File <span style="color:var(--cv-danger);">*</span>
+                </label>
+                <div id="modalDropzone" onclick="document.getElementById('modalFileInput').click()" style="border:2px dashed var(--cv-border-dark);border-radius:var(--radius-lg);padding:24px 16px;text-align:center;cursor:pointer;background:var(--cv-bg-alt);transition:all 0.2s ease;">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--cv-indigo);margin-bottom:8px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    <div style="font-weight:600;font-size:13.5px;color:var(--cv-navy);margin-bottom:2px;" id="modalDropzoneText">
+                        Click or drag &amp; drop file here
+                    </div>
+                    <div style="font-size:11.5px;color:var(--cv-slate-light);">
+                        PDF, DOCX, PPTX, ZIP, RAR, CODE (Max 25 MB)
+                    </div>
+                </div>
+                <input type="file" id="modalFileInput" name="document" style="display:none;" accept=".pdf,.doc,.docx,.ppt,.pptx,.zip,.rar,.cpp,.java,.py,.txt" onchange="handleModalFileChosen(this.files)" />
+            </div>
+
+            <!-- Selected File Summary -->
+            <div id="modalFileSummary" style="display:none;background:#f8fafc;border:1px solid #e2e8f0;border-radius:var(--radius-md);padding:10px 14px;margin-bottom:var(--space-4);font-size:12.5px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;">
+                    <div style="display:flex;align-items:center;gap:8px;min-width:0;">
+                        <span style="font-weight:700;color:var(--cv-indigo);" id="modalSummaryExt">PDF</span>
+                        <span style="font-weight:600;color:var(--cv-navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:240px;" id="modalSummaryName">file.pdf</span>
+                        <span style="color:var(--cv-slate);font-size:11.5px;" id="modalSummarySize">(2 MB)</span>
+                    </div>
+                    <button type="button" onclick="clearModalFile()" style="background:none;border:none;cursor:pointer;color:var(--cv-danger);font-size:12px;font-weight:600;">Remove</button>
+                </div>
+            </div>
+
+            <!-- Error Banner -->
+            <div id="modalErrorAlert" class="cv-alert cv-alert-danger" style="display:none;margin-bottom:var(--space-3);font-size:12.5px;padding:8px 12px;">
+                <span id="modalErrorMessage">Unable to upload file.</span>
+            </div>
+
+            <!-- Progress Bar -->
+            <div id="modalProgressBar" style="display:none;margin-bottom:var(--space-4);">
+                <div style="display:flex;justify-content:space-between;font-size:11.5px;color:var(--cv-slate);margin-bottom:4px;">
+                    <span>Uploading coursework...</span>
+                    <span style="font-weight:700;color:var(--cv-indigo);">Uploading</span>
+                </div>
+                <div style="height:5px;background:var(--cv-border);border-radius:3px;overflow:hidden;">
+                    <div style="width:100%;height:100%;background:linear-gradient(90deg, var(--cv-indigo), var(--cv-gold));animation:cvShimmer 1.5s infinite;"></div>
+                </div>
+            </div>
+
+            <div style="display:flex;justify-content:flex-end;gap:var(--space-2);margin-top:var(--space-4);border-top:1px solid var(--cv-border);padding-top:16px;">
+                <button type="button" class="cv-btn cv-btn-ghost cv-btn-sm" onclick="closeUploadModal()">
+                    Cancel
+                </button>
+                <button type="submit" id="modalUploadBtn" class="cv-btn cv-btn-gold cv-btn-sm" style="font-weight:700;padding:8px 18px;">
+                    <span>Upload Document</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        var selectedModalFile = null;
+
+        function openUploadModal() {
+            clearModalFile();
+            document.getElementById('modalErrorAlert').style.display = 'none';
+            document.getElementById('modalProgressBar').style.display = 'none';
+            var modal = document.getElementById('uploadDocModal');
+            modal.style.display = 'flex';
+        }
+
+        function closeUploadModal() {
+            var modal = document.getElementById('uploadDocModal');
+            modal.style.display = 'none';
+        }
+
+        function handleModalFileChosen(files) {
+            if (!files || files.length === 0) return;
+            var file = files[0];
+
+            var ext = '.' + file.name.split('.').pop().toLowerCase();
+            var allowedExtensions = ['.pdf', '.doc', '.docx', '.ppt', '.pptx', '.zip', '.rar', '.cpp', '.java', '.py', '.txt'];
+            if (allowedExtensions.indexOf(ext) === -1) {
+                showModalError('Unsupported format. Allowed: PDF, DOCX, PPTX, ZIP, RAR, CPP, JAVA, PY, TXT.');
+                clearModalFile();
+                return;
+            }
+
+            if (file.size > 25 * 1024 * 1024) {
+                showModalError('File size exceeds the 25 MB institutional limit.');
+                clearModalFile();
+                return;
+            }
+
+            selectedModalFile = file;
+            document.getElementById('modalErrorAlert').style.display = 'none';
+            document.getElementById('modalSummaryName').textContent = file.name;
+            document.getElementById('modalSummarySize').textContent = '(' + formatFileSize(file.size) + ')';
+            document.getElementById('modalSummaryExt').textContent = ext.replace('.', '').toUpperCase();
+            document.getElementById('modalFileSummary').style.display = 'block';
+            document.getElementById('modalDropzoneText').textContent = 'File attached: ' + file.name;
+        }
+
+        function clearModalFile() {
+            selectedModalFile = null;
+            var input = document.getElementById('modalFileInput');
+            if (input) input.value = '';
+            document.getElementById('modalFileSummary').style.display = 'none';
+            document.getElementById('modalDropzoneText').textContent = 'Click or drag & drop file here';
+        }
+
+        function showModalError(msg) {
+            var alertEl = document.getElementById('modalErrorAlert');
+            document.getElementById('modalErrorMessage').textContent = msg;
+            alertEl.style.display = 'block';
+        }
+
+        function formatFileSize(bytes) {
+            if (!bytes || bytes === 0) return '0 Bytes';
+            var k = 1024;
+            var sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            var i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+        }
+
+        function handleDocUpload(e) {
+            e.preventDefault();
+            document.getElementById('modalErrorAlert').style.display = 'none';
+
+            var fileInput = document.getElementById('modalFileInput');
+            var file = selectedModalFile || (fileInput && fileInput.files ? fileInput.files[0] : null);
+
+            if (!file) {
+                showModalError('Please select a file to upload.');
+                return;
+            }
+
+            var taskSelect = document.getElementById('uploadTargetTask');
+            var taskId = taskSelect ? taskSelect.value : 0;
+
+            var btn = document.getElementById('modalUploadBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span>Uploading...</span>';
+            document.getElementById('modalProgressBar').style.display = 'block';
+
+            var formData = new FormData();
+            formData.append('document', file);
+            if (taskId) {
+                formData.append('taskId', taskId);
+            }
+
+            var token = document.querySelector('#uploadDocForm input[name="__RequestVerificationToken"]');
+            if (token) {
+                formData.append('__RequestVerificationToken', token.value);
+            }
+
+            fetch('@Url.Action("UploadDocument", "Student")', {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: formData
+            })
+            .then(function (res) { return res.json(); })
+            .then(function (data) {
+                document.getElementById('modalProgressBar').style.display = 'none';
+                if (data.success) {
+                    closeUploadModal();
+                    if (window.CampusVault && CampusVault.showToast) {
+                        CampusVault.showToast({
+                            type: 'success',
+                            title: 'Document Uploaded',
+                            message: data.message || 'File uploaded successfully!'
+                        });
+                    }
+                    setTimeout(function () { window.location.reload(); }, 900);
+                } else {
+                    btn.disabled = false;
+                    btn.innerHTML = '<span>Upload Document</span>';
+                    showModalError(data.message || 'Upload failed.');
+                }
+            })
+            .catch(function (err) {
+                document.getElementById('modalProgressBar').style.display = 'none';
+                btn.disabled = false;
+                btn.innerHTML = '<span>Upload Document</span>';
+                showModalError('Connection error: ' + err.message);
+            });
+        }
+
+        function confirmDeleteDocument(submissionId, fileName) {
+            if (!confirm('Are you sure you want to withdraw and remove "' + fileName + '"?')) {
+                return;
+            }
+
+            var token = document.querySelector('input[name="__RequestVerificationToken"]');
+            var tokenVal = token ? token.value : '';
+
+            fetch('@Url.Action("DeleteDocument", "Student")', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: '__RequestVerificationToken=' + encodeURIComponent(tokenVal) + '&id=' + encodeURIComponent(submissionId)
+            })
+            .then(function (res) { return res.json(); })
+            .then(function (data) {
+                if (data.success) {
+                    var row = document.getElementById('doc-row-' + submissionId);
+                    if (row) {
+                        row.style.opacity = '0';
+                        setTimeout(function () {
+                            row.remove();
+                            applyFilters();
+                        }, 250);
+                    }
+                    if (window.CampusVault && CampusVault.showToast) {
+                        CampusVault.showToast({
+                            type: 'success',
+                            title: 'Document Removed',
+                            message: data.message || 'Document removed.'
+                        });
+                    }
+                } else {
+                    alert(data.message || 'Unable to delete document.');
+                }
+            })
+            .catch(function (err) {
+                alert('Connection error: ' + err.message);
+            });
+        }
+
+        function applyFilters() {
+            var search = (document.getElementById('docSearchInput').value || '').trim().toLowerCase();
+            var status = document.getElementById('docFilterStatus').value;
+            var docType = document.getElementById('docFilterType').value;
+            var sort = document.getElementById('docFilterSort').value;
+
+            var rows = Array.from(document.querySelectorAll('.doc-row'));
+            var visible = 0;
+
+            rows.forEach(function (row) {
+                var rStatus = row.getAttribute('data-status') || '';
+                var rType = row.getAttribute('data-type') || '';
+                var rSearch = row.getAttribute('data-search') || '';
+
+                var match = true;
+                if (search && rSearch.indexOf(search) === -1) match = false;
+                if (status !== 'all' && rStatus.toLowerCase().indexOf(status.toLowerCase()) === -1) match = false;
+                if (docType !== 'all' && rType !== docType) match = false;
+
+                row.style.display = match ? '' : 'none';
+                if (match) visible++;
+            });
+
+            // Sorting
+            var tbody = document.getElementById('docTableBody');
+            if (tbody && sort !== 'recent') {
+                var sorted = rows.slice().sort(function (a, b) {
+                    if (sort === 'oldest') {
+                        return new Date(a.getAttribute('data-date')) - new Date(b.getAttribute('data-date'));
+                    }
+                    if (sort === 'alpha') {
+                        return (a.getAttribute('data-filename') || '').localeCompare(b.getAttribute('data-filename') || '');
+                    }
+                    return 0;
+                });
+                sorted.forEach(function (r) { tbody.appendChild(r); });
+            }
+
+            var countEl = document.getElementById('docVisibleCount');
+            if (countEl) countEl.textContent = visible;
+
+            var table = document.getElementById('docTable');
+            var empty = document.getElementById('docEmptyState');
+            if (visible === 0) {
+                if (table) table.style.display = 'none';
+                if (empty) empty.style.display = 'block';
+            } else {
+                if (table) table.style.display = '';
+                if (empty) empty.style.display = 'none';
+            }
+        }
+
+        function resetFilters() {
+            document.getElementById('docSearchInput').value = '';
+            document.getElementById('docFilterStatus').value = 'all';
+            document.getElementById('docFilterType').value = 'all';
+            document.getElementById('docFilterSort').value = 'recent';
+            applyFilters();
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            applyFilters();
+        });
+    </script>
+}

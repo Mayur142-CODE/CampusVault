@@ -1,0 +1,478 @@
+@model List<CampusVault.Models.Faculty.AnnouncementItem>
+@{
+    ViewBag.Role            = "Faculty";
+    ViewBag.UserName        = Session["UserName"]        as string ?? "Faculty";
+    ViewBag.UserInitials    = Session["UserInitials"]    as string ?? "FA";
+    ViewBag.UserRoleDisplay = Session["UserRoleDisplay"] as string ?? "Faculty Mentor";
+
+    var announcements = Model ?? new List<CampusVault.Models.Faculty.AnnouncementItem>();
+    var classrooms    = ViewBag.FacultyClassrooms as List<CampusVault.Models.Faculty.FacultyClassroomItem>
+                        ?? new List<CampusVault.Models.Faculty.FacultyClassroomItem>();
+
+    int totalCount   = announcements.Count;
+    int pinnedCount  = announcements.Count(a => a.IsPinned);
+    int urgentCount  = announcements.Count(a => a.Priority == "Urgent" || a.Priority == "High");
+    string facultyName = Session["UserName"] as string ?? "Faculty";
+}
+
+@* ==================== 1. PAGE HEADER ==================== *@
+<div class="animate-slide-up" style="display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-4);flex-wrap:wrap;margin-bottom:var(--space-5);">
+    <div>
+        <div style="display:flex;align-items:center;gap:var(--space-3);margin-bottom:4px;">
+            <div style="width:38px;height:38px;border-radius:var(--radius-md);background:var(--cv-navy);color:var(--cv-gold);display:flex;align-items:center;justify-content:center;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </div>
+            <h1 style="font-family:var(--font-heading);font-size:var(--fs-2xl);font-weight:var(--fw-bold);color:var(--cv-navy);margin:0;display:flex;align-items:center;gap:var(--space-2);">
+                Announcements
+                <span class="cv-professor-badge" style="font-size:11px;padding:2px 8px;">Faculty Portal</span>
+            </h1>
+        </div>
+        <p style="color:var(--cv-slate);font-size:var(--fs-sm);margin:0;">
+            Broadcast official notices, lab schedule changes, and academic reminders to student divisions.
+        </p>
+    </div>
+    <button type="button" onclick="openComposeModal()"
+            style="display:inline-flex;align-items:center;gap:6px;background:var(--cv-indigo);color:#fff;border:none;border-radius:var(--radius-md);padding:10px 18px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:var(--shadow-sm);">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Create Announcement
+    </button>
+</div>
+
+@* Banners *@
+@if (TempData["SuccessMessage"] != null)
+{
+    <div style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:var(--radius-md);padding:10px 16px;font-size:13px;color:#065f46;margin-bottom:var(--space-4);display:flex;align-items:center;gap:8px;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        @TempData["SuccessMessage"]
+    </div>
+}
+@if (TempData["ErrorMessage"] != null)
+{
+    <div style="background:#fee2e2;border:1px solid #fca5a5;border-radius:var(--radius-md);padding:10px 16px;font-size:13px;color:#991b1b;margin-bottom:var(--space-4);display:flex;align-items:center;gap:8px;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        @TempData["ErrorMessage"]
+    </div>
+}
+
+@* ==================== 2. STATS STRIP ==================== *@
+<div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:var(--space-4);margin-bottom:var(--space-6);" class="animate-slide-up stagger-1">
+    <div class="cv-announce-stat-card">
+        <div class="cv-announce-stat-icon" style="background:#eff6ff;color:#2563eb;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        </div>
+        <div>
+            <div style="font-size:11px;font-weight:700;color:var(--cv-slate);text-transform:uppercase;">Announcements</div>
+            <div style="font-family:var(--font-heading);font-size:var(--fs-2xl);font-weight:var(--fw-bold);color:var(--cv-navy);">@totalCount</div>
+            <div style="font-size:11px;color:#16a34a;font-weight:500;">Across @classrooms.Count Classrooms</div>
+        </div>
+    </div>
+    <div class="cv-announce-stat-card">
+        <div class="cv-announce-stat-icon" style="background:#fef3c7;color:#d97706;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 5c0-1.1.9-2 2-2h10a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5z"/><path d="M12 12v7"/><path d="M10 19h4"/></svg>
+        </div>
+        <div>
+            <div style="font-size:11px;font-weight:700;color:var(--cv-slate);text-transform:uppercase;">Pinned Notices</div>
+            <div style="font-family:var(--font-heading);font-size:var(--fs-2xl);font-weight:var(--fw-bold);color:var(--cv-navy);">@pinnedCount</div>
+            <div style="font-size:11px;color:var(--cv-slate);font-weight:500;">Notice Board Priority</div>
+        </div>
+    </div>
+    <div class="cv-announce-stat-card">
+        <div class="cv-announce-stat-icon" style="background:#fef2f2;color:#dc2626;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        </div>
+        <div>
+            <div style="font-size:11px;font-weight:700;color:var(--cv-slate);text-transform:uppercase;">Urgent / High</div>
+            <div style="font-family:var(--font-heading);font-size:var(--fs-2xl);font-weight:var(--fw-bold);color:#b91c1c;">@urgentCount</div>
+            <div style="font-size:11px;color:#dc2626;font-weight:600;">@(urgentCount > 0 ? "Immediate Attention" : "No urgent notices")</div>
+        </div>
+    </div>
+    <div class="cv-announce-stat-card">
+        <div class="cv-announce-stat-icon" style="background:#f0fdf4;color:#16a34a;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12l5 5L20 4"/></svg>
+        </div>
+        <div>
+            <div style="font-size:11px;font-weight:700;color:var(--cv-slate);text-transform:uppercase;">Classrooms</div>
+            <div style="font-family:var(--font-heading);font-size:var(--fs-2xl);font-weight:var(--fw-bold);color:var(--cv-navy);">@classrooms.Count</div>
+            <div style="font-size:11px;color:#16a34a;font-weight:500;">Active Workspaces</div>
+        </div>
+    </div>
+</div>
+
+@* ==================== 3. PREVIOUS ANNOUNCEMENTS TABLE ==================== *@
+<div class="animate-slide-up stagger-2">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--space-3);margin-bottom:var(--space-4);">
+        <div>
+            <h2 style="font-family:var(--font-heading);font-size:var(--fs-xl);font-weight:var(--fw-bold);color:var(--cv-navy);margin:0;display:flex;align-items:center;gap:var(--space-2);">
+                Published Announcements
+                <span style="font-size:12px;font-weight:600;color:var(--cv-slate);background:var(--cv-bg-alt);border:1px solid var(--cv-border);padding:2px 9px;border-radius:var(--radius-full);" id="announceCountBadge">
+                    @totalCount Records
+                </span>
+            </h2>
+            <p style="color:var(--cv-slate);font-size:var(--fs-xs);margin:2px 0 0 0;">
+                Review, pin, or delete notices broadcasted across your academic classrooms.
+            </p>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            <button type="button" class="cv-action-btn-sm active" id="filterPillAll" onclick="filterAnnounce('all')" style="background:var(--cv-navy);color:#fff;border-color:var(--cv-navy);">All (@totalCount)</button>
+            <button type="button" class="cv-action-btn-sm" id="filterPillPinned" onclick="filterAnnounce('pinned')">📌 Pinned (@pinnedCount)</button>
+            <button type="button" class="cv-action-btn-sm" id="filterPillUrgent" onclick="filterAnnounce('urgent')">🔴 Urgent / High (@urgentCount)</button>
+        </div>
+    </div>
+
+    @* Search + Classroom + Priority filters *@
+    <div class="cv-submissions-filter-card" style="margin-bottom:var(--space-4);">
+        <div style="display:flex;align-items:center;flex-wrap:wrap;gap:var(--space-3);">
+            <div style="position:relative;flex:1;min-width:240px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--cv-slate);pointer-events:none;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="text" id="announceSearch" class="cv-filter-input" placeholder="Search by title, message, or reference..." oninput="applyAnnounceFilters()" style="padding-left:34px;width:100%;" />
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;">
+                <span style="font-size:11px;color:var(--cv-slate);font-weight:700;text-transform:uppercase;">Classroom:</span>
+                <select id="announceFilterClassroom" class="cv-filter-select" onchange="applyAnnounceFilters()" style="min-width:180px;">
+                    <option value="all">All Classrooms</option>
+                    <option value="ALL">Global Broadcast</option>
+                    @foreach (var cls in classrooms)
+                    {
+                        <option value="@cls.CourseCode">@cls.CourseName</option>
+                    }
+                </select>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;">
+                <span style="font-size:11px;color:var(--cv-slate);font-weight:700;text-transform:uppercase;">Priority:</span>
+                <select id="announceFilterPriority" class="cv-filter-select" onchange="applyAnnounceFilters()">
+                    <option value="all">All Priorities</option>
+                    <option value="Urgent">Urgent</option>
+                    <option value="High">High</option>
+                    <option value="Normal">Normal</option>
+                    <option value="Low">Low</option>
+                </select>
+            </div>
+            <button type="button" class="cv-btn cv-btn-secondary cv-btn-sm" onclick="resetAnnounceFilters()" style="font-size:11px;">Reset</button>
+        </div>
+    </div>
+
+    @* Table *@
+    <div class="cv-announce-table-card">
+        <table class="cv-announce-table" id="announcementsTable" style="@(totalCount == 0 ? "display:none;" : "")">
+            <thead>
+                <tr>
+                    <th style="width:40%;">Title & Details</th>
+                    <th style="width:18%;">Classroom</th>
+                    <th style="width:15%;">Published</th>
+                    <th style="width:12%;">Priority</th>
+                    <th style="width:15%;text-align:right;">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="announcementsTableBody">
+                @foreach (var ann in announcements)
+                {
+                    string prColor = ann.Priority == "Urgent" ? "#dc2626"
+                                   : ann.Priority == "High"   ? "#d97706"
+                                   : ann.Priority == "Low"    ? "#64748b" : "#2563eb";
+                    string prBg    = ann.Priority == "Urgent" ? "#fee2e2"
+                                   : ann.Priority == "High"   ? "#fef3c7"
+                                   : ann.Priority == "Low"    ? "#f1f5f9" : "#eff6ff";
+                    string clsLabel = ann.CourseCode == "ALL"
+                        ? "All Classrooms" : ann.CourseName + " (" + ann.CourseCode + ")";
+
+                    <tr class="announce-row"
+                        data-pinned="@ann.IsPinned.ToString().ToLower()"
+                        data-priority="@ann.Priority"
+                        data-classroom="@ann.CourseCode"
+                        data-search="@((ann.Title + " " + ann.Message + " " + ann.CourseName).ToLower())">
+
+                        <td>
+                            <div style="display:flex;align-items:flex-start;gap:8px;">
+                                @if (ann.IsPinned)
+                                {
+                                    <span style="color:#d97706;flex-shrink:0;margin-top:2px;" title="Pinned">
+                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M5 5c0-1.1.9-2 2-2h10a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5z"/><path d="M12 12v7"/><path d="M10 19h4"/></svg>
+                                    </span>
+                                }
+                                <div>
+                                    <div style="font-weight:600;color:var(--cv-navy);font-size:var(--fs-sm);line-height:1.35;">
+                                        @ann.Title
+                                    </div>
+                                    <div style="font-size:11px;color:var(--cv-slate);margin-top:3px;line-height:1.4;max-width:420px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                                        @(ann.Message.Length > 100 ? ann.Message.Substring(0, 100) + "…" : ann.Message)
+                                    </div>
+                                    <div style="font-size:10px;color:var(--cv-slate-light);margin-top:3px;display:flex;align-items:center;gap:6px;">
+                                        <span style="font-family:monospace;background:#f1f5f9;padding:1px 5px;border-radius:2px;">ANN-@ann.AnnouncementId</span>
+                                        @if (ann.RequireAck)
+                                        {
+                                            <span style="color:#7e22ce;">Acknowledgement Required</span>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+
+                        <td>
+                            <span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:var(--cv-indigo);background:#eff6ff;padding:3px 8px;border-radius:4px;">
+                                @(ann.CourseCode == "ALL" ? "📢 Global" : ann.CourseCode)
+                            </span>
+                            @if (ann.CourseCode != "ALL")
+                            {
+                                <div style="font-size:10px;color:var(--cv-slate);margin-top:2px;">@ann.CourseName</div>
+                            }
+                        </td>
+
+                        <td style="white-space:nowrap;">
+                            <div style="font-size:12px;font-weight:500;color:var(--cv-navy);">@ann.PublishedAt.ToString("dd MMM yyyy")</div>
+                            <div style="font-size:10px;color:var(--cv-slate);">@ann.PublishedAt.ToString("hh:mm tt")</div>
+                            <div style="font-size:10px;color:var(--cv-slate-light);">@ann.FacultyName</div>
+                        </td>
+
+                        <td>
+                            <span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:3px 9px;border-radius:var(--radius-full);background:@prBg;color:@prColor;">
+                                @ann.Priority
+                            </span>
+                        </td>
+
+                        <td style="text-align:right;white-space:nowrap;">
+                            <div style="display:inline-flex;align-items:center;gap:6px;">
+                                <button type="button" onclick="viewAnnouncement(@ann.AnnouncementId)"
+                                        style="font-size:12px;font-weight:600;color:var(--cv-indigo);padding:5px 10px;border:1px solid var(--cv-border);border-radius:var(--radius-md);background:#fff;cursor:pointer;">
+                                    View
+                                </button>
+                                <button type="button" onclick="deleteAnnouncement(@ann.AnnouncementId, this)"
+                                        style="font-size:12px;font-weight:600;color:#dc2626;padding:5px 10px;border:1px solid #fca5a5;border-radius:var(--radius-md);background:#fff;cursor:pointer;">
+                                    Delete
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        @* Empty state *@
+        <div id="announceEmptyState" style="@(totalCount == 0 ? "display:block;" : "display:none;")padding:var(--space-10);text-align:center;">
+            <div style="width:56px;height:56px;border-radius:50%;background:var(--cv-bg-alt);color:var(--cv-slate);display:inline-flex;align-items:center;justify-content:center;margin-bottom:var(--space-3);">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </div>
+            <h4 style="font-family:var(--font-heading);font-size:var(--fs-base);font-weight:var(--fw-bold);color:var(--cv-navy);margin:0 0 4px 0;">No announcements yet</h4>
+            <p style="font-size:var(--fs-xs);color:var(--cv-slate);margin:0 0 var(--space-4) 0;">
+                No announcements match your filters, or none have been published yet.
+            </p>
+            <div style="display:flex;justify-content:center;gap:var(--space-3);">
+                <button type="button" class="cv-btn cv-btn-secondary cv-btn-sm" onclick="resetAnnounceFilters()">Clear Filters</button>
+                <button type="button" class="cv-btn cv-btn-primary cv-btn-sm" onclick="openComposeModal()">Create First Announcement</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* ==================== 4. COMPOSE MODAL ==================== *@
+<div id="composeModal" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,0.72);z-index:99999;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);" onclick="handleModalClick(event)">
+    <div style="background:#fff;border-radius:16px;max-width:600px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 25px 50px rgba(0,0,0,0.4);" onclick="event.stopPropagation()">
+
+        <div style="padding:18px 24px;background:linear-gradient(135deg,#0b192c,#1e293b);color:#fff;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:1;">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <div style="width:32px;height:32px;border-radius:8px;background:rgba(217,119,6,0.25);color:#f59e0b;display:flex;align-items:center;justify-content:center;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                </div>
+                <h3 style="margin:0;font-size:15px;font-weight:700;">Compose Announcement</h3>
+            </div>
+            <button type="button" onclick="closeComposeModal()" style="background:none;border:none;color:rgba(255,255,255,0.7);cursor:pointer;display:flex;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+
+        <form action="@Url.Action("PublishAnnouncement","Faculty")" method="post" style="padding:22px;">
+            @Html.AntiForgeryToken()
+
+            <div style="margin-bottom:14px;">
+                <label style="display:block;font-size:11px;font-weight:700;color:#334155;margin-bottom:6px;text-transform:uppercase;">Title *</label>
+                <input type="text" name="title" required maxlength="255" placeholder="e.g. Lab schedule change for Batch B2"
+                       style="width:100%;padding:10px 14px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;box-sizing:border-box;" />
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+                <div>
+                    <label style="display:block;font-size:11px;font-weight:700;color:#334155;margin-bottom:6px;text-transform:uppercase;">Target Classroom *</label>
+                    <select name="classroomId" required style="width:100%;padding:10px 14px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;box-sizing:border-box;">
+                        <option value="0">📢 All Classrooms (Global)</option>
+                        @foreach (var cls in classrooms)
+                        {
+                            <option value="@cls.ClassroomId">@cls.CourseCode — @cls.CourseName</option>
+                        }
+                    </select>
+                </div>
+                <div>
+                    <label style="display:block;font-size:11px;font-weight:700;color:#334155;margin-bottom:6px;text-transform:uppercase;">Priority *</label>
+                    <select name="priority" required style="width:100%;padding:10px 14px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;box-sizing:border-box;">
+                        <option value="Normal" selected>Normal</option>
+                        <option value="High">High</option>
+                        <option value="Urgent">Urgent</option>
+                        <option value="Low">Low / Info</option>
+                    </select>
+                </div>
+            </div>
+
+            <div style="margin-bottom:14px;">
+                <label style="display:block;font-size:11px;font-weight:700;color:#334155;margin-bottom:6px;text-transform:uppercase;">Message *</label>
+                <textarea name="message" rows="5" required placeholder="Enter detailed notice content for students. Include dates, timings, lab numbers, and action items..."
+                          style="width:100%;padding:10px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;resize:vertical;font-family:inherit;box-sizing:border-box;line-height:1.5;"></textarea>
+            </div>
+
+            <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px 14px;margin-bottom:18px;display:flex;flex-direction:column;gap:8px;">
+                <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#334155;cursor:pointer;margin:0;">
+                    <input type="checkbox" name="isPinned" value="true" style="accent-color:var(--cv-navy);" />
+                    <span><strong>Pin this announcement</strong> to the top of the classroom board</span>
+                </label>
+                <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#334155;cursor:pointer;margin:0;">
+                    <input type="checkbox" name="requireAck" value="true" style="accent-color:var(--cv-navy);" />
+                    <span>Require students to explicitly <strong>acknowledge/mark as read</strong></span>
+                </label>
+            </div>
+
+            <div style="display:flex;justify-content:flex-end;gap:10px;border-top:1px solid #e2e8f0;padding-top:16px;">
+                <button type="button" onclick="closeComposeModal()" style="background:#f1f5f9;color:#334155;border:1px solid #cbd5e1;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer;">Cancel</button>
+                <button type="submit" style="background:#2563eb;color:#fff;border:none;border-radius:8px;padding:9px 22px;font-size:13px;font-weight:700;cursor:pointer;">
+                    Publish Announcement
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@* ==================== 5. VIEW DETAIL MODAL ==================== *@
+<div id="viewModal" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,0.65);z-index:99999;align-items:center;justify-content:center;padding:20px;" onclick="document.getElementById('viewModal').style.display='none'">
+    <div style="background:#fff;border-radius:14px;max-width:560px;width:100%;box-shadow:0 20px 40px rgba(0,0,0,0.3);overflow:hidden;" onclick="event.stopPropagation()">
+        <div id="viewModalContent" style="padding:24px;"></div>
+        <div style="padding:12px 24px;background:#f8fafc;border-top:1px solid #e2e8f0;text-align:right;">
+            <button type="button" onclick="document.getElementById('viewModal').style.display='none'" style="background:#f1f5f9;color:#334155;border:1px solid #cbd5e1;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:600;cursor:pointer;">Close</button>
+        </div>
+    </div>
+</div>
+
+@* ==================== 6. JAVASCRIPT ==================== *@
+<script>
+    // Store announcement data for view modal
+    var announcementData = {};
+    @foreach (var ann in announcements)
+    {
+        var safeTitle   = (ann.Title   ?? "").Replace("\\", "\\\\").Replace("'", "\\'").Replace("\r", "").Replace("\n", "\\n");
+        var safeMessage = (ann.Message ?? "").Replace("\\", "\\\\").Replace("'", "\\'").Replace("\r", "").Replace("\n", "\\n");
+        var safeFaculty = (ann.FacultyName ?? "").Replace("'", "\\'");
+        var safeClass   = (ann.CourseCode == "ALL" ? "All Classrooms" : ann.CourseName + " (" + ann.CourseCode + ")").Replace("'", "\\'");
+        <text>
+    announcementData['@ann.AnnouncementId'] = {
+        title:    '@Html.Raw(safeTitle)',
+        message:  '@Html.Raw(safeMessage)',
+        priority: '@ann.Priority',
+        pinned:   @ann.IsPinned.ToString().ToLower(),
+        cls:      '@Html.Raw(safeClass)',
+        date:     '@ann.PublishedAt.ToString("dd MMM yyyy, hh:mm tt")',
+        faculty:  '@Html.Raw(safeFaculty)'
+    };
+        </text>
+    }
+
+    var currentAnnounceFilter = 'all';
+
+    function filterAnnounce(type) {
+        currentAnnounceFilter = type;
+        document.querySelectorAll('[id^="filterPill"]').forEach(function (b) { b.classList.remove('active'); b.style.background = ''; b.style.color = ''; b.style.borderColor = ''; });
+        var active = document.getElementById('filterPill' + type.charAt(0).toUpperCase() + type.slice(1));
+        if (active) { active.classList.add('active'); active.style.background = 'var(--cv-navy)'; active.style.color = '#fff'; active.style.borderColor = 'var(--cv-navy)'; }
+        applyAnnounceFilters();
+    }
+
+    function applyAnnounceFilters() {
+        var search    = (document.getElementById('announceSearch').value || '').trim().toLowerCase();
+        var classroom = document.getElementById('announceFilterClassroom').value;
+        var priority  = document.getElementById('announceFilterPriority').value;
+        var rows      = document.querySelectorAll('.announce-row');
+        var visible   = 0;
+
+        rows.forEach(function (row) {
+            var rPinned   = row.getAttribute('data-pinned') === 'true';
+            var rPriority = row.getAttribute('data-priority') || '';
+            var rClass    = row.getAttribute('data-classroom') || '';
+            var rSearch   = row.getAttribute('data-search') || '';
+
+            var okFilter = true;
+            if (currentAnnounceFilter === 'pinned')  { okFilter = rPinned; }
+            if (currentAnnounceFilter === 'urgent')  { okFilter = rPriority === 'Urgent' || rPriority === 'High'; }
+
+            var okSearch    = !search   || rSearch.indexOf(search) !== -1;
+            var okClassroom = classroom === 'all' || rClass === classroom;
+            var okPriority  = priority  === 'all' || rPriority === priority;
+
+            var show = okFilter && okSearch && okClassroom && okPriority;
+            row.style.display = show ? '' : 'none';
+            if (show) { visible++; }
+        });
+
+        document.getElementById('announceCountBadge').textContent = visible + ' Records';
+        var table = document.getElementById('announcementsTable');
+        var empty = document.getElementById('announceEmptyState');
+        if (visible === 0) { if (table) table.style.display = 'none'; if (empty) empty.style.display = 'block'; }
+        else               { if (table) table.style.display = '';     if (empty) empty.style.display = 'none'; }
+    }
+
+    function resetAnnounceFilters() {
+        document.getElementById('announceSearch').value = '';
+        document.getElementById('announceFilterClassroom').value = 'all';
+        document.getElementById('announceFilterPriority').value = 'all';
+        currentAnnounceFilter = 'all';
+        document.querySelectorAll('[id^="filterPill"]').forEach(function (b) { b.classList.remove('active'); b.style.background = ''; b.style.color = ''; b.style.borderColor = ''; });
+        var allBtn = document.getElementById('filterPillAll');
+        if (allBtn) { allBtn.style.background = 'var(--cv-navy)'; allBtn.style.color = '#fff'; allBtn.style.borderColor = 'var(--cv-navy)'; }
+        applyAnnounceFilters();
+    }
+
+    function openComposeModal()  { document.getElementById('composeModal').style.display  = 'flex'; }
+    function closeComposeModal() { document.getElementById('composeModal').style.display  = 'none'; }
+    function handleModalClick(e) { if (e.target === document.getElementById('composeModal')) { closeComposeModal(); } }
+
+    function viewAnnouncement(id) {
+        var d = announcementData[id];
+        if (!d) { return; }
+        var prColor = d.priority === 'Urgent' ? '#dc2626' : d.priority === 'High' ? '#d97706' : d.priority === 'Low' ? '#64748b' : '#2563eb';
+        var prBg    = d.priority === 'Urgent' ? '#fee2e2' : d.priority === 'High' ? '#fef3c7' : d.priority === 'Low' ? '#f1f5f9' : '#eff6ff';
+        document.getElementById('viewModalContent').innerHTML =
+            '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">' +
+                (d.pinned ? '<span style="color:#d97706;">📌</span>' : '') +
+                '<span style="font-size:10px;font-weight:700;padding:3px 9px;border-radius:999px;background:' + prBg + ';color:' + prColor + ';">' + d.priority + '</span>' +
+                '<span style="font-size:11px;color:#64748b;">ANN-' + id + '</span>' +
+            '</div>' +
+            '<h3 style="font-family:var(--font-heading);font-size:17px;font-weight:800;color:#0b192c;margin:0 0 10px 0;">' + d.title + '</h3>' +
+            '<p style="font-size:13px;color:#334155;line-height:1.6;white-space:pre-wrap;margin:0 0 14px 0;">' + d.message + '</p>' +
+            '<div style="display:flex;flex-wrap:wrap;gap:10px;font-size:11px;color:#64748b;border-top:1px solid #e2e8f0;padding-top:12px;">' +
+                '<span>📍 ' + d.cls + '</span>' +
+                '<span>🕐 ' + d.date + '</span>' +
+                '<span>👤 ' + d.faculty + '</span>' +
+            '</div>';
+        document.getElementById('viewModal').style.display = 'flex';
+    }
+
+    function deleteAnnouncement(id, btn) {
+        if (!confirm('Delete this announcement? Students will no longer see it.')) { return; }
+        btn.disabled = true; btn.textContent = '...';
+
+        var token = document.querySelector('input[name="__RequestVerificationToken"]');
+        var fd = new FormData();
+        fd.append('announcementId', id);
+        if (token) { fd.append('__RequestVerificationToken', token.value); }
+
+        fetch('@Url.Action("DeleteAnnouncement","Faculty")', { method: 'POST', body: fd })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            if (data.success) {
+                var row = btn.closest('tr');
+                if (row) { row.style.opacity = '0'; row.style.transition = 'opacity 0.3s'; setTimeout(function () { row.remove(); applyAnnounceFilters(); }, 300); }
+            } else {
+                btn.disabled = false; btn.textContent = 'Delete';
+                alert(data.message || 'Could not delete.');
+            }
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', function () { applyAnnounceFilters(); });
+</script>
+
+@* Hidden CSRF token for AJAX *@
+@using (Html.BeginForm()) { @Html.AntiForgeryToken() }

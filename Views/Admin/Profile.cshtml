@@ -1,0 +1,526 @@
+@model CampusVault.Models.Auth.User
+@{
+    ViewBag.Title = "Admin Profile";
+    ViewBag.Role = "Admin";
+    var user = Model ?? new CampusVault.Models.Auth.User();
+    var initials = !string.IsNullOrEmpty(user.FirstName) && !string.IsNullOrEmpty(user.LastName)
+        ? (user.FirstName[0].ToString() + user.LastName[0].ToString()).ToUpper()
+        : (!string.IsNullOrEmpty(user.FullName) ? user.FullName.Substring(0, Math.Min(2, user.FullName.Length)).ToUpper() : "AU");
+    var adminCode = "ADM-" + user.UserId.ToString("D3");
+    var dept = !string.IsNullOrEmpty(user.AdminDepartment) ? user.AdminDepartment : "IT & Infrastructure Directorate";
+}
+
+@* ==================== 1. PREMIUM ADMIN PROFILE HERO ==================== *@
+<div class="cv-profile-hero animate-slide-up">
+    <div class="cv-profile-hero-content">
+        <div class="cv-profile-user-identity">
+            <div class="cv-profile-avatar-large" style="background:#0b192c;color:var(--cv-gold);border-color:rgba(217,164,65,0.4);">
+                @initials
+            </div>
+            <div>
+                <h1 class="cv-profile-name">
+                    @user.FullName
+                    <span class="cv-badge cv-badge-neutral" style="font-size:11px;padding:2px 8px;background:rgba(217,164,65,0.2);color:var(--cv-gold);border:1px solid rgba(217,164,65,0.4);">
+                        @user.RoleName
+                    </span>
+                </h1>
+                <div class="cv-profile-meta-tags">
+                    <span class="cv-profile-meta-item">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                        @user.Email
+                    </span>
+                    <span class="cv-profile-meta-item">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg>
+                        Admin ID: <strong>@adminCode</strong>
+                    </span>
+                    <span class="cv-profile-meta-item">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                        @dept
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        @* Actions *@
+        <div style="display:flex;align-items:center;gap:var(--space-2);flex-wrap:wrap;">
+            <button type="button" id="btnOpenEditProfile" class="cv-btn cv-btn-secondary" onclick="openEditProfileModal()" style="font-size:12px;gap:6px;background:rgba(255,255,255,0.12);color:#fff;border-color:rgba(255,255,255,0.25);">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                Edit Profile
+            </button>
+            <button type="button" id="btnOpenChangePassword" class="cv-btn cv-btn-primary" onclick="openChangePasswordModal()" style="font-size:12px;gap:6px;background:var(--cv-gold);color:var(--cv-navy);font-weight:var(--fw-bold);border:none;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                Change Password
+            </button>
+        </div>
+    </div>
+</div>
+
+@* ==================== 2. TWO-COLUMN PROFILE CONTENT GRID ==================== *@
+<div class="cv-profile-grid animate-slide-up stagger-1">
+    
+    @* Left Column: Admin Account & Security Information Card *@
+    <div style="display:flex;flex-direction:column;gap:var(--space-4);">
+        <div class="cv-profile-side-card">
+            <h3 style="font-family:var(--font-heading);font-size:var(--fs-sm);font-weight:var(--fw-bold);color:var(--cv-navy);text-transform:uppercase;letter-spacing:0.04em;margin:0 0 var(--space-3) 0;border-bottom:1px solid var(--cv-border-light);padding-bottom:var(--space-2);">
+                Account Information
+            </h3>
+            <div class="cv-profile-data-row">
+                <span class="cv-profile-data-label">Administrator ID</span>
+                <span class="cv-profile-data-value">@adminCode</span>
+            </div>
+            <div class="cv-profile-data-row">
+                <span class="cv-profile-data-label">Assigned Role</span>
+                <span class="cv-profile-data-value" style="color:#d97706;">@user.RoleName</span>
+            </div>
+            <div class="cv-profile-data-row">
+                <span class="cv-profile-data-label">Department</span>
+                <span class="cv-profile-data-value">@dept</span>
+            </div>
+            <div class="cv-profile-data-row">
+                <span class="cv-profile-data-label">Contact Phone</span>
+                <span class="cv-profile-data-value">@(!string.IsNullOrEmpty(user.PhoneNumber) ? user.PhoneNumber : "Not Configured")</span>
+            </div>
+            <div class="cv-profile-data-row">
+                <span class="cv-profile-data-label">Security Clearance</span>
+                <span class="cv-profile-data-value">@(!string.IsNullOrEmpty(user.AdminAccessLevel) ? user.AdminAccessLevel : "Level 5 (Full Root)")</span>
+            </div>
+            <div class="cv-profile-data-row">
+                <span class="cv-profile-data-label">Account Status</span>
+                <span style="color:@(user.IsActive ? "#16a34a" : "#dc2626");font-weight:bold;font-size:11px;">@(user.IsActive ? "Active" : "Inactive")</span>
+            </div>
+        </div>
+
+        @* Governance & Policy Card *@
+        <div class="cv-profile-side-card">
+            <h3 style="font-family:var(--font-heading);font-size:var(--fs-sm);font-weight:var(--fw-bold);color:var(--cv-navy);text-transform:uppercase;letter-spacing:0.04em;margin:0 0 var(--space-3) 0;border-bottom:1px solid var(--cv-border-light);padding-bottom:var(--space-2);">
+                Governance Permissions
+            </h3>
+            <div class="cv-profile-data-row">
+                <span class="cv-profile-data-label">User Provisioning</span>
+                <span style="color:#16a34a;font-weight:bold;font-size:11px;">Enabled</span>
+            </div>
+            <div class="cv-profile-data-row">
+                <span class="cv-profile-data-label">Ledger Maintenance</span>
+                <span style="color:#16a34a;font-weight:bold;font-size:11px;">Enabled</span>
+            </div>
+            <div class="cv-profile-data-row">
+                <span class="cv-profile-data-label">Academic Grading</span>
+                <span style="color:#64748b;font-weight:bold;font-size:11px;">Disabled (Role Segregation)</span>
+            </div>
+            <div class="cv-profile-data-row">
+                <span class="cv-profile-data-label">Backup Authority</span>
+                <span style="color:#16a34a;font-weight:bold;font-size:11px;">Primary Vault Key</span>
+            </div>
+        </div>
+    </div>
+
+    @* Right Column: System Activity & Administrative Telemetry *@
+    <div style="display:flex;flex-direction:column;gap:var(--space-4);">
+        <div class="cv-profile-side-card">
+            <h3 style="font-family:var(--font-heading);font-size:var(--fs-sm);font-weight:var(--fw-bold);color:var(--cv-navy);text-transform:uppercase;letter-spacing:0.04em;margin:0 0 var(--space-3) 0;border-bottom:1px solid var(--cv-border-light);padding-bottom:var(--space-2);">
+                Platform Integrity &amp; Session Environment
+            </h3>
+            <div class="cv-profile-data-row">
+                <span class="cv-profile-data-label">Session User</span>
+                <span class="cv-profile-data-value">@user.FullName (@user.Email)</span>
+            </div>
+            <div class="cv-profile-data-row">
+                <span class="cv-profile-data-label">Role Verification</span>
+                <span class="cv-profile-data-value" style="color:#16a34a;font-weight:600;">Authorized Administrator</span>
+            </div>
+            <div class="cv-profile-data-row">
+                <span class="cv-profile-data-label">Email Verified</span>
+                <span style="color:@(user.IsEmailVerified ? "#16a34a" : "#d97706");font-weight:600;">@(user.IsEmailVerified ? "Verified" : "Pending Verification")</span>
+            </div>
+            <div class="cv-profile-data-row">
+                <span class="cv-profile-data-label">Vault Hash Ledger</span>
+                <span style="color:#16a34a;font-weight:600;">Cryptographically Synchronized</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* Hidden AntiForgeryToken for AJAX Modals *@
+<form id="antiForgeryForm" style="display:none;">
+    @Html.AntiForgeryToken()
+</form>
+
+@* ==================== 3. EDIT PROFILE MODAL ==================== *@
+<div id="editProfileModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,23,42,0.72);z-index:999999;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);">
+    <div style="background:#fff;border-radius:16px;max-width:540px;width:100%;box-shadow:0 25px 50px -12px rgba(0,0,0,0.5);border:1px solid #cbd5e1;overflow:hidden;position:relative;">
+        <div style="padding:18px 24px;background:linear-gradient(135deg, #0b192c 0%, #1e293b 100%);color:#fff;display:flex;align-items:center;justify-content:space-between;">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <div style="width:32px;height:32px;border-radius:8px;background:rgba(217,164,65,0.25);display:flex;align-items:center;justify-content:center;color:var(--cv-gold);">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </div>
+                <h3 style="font-family:var(--font-heading);font-size:16px;font-weight:700;margin:0;color:#fff;">
+                    Edit Administrator Details
+                </h3>
+            </div>
+            <button type="button" onclick="closeEditProfileModal()" style="background:none;border:none;color:rgba(255,255,255,0.7);cursor:pointer;padding:6px;border-radius:6px;display:flex;align-items:center;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+        <form id="editProfileForm" onsubmit="handleSaveProfile(event)" style="padding:22px;">
+            <div id="editProfileAlert" style="display:none;padding:10px 14px;border-radius:8px;margin-bottom:14px;font-size:12.5px;"></div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+                <div>
+                    <label style="display:block;font-size:11.5px;font-weight:700;color:#334155;margin-bottom:6px;text-transform:uppercase;">First Name</label>
+                    <input type="text" id="editAdminFirstName" class="cv-filter-input" value="@user.FirstName" style="width:100%;padding:10px 14px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;color:#0f172a;box-sizing:border-box;" required />
+                </div>
+                <div>
+                    <label style="display:block;font-size:11.5px;font-weight:700;color:#334155;margin-bottom:6px;text-transform:uppercase;">Last Name</label>
+                    <input type="text" id="editAdminLastName" class="cv-filter-input" value="@user.LastName" style="width:100%;padding:10px 14px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;color:#0f172a;box-sizing:border-box;" required />
+                </div>
+            </div>
+            <div style="margin-bottom:14px;">
+                <label style="display:block;font-size:11.5px;font-weight:700;color:#334155;margin-bottom:6px;text-transform:uppercase;">Primary Email (Read-Only)</label>
+                <input type="email" value="@user.Email" disabled style="width:100%;padding:10px 14px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;background:#f1f5f9;color:#64748b;cursor:not-allowed;box-sizing:border-box;" class="cv-filter-input" />
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+                <div>
+                    <label style="display:block;font-size:11.5px;font-weight:700;color:#334155;margin-bottom:6px;text-transform:uppercase;">Contact Phone</label>
+                    <input type="tel" id="editAdminPhone" class="cv-filter-input" value="@user.PhoneNumber" placeholder="Enter contact phone" style="width:100%;padding:10px 14px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;color:#0f172a;box-sizing:border-box;" />
+                </div>
+                <div>
+                    <label style="display:block;font-size:11.5px;font-weight:700;color:#334155;margin-bottom:6px;text-transform:uppercase;">Department</label>
+                    <input type="text" id="editAdminDept" class="cv-filter-input" value="@dept" placeholder="Enter department" style="width:100%;padding:10px 14px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;color:#0f172a;box-sizing:border-box;" />
+                </div>
+            </div>
+            <div style="display:flex;justify-content:flex-end;gap:10px;border-top:1px solid #e2e8f0;padding-top:16px;">
+                <button type="button" class="cv-btn cv-btn-secondary" onclick="closeEditProfileModal()" style="background:#f1f5f9;color:#334155;border:1px solid #cbd5e1;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer;">Cancel</button>
+                <button type="submit" id="btnSaveProfile" class="cv-btn cv-btn-primary" style="background:#0f172a;color:#fff;border:none;border-radius:8px;padding:9px 20px;font-size:13px;font-weight:700;cursor:pointer;">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@* ==================== 4. CHANGE PASSWORD MODAL ==================== *@
+<div id="changePasswordModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,23,42,0.72);z-index:999999;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);">
+    <div style="background:#fff;border-radius:16px;max-width:480px;width:100%;box-shadow:0 25px 50px -12px rgba(0,0,0,0.5);border:1px solid #cbd5e1;overflow:hidden;position:relative;">
+        <div style="padding:18px 24px;background:linear-gradient(135deg, #0b192c 0%, #1e293b 100%);color:#fff;display:flex;align-items:center;justify-content:space-between;">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <div style="width:32px;height:32px;border-radius:8px;background:rgba(217,164,65,0.25);display:flex;align-items:center;justify-content:center;color:var(--cv-gold);">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                </div>
+                <h3 style="font-family:var(--font-heading);font-size:16px;font-weight:700;margin:0;color:#fff;">
+                    Change Administrator Password
+                </h3>
+            </div>
+            <button type="button" onclick="closeChangePasswordModal()" style="background:none;border:none;color:rgba(255,255,255,0.7);cursor:pointer;padding:6px;border-radius:6px;display:flex;align-items:center;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+        <form id="changePasswordForm" onsubmit="handleChangePassword(event)" style="padding:22px;">
+            <div id="changePwdAlert" style="display:none;padding:10px 14px;border-radius:8px;margin-bottom:14px;font-size:12.5px;"></div>
+
+            <div style="margin-bottom:14px;">
+                <label style="display:block;font-size:11.5px;font-weight:700;color:#334155;margin-bottom:6px;text-transform:uppercase;">Current Password</label>
+                <input type="password" id="adminPwdCurrent" class="cv-filter-input" placeholder="Enter current passphrase" style="width:100%;padding:10px 14px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;color:#0f172a;box-sizing:border-box;" required />
+            </div>
+            <div style="margin-bottom:14px;">
+                <label style="display:block;font-size:11.5px;font-weight:700;color:#334155;margin-bottom:6px;text-transform:uppercase;">New Password (Min 6 Characters)</label>
+                <input type="password" id="adminPwdNew" class="cv-filter-input" placeholder="Enter new passphrase" style="width:100%;padding:10px 14px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;color:#0f172a;box-sizing:border-box;" required />
+            </div>
+            <div style="margin-bottom:18px;">
+                <label style="display:block;font-size:11.5px;font-weight:700;color:#334155;margin-bottom:6px;text-transform:uppercase;">Confirm New Password</label>
+                <input type="password" id="adminPwdConfirm" class="cv-filter-input" placeholder="Re-enter new passphrase" style="width:100%;padding:10px 14px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;color:#0f172a;box-sizing:border-box;" required />
+            </div>
+            <div style="display:flex;justify-content:flex-end;gap:10px;border-top:1px solid #e2e8f0;padding-top:16px;">
+                <button type="button" class="cv-btn cv-btn-secondary" onclick="closeChangePasswordModal()" style="background:#f1f5f9;color:#334155;border:1px solid #cbd5e1;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer;">Cancel</button>
+                <button type="submit" id="btnSavePassword" class="cv-btn cv-btn-primary" style="background:#0f172a;color:#fff;border:none;border-radius:8px;padding:9px 20px;font-size:13px;font-weight:700;cursor:pointer;">Update Password</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@* ==================== 5. JAVASCRIPT ==================== *@
+<script>
+    window.openEditProfileModal = function () {
+        var alertBox = document.getElementById('editProfileAlert');
+        if (alertBox) alertBox.style.display = 'none';
+        var modal = document.getElementById('editProfileModal');
+        if (modal) {
+            modal.style.display = 'flex';
+            modal.style.opacity = '1';
+            modal.style.visibility = 'visible';
+            modal.style.zIndex = '999999';
+        }
+    };
+
+    window.closeEditProfileModal = function () {
+        var modal = document.getElementById('editProfileModal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    };
+
+    window.openChangePasswordModal = function () {
+        var alertBox = document.getElementById('changePwdAlert');
+        if (alertBox) alertBox.style.display = 'none';
+        var p1 = document.getElementById('adminPwdCurrent');
+        var p2 = document.getElementById('adminPwdNew');
+        var p3 = document.getElementById('adminPwdConfirm');
+        if (p1) p1.value = '';
+        if (p2) p2.value = '';
+        if (p3) p3.value = '';
+        var modal = document.getElementById('changePasswordModal');
+        if (modal) {
+            modal.style.display = 'flex';
+            modal.style.opacity = '1';
+            modal.style.visibility = 'visible';
+            modal.style.zIndex = '999999';
+        }
+    };
+
+    window.closeChangePasswordModal = function () {
+        var p1 = document.getElementById('adminPwdCurrent');
+        var p2 = document.getElementById('adminPwdNew');
+        var p3 = document.getElementById('adminPwdConfirm');
+        if (p1) p1.value = '';
+        if (p2) p2.value = '';
+        if (p3) p3.value = '';
+        var modal = document.getElementById('changePasswordModal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    };
+
+    document.addEventListener('DOMContentLoaded', function () {
+        var editBtn = document.getElementById('btnOpenEditProfile');
+        if (editBtn) editBtn.addEventListener('click', window.openEditProfileModal);
+        var pwdBtn = document.getElementById('btnOpenChangePassword');
+        if (pwdBtn) pwdBtn.addEventListener('click', window.openChangePasswordModal);
+    });
+
+    // Close on backdrop click
+    window.addEventListener('click', function (e) {
+        var editModal = document.getElementById('editProfileModal');
+        if (e.target === editModal) closeEditProfileModal();
+        var pwdModal = document.getElementById('changePasswordModal');
+        if (e.target === pwdModal) closeChangePasswordModal();
+    });
+
+    // Close on ESC key
+    window.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+            closeEditProfileModal();
+            closeChangePasswordModal();
+        }
+    });
+
+    // Save Admin Profile AJAX
+    window.handleSaveProfile = async function (e) {
+        e.preventDefault();
+        var firstName = document.getElementById('editAdminFirstName').value.trim();
+        var lastName = document.getElementById('editAdminLastName').value.trim();
+        var phoneNumber = document.getElementById('editAdminPhone').value.trim();
+        var department = document.getElementById('editAdminDept').value.trim();
+        var alertBox = document.getElementById('editProfileAlert');
+        var btn = document.getElementById('btnSaveProfile');
+
+        if (!firstName || !lastName) {
+            alertBox.style.display = 'block';
+            alertBox.style.background = '#fef2f2';
+            alertBox.style.color = '#dc2626';
+            alertBox.style.border = '1px solid #fecaca';
+            alertBox.textContent = 'First name and last name are required.';
+            return;
+        }
+
+        btn.disabled = true;
+        btn.textContent = 'Saving...';
+        alertBox.style.display = 'none';
+
+        try {
+            var tokenInput = document.querySelector('#antiForgeryForm input[name="__RequestVerificationToken"]');
+            var token = tokenInput ? tokenInput.value : '';
+
+            var formData = new URLSearchParams();
+            formData.append('__RequestVerificationToken', token);
+            formData.append('firstName', firstName);
+            formData.append('lastName', lastName);
+            formData.append('phoneNumber', phoneNumber);
+            formData.append('department', department);
+
+            var resp = await fetch('@Url.Action("UpdateProfile", "Admin")', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: formData.toString()
+            });
+
+            var data = await resp.json();
+            if (data.success) {
+                var fullName = firstName + ' ' + lastName;
+                var initials = (firstName[0] || 'A') + (lastName[0] || 'D');
+
+                // Update hero elements
+                var heroName = document.querySelector('.cv-profile-name');
+                if (heroName) {
+                    var badge = heroName.querySelector('.cv-badge');
+                    heroName.childNodes[0].nodeValue = fullName + ' ';
+                }
+                var heroAvatar = document.querySelector('.cv-profile-avatar-large');
+                if (heroAvatar) heroAvatar.textContent = initials.toUpperCase();
+
+                // Update top navbar
+                var topName = document.querySelector('.user-name');
+                if (topName) topName.textContent = fullName;
+                var topAvatar = document.querySelector('.user-avatar');
+                if (topAvatar) topAvatar.textContent = initials.toUpperCase();
+
+                closeEditProfileModal();
+                showProfileToast('Profile Updated', data.message || 'Administrator details saved successfully.', 'success');
+                setTimeout(function () { window.location.reload(); }, 1200);
+            } else {
+                alertBox.style.display = 'block';
+                alertBox.style.background = '#fef2f2';
+                alertBox.style.color = '#dc2626';
+                alertBox.style.border = '1px solid #fecaca';
+                alertBox.textContent = data.message || 'Failed to update profile.';
+            }
+        } catch (err) {
+            alertBox.style.display = 'block';
+            alertBox.style.background = '#fef2f2';
+            alertBox.style.color = '#dc2626';
+            alertBox.style.border = '1px solid #fecaca';
+            alertBox.textContent = 'Network or server error occurred.';
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Save Changes';
+        }
+    };
+
+    // Change Admin Password AJAX
+    window.handleChangePassword = async function (e) {
+        e.preventDefault();
+        var currentPwd = document.getElementById('adminPwdCurrent').value;
+        var newPwd = document.getElementById('adminPwdNew').value;
+        var confirmPwd = document.getElementById('adminPwdConfirm').value;
+        var alertBox = document.getElementById('changePwdAlert');
+        var btn = document.getElementById('btnSavePassword');
+
+        if (!currentPwd || !newPwd) {
+            alertBox.style.display = 'block';
+            alertBox.style.background = '#fef2f2';
+            alertBox.style.color = '#dc2626';
+            alertBox.style.border = '1px solid #fecaca';
+            alertBox.textContent = 'Please fill out all password fields.';
+            return;
+        }
+
+        if (newPwd.length < 6) {
+            alertBox.style.display = 'block';
+            alertBox.style.background = '#fef2f2';
+            alertBox.style.color = '#dc2626';
+            alertBox.style.border = '1px solid #fecaca';
+            alertBox.textContent = 'New password must be at least 6 characters.';
+            return;
+        }
+
+        if (newPwd !== confirmPwd) {
+            alertBox.style.display = 'block';
+            alertBox.style.background = '#fef2f2';
+            alertBox.style.color = '#dc2626';
+            alertBox.style.border = '1px solid #fecaca';
+            alertBox.textContent = 'New password and confirmation do not match.';
+            return;
+        }
+
+        btn.disabled = true;
+        btn.textContent = 'Updating...';
+        alertBox.style.display = 'none';
+
+        try {
+            var tokenInput = document.querySelector('#antiForgeryForm input[name="__RequestVerificationToken"]');
+            var token = tokenInput ? tokenInput.value : '';
+
+            var formData = new URLSearchParams();
+            formData.append('__RequestVerificationToken', token);
+            formData.append('currentPassword', currentPwd);
+            formData.append('newPassword', newPwd);
+            formData.append('confirmPassword', confirmPwd);
+
+            var resp = await fetch('@Url.Action("ChangePassword", "Admin")', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: formData.toString()
+            });
+
+            var data = await resp.json();
+            if (data.success) {
+                closeChangePasswordModal();
+                showProfileToast('Password Changed', data.message || 'Root security password updated successfully.', 'success');
+            } else {
+                alertBox.style.display = 'block';
+                alertBox.style.background = '#fef2f2';
+                alertBox.style.color = '#dc2626';
+                alertBox.style.border = '1px solid #fecaca';
+                alertBox.textContent = data.message || 'Password update failed.';
+            }
+        } catch (err) {
+            alertBox.style.display = 'block';
+            alertBox.style.background = '#fef2f2';
+            alertBox.style.color = '#dc2626';
+            alertBox.style.border = '1px solid #fecaca';
+            alertBox.textContent = 'Network or server error occurred.';
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Update Password';
+        }
+    };
+
+    function showProfileToast(title, message, type) {
+        let toastContainer = document.getElementById('cv-profile-toast-container');
+        if (!toastContainer) {
+            toastContainer = document.createElement('div');
+            toastContainer.id = 'cv-profile-toast-container';
+            toastContainer.style.position = 'fixed';
+            toastContainer.style.bottom = '24px';
+            toastContainer.style.right = '24px';
+            toastContainer.style.zIndex = '999999';
+            toastContainer.style.display = 'flex';
+            toastContainer.style.flexDirection = 'column';
+            toastContainer.style.gap = '10px';
+            document.body.appendChild(toastContainer);
+        }
+
+        const toast = document.createElement('div');
+        toast.style.background = (type === 'success' ? '#064e3b' : '#0f172a');
+        toast.style.color = '#fff';
+        toast.style.border = (type === 'success' ? '1px solid #059669' : '1px solid #334155');
+        toast.style.borderRadius = '8px';
+        toast.style.padding = '12px 18px';
+        toast.style.boxShadow = '0 10px 25px rgba(0,0,0,0.3)';
+        toast.style.fontSize = '12px';
+        toast.style.minWidth = '260px';
+        toast.style.animation = 'cvFadeIn 0.25s ease';
+
+        toast.innerHTML = `
+            <div style="display:flex;align-items:center;gap:8px;">
+                <div style="color:${type === 'success' ? '#34d399' : '#38bdf8'};">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                </div>
+                <div>
+                    <div style="font-weight:700;">${title}</div>
+                    <div style="color:rgba(255,255,255,0.8);font-size:11px;">${message}</div>
+                </div>
+            </div>
+        `;
+
+        toastContainer.appendChild(toast);
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transition = 'opacity 0.3s ease';
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+</script>
+

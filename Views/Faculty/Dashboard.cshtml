@@ -1,0 +1,466 @@
+@model CampusVault.Models.Faculty.FacultyDashboardViewModel
+@{
+    ViewBag.Title = "Faculty Dashboard";
+    ViewBag.Role = "Faculty";
+    ViewBag.UserName = Session["UserName"] as string ?? "Prof. Patel";
+    ViewBag.UserInitials = Session["UserInitials"] as string ?? "PP";
+    ViewBag.UserRoleDisplay = Session["UserRoleDisplay"] as string ?? "Computer Engineering";
+}
+
+@* ==================== HERO HEADER ==================== *@
+<div class="cv-faculty-hero animate-slide-up">
+    <div class="cv-faculty-hero-inner">
+        <div>
+            <div class="cv-faculty-hero-title">
+                Welcome back, Professor.
+                <span class="cv-professor-badge">Faculty Portal</span>
+            </div>
+            <p class="cv-faculty-hero-subtitle">
+                Here's your live coursework workspace, enrolled students, and grading queue.
+            </p>
+        </div>
+        <div class="cv-faculty-hero-meta">
+            <div class="cv-faculty-hero-pill">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;flex-shrink:0;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                <span>@DateTime.Now.ToString("dddd, MMM dd, yyyy")</span>
+            </div>
+            <div class="cv-faculty-hero-pill">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;flex-shrink:0;"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                <span>@(Model?.Classrooms?.FirstOrDefault()?.Semester > 0 ? "Semester " + Model.Classrooms.First().Semester : "Active") &bull; @ViewBag.UserRoleDisplay</span>
+            </div>
+            <div class="cv-faculty-hero-pill">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;flex-shrink:0;"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+                <span>CampusVault Academic Cloud</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* ==================== 4 TOP STATISTICS CARDS ==================== *@
+<div class="cv-grid-4 mb-6 animate-slide-up stagger-1">
+    @* Active Classrooms *@
+    <div class="cv-faculty-stat-card">
+        <div class="cv-faculty-stat-card-top">
+            <div class="cv-faculty-stat-icon-wrapper icon-navy">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:22px;height:22px;flex-shrink:0;"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+            </div>
+            <span class="cv-faculty-stat-badge badge-subtle">Workspaces</span>
+        </div>
+        <div>
+            <div class="cv-faculty-stat-value">@(Model != null ? Model.ActiveClassroomCount : 0)</div>
+            <div class="cv-faculty-stat-label">Active Classrooms</div>
+        </div>
+        <div class="cv-faculty-stat-footer">
+            <span>Course cohorts &amp; divisions</span>
+            <a href="@Url.Action("Classrooms", "Faculty")" class="text-primary fw-medium" style="text-decoration:none;font-size:11px;">View All &rarr;</a>
+        </div>
+    </div>
+
+    @* Active Tasks *@
+    <div class="cv-faculty-stat-card">
+        <div class="cv-faculty-stat-card-top">
+            <div class="cv-faculty-stat-icon-wrapper icon-indigo">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:22px;height:22px;flex-shrink:0;"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><line x1="16" y1="11" x2="8" y2="11"/><line x1="16" y1="15" x2="8" y2="15"/></svg>
+            </div>
+            <span class="cv-faculty-stat-badge badge-subtle">Assigned</span>
+        </div>
+        <div>
+            <div class="cv-faculty-stat-value">@(Model != null ? Model.ActiveTaskCount : 0)</div>
+            <div class="cv-faculty-stat-label">Active Tasks</div>
+        </div>
+        <div class="cv-faculty-stat-footer">
+            <span>Labs &amp; Assignments</span>
+            <a href="@Url.Action("Tasks", "Faculty")" class="text-primary fw-medium" style="text-decoration:none;font-size:11px;">Manage &rarr;</a>
+        </div>
+    </div>
+
+    @* Pending Reviews *@
+    <div class="cv-faculty-stat-card" style="border-color: rgba(217, 119, 6, 0.4); box-shadow: 0 4px 14px rgba(217, 119, 6, 0.08);">
+        <div class="cv-faculty-stat-card-top">
+            <div class="cv-faculty-stat-icon-wrapper icon-warning">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:22px;height:22px;flex-shrink:0;"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+            </div>
+            <span class="cv-faculty-stat-badge badge-urgent">
+                <span class="cv-dot-indicator dot-amber"></span>
+                Action Required
+            </span>
+        </div>
+        <div>
+            <div class="cv-faculty-stat-value" style="color: #d97706;">@(Model != null ? Model.PendingReviewCount : 0)</div>
+            <div class="cv-faculty-stat-label">Pending Reviews</div>
+        </div>
+        <div class="cv-faculty-stat-footer">
+            <span style="color:#b45309;font-weight:600;">Student submissions awaiting grading</span>
+            <a href="@Url.Action("Submissions", "Faculty")" class="text-warning fw-bold" style="text-decoration:none;font-size:11px;">Review Now &darr;</a>
+        </div>
+    </div>
+
+    @* Total Enrolled Students *@
+    <div class="cv-faculty-stat-card">
+        <div class="cv-faculty-stat-card-top">
+            <div class="cv-faculty-stat-icon-wrapper icon-purple">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:22px;height:22px;flex-shrink:0;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </div>
+            <span class="cv-faculty-stat-badge badge-subtle">Enrolled</span>
+        </div>
+        <div>
+            <div class="cv-faculty-stat-value" style="color: #9333ea;">@(Model != null ? Model.TotalStudentCount : 0)</div>
+            <div class="cv-faculty-stat-label">Total Students</div>
+        </div>
+        <div class="cv-faculty-stat-footer">
+            <span>Rosters across classrooms</span>
+            <a href="@Url.Action("Classrooms", "Faculty")" class="text-primary fw-medium" style="text-decoration:none;font-size:11px;">View Rosters &rarr;</a>
+        </div>
+    </div>
+</div>
+
+@* ==================== SUBMISSION OVERVIEW: VISUAL STATISTICS ==================== *@
+@{
+    int totalSubs   = Model?.TotalSubmissions  ?? 0;
+    int subCnt      = Model?.SubmittedCount    ?? 0;
+    int reviewCnt   = Model?.UnderReviewCount  ?? 0;
+    int revCnt      = Model?.RevisionCount     ?? 0;
+    int appCnt      = Model?.ApprovedCount     ?? 0;
+    double subPct   = Model?.SubmittedPct      ?? 0;
+    double revwPct  = Model?.UnderReviewPct    ?? 0;
+    double rvsPct   = Model?.RevisionPct       ?? 0;
+    double appPct   = Model?.ApprovedPct       ?? 0;
+    int evalCnt     = Model?.EvaluatedCount    ?? 0;
+    double evalPct  = Model?.EvaluatedPct      ?? 0;
+}
+<div class="cv-submission-overview-card animate-slide-up stagger-2">
+    <div class="cv-overview-header">
+        <div class="cv-overview-title-group">
+            <div class="d-flex items-center gap-2">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px;color:var(--cv-navy);flex-shrink:0;"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                <h3 style="margin:0;">Submission Overview</h3>
+            </div>
+            <p>Live distribution of @totalSubs total document submissions across all active coursework tasks</p>
+        </div>
+        <div class="d-flex items-center gap-2">
+            <span class="cv-overview-total-badge">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;color:var(--cv-slate);flex-shrink:0;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                @totalSubs Total Submissions
+            </span>
+            <span class="cv-faculty-hero-pill" style="background:var(--cv-slate-100);border-color:var(--cv-border);color:var(--cv-slate-700);padding:4px 10px;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;color:var(--cv-emerald);flex-shrink:0;"><polyline points="20 6 9 17 4 12"/></svg>
+                Evaluated: @evalCnt / @totalSubs (@evalPct%)
+            </span>
+        </div>
+    </div>
+
+    @* Visual Segmented Distribution Bar *@
+    <div class="cv-distribution-bar-wrapper">
+        <div class="cv-distribution-bar" id="subDistributionBar">
+            @if (totalSubs > 0)
+            {
+                <div class="cv-dist-segment seg-submitted"    style="width: @subPct.ToString("F1")%;"  title="Submitted: @subCnt (@subPct.ToString("F1")%)"></div>
+                <div class="cv-dist-segment seg-under-review" style="width: @revwPct.ToString("F1")%;" title="Under Review: @reviewCnt (@revwPct.ToString("F1")%)"></div>
+                <div class="cv-dist-segment seg-revision"     style="width: @rvsPct.ToString("F1")%;"  title="Revision Required: @revCnt (@rvsPct.ToString("F1")%)"></div>
+                <div class="cv-dist-segment seg-approved"     style="width: @appPct.ToString("F1")%;"  title="Approved: @appCnt (@appPct.ToString("F1")%)"></div>
+            }
+            else
+            {
+                <div style="width:100%;height:100%;background:var(--cv-border);border-radius:6px;"></div>
+            }
+        </div>
+    </div>
+
+    @* 4 Visual Metric Tiles *@
+    <div class="cv-visual-stat-grid">
+        <div class="cv-visual-stat-tile tile-submitted">
+            <div class="cv-visual-stat-tile-header">
+                <span class="cv-visual-stat-name"><span class="cv-dot-indicator dot-blue"></span>Submitted</span>
+                <span class="cv-badge cv-badge-submitted" style="font-size:10px;padding:1px 6px;">@subPct.ToString("F1")%</span>
+            </div>
+            <div class="cv-visual-stat-count">@subCnt</div>
+            <div class="cv-visual-stat-pct">@subCnt of @totalSubs total papers</div>
+            <div class="cv-visual-stat-mini-bar">
+                <div class="cv-visual-stat-mini-bar-fill" style="width: @subPct.ToString("F1")%; background: #2563eb;"></div>
+            </div>
+            <div class="d-flex items-center justify-between mt-2" style="font-size:11px;color:var(--cv-slate);">
+                <span>Initial intake</span>
+                <span class="text-primary fw-medium">@totalSubs total</span>
+            </div>
+        </div>
+
+        <div class="cv-visual-stat-tile tile-under-review">
+            <div class="cv-visual-stat-tile-header">
+                <span class="cv-visual-stat-name"><span class="cv-dot-indicator dot-amber"></span>Under Review</span>
+                <span class="cv-badge cv-badge-pending" style="font-size:10px;padding:1px 6px;">@revwPct.ToString("F1")%</span>
+            </div>
+            <div class="cv-visual-stat-count" style="color:#d97706;">@reviewCnt</div>
+            <div class="cv-visual-stat-pct">@reviewCnt awaiting grading</div>
+            <div class="cv-visual-stat-mini-bar">
+                <div class="cv-visual-stat-mini-bar-fill" style="width: @revwPct.ToString("F1")%; background: #d97706;"></div>
+            </div>
+            <div class="d-flex items-center justify-between mt-2" style="font-size:11px;color:var(--cv-slate);">
+                <span>In evaluation queue</span>
+                @if (reviewCnt > 0)
+                {
+                    <span style="color:#d97706;font-weight:600;">Action needed</span>
+                }
+            </div>
+        </div>
+
+        <div class="cv-visual-stat-tile tile-revision">
+            <div class="cv-visual-stat-tile-header">
+                <span class="cv-visual-stat-name"><span class="cv-dot-indicator dot-purple"></span>Revision Required</span>
+                <span class="cv-badge cv-badge-revision" style="font-size:10px;padding:1px 6px;">@rvsPct.ToString("F1")%</span>
+            </div>
+            <div class="cv-visual-stat-count" style="color:#9333ea;">@revCnt</div>
+            <div class="cv-visual-stat-pct">@revCnt rework feedback sent</div>
+            <div class="cv-visual-stat-mini-bar">
+                <div class="cv-visual-stat-mini-bar-fill" style="width: @rvsPct.ToString("F1")%; background: #9333ea;"></div>
+            </div>
+            <div class="d-flex items-center justify-between mt-2" style="font-size:11px;color:var(--cv-slate);">
+                <span>Students notified</span>
+            </div>
+        </div>
+
+        <div class="cv-visual-stat-tile tile-approved">
+            <div class="cv-visual-stat-tile-header">
+                <span class="cv-visual-stat-name"><span class="cv-dot-indicator dot-green"></span>Approved</span>
+                <span class="cv-badge cv-badge-approved" style="font-size:10px;padding:1px 6px;">@appPct.ToString("F1")%</span>
+            </div>
+            <div class="cv-visual-stat-count" style="color:#059669;">@appCnt</div>
+            <div class="cv-visual-stat-pct">@appCnt archived to Vault</div>
+            <div class="cv-visual-stat-mini-bar">
+                <div class="cv-visual-stat-mini-bar-fill" style="width: @appPct.ToString("F1")%; background: #059669;"></div>
+            </div>
+            <div class="d-flex items-center justify-between mt-2" style="font-size:11px;color:var(--cv-slate);">
+                <span>Digitally signed</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* ==================== MAIN DASHBOARD WORKSPACE (2 COLUMNS) ==================== *@
+<div style="display:grid;grid-template-columns:1fr 370px;gap:var(--space-6);align-items:start;" class="animate-slide-up stagger-3" id="needs-attention-section">
+
+    @* ==================== LEFT COLUMN: NEEDS YOUR ATTENTION ==================== *@
+    <div style="min-width:0;">
+        <div class="cv-attention-card">
+            <div class="cv-attention-header">
+                <div class="cv-attention-title-group">
+                    <div class="d-flex items-center gap-2">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px;color:var(--cv-warning);flex-shrink:0;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                        <h3 style="font-size:var(--fs-lg);font-weight:var(--fw-bold);color:var(--cv-navy);margin:0;">Needs Your Attention</h3>
+                    </div>
+                    <span class="cv-attention-badge-count">@(Model?.PendingReviewCount ?? 0) Waiting for Review</span>
+                </div>
+
+                <div class="cv-attention-filters">
+                    <div class="cv-attention-search">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        <input type="text" id="submissionFilterInput" placeholder="Filter student or task..." onkeyup="filterAttentionTable()">
+                    </div>
+                </div>
+            </div>
+
+            @* Submissions Table *@
+            <div class="cv-table-responsive" style="border:none;">
+                <table class="cv-attention-table" id="attentionSubmissionsTable">
+                    <thead>
+                        <tr>
+                            <th>Student</th>
+                            <th>Task</th>
+                            <th>Submitted</th>
+                            <th>Version</th>
+                            <th style="text-align:right;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model != null && Model.PendingSubmissions != null && Model.PendingSubmissions.Count > 0)
+                        {
+                            foreach (var s in Model.PendingSubmissions)
+                            {
+                                string initials = !string.IsNullOrEmpty(s.StudentName) && s.StudentName.Trim().Length >= 2 ? s.StudentName.Trim().Substring(0, 2).ToUpper() : "ST";
+                                <tr data-student="@s.StudentName" data-task="@s.TaskTitle" data-subject="@s.CourseName">
+                                    <td data-label="Student">
+                                        <div class="cv-student-cell">
+                                            <div class="cv-student-avatar" style="background: linear-gradient(135deg, #1e3a8a, #3b82f6);">
+                                                @initials
+                                            </div>
+                                            <div>
+                                                <div class="cv-student-name">@s.StudentName</div>
+                                                <div class="cv-student-roll">@s.FileSize</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td data-label="Task">
+                                        <div>
+                                            <div class="cv-task-cell-title">@s.TaskTitle</div>
+                                            <div class="cv-task-cell-subject">
+                                                <span class="cv-tag cv-tag-indigo" style="font-size:10px;padding:1px 6px;">@s.CourseCode</span>
+                                                <span>@s.FileName</span>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td data-label="Submitted">
+                                        <div class="cv-time-submitted">
+                                            <span class="cv-time-relative">@s.SubmittedAt.ToString("MMM dd, yyyy")</span>
+                                            <span class="cv-time-exact">@s.SubmittedAt.ToString("hh:mm tt")</span>
+                                        </div>
+                                    </td>
+                                    <td data-label="Status">
+                                        <span class="cv-version-pill v-initial">
+                                            @s.Status
+                                        </span>
+                                    </td>
+                                    <td data-label="Action" style="text-align:right;">
+                                        <a href="@Url.Action("ReviewSubmission", "Faculty", new { id = s.SubmissionId })" class="cv-btn cv-btn-primary cv-btn-sm" style="gap:4px;">
+                                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;flex-shrink:0;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                                            Evaluate
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="5" style="text-align:center;padding:32px 16px;color:var(--cv-slate);">
+                                    <div style="font-weight:600;color:var(--cv-navy);margin-bottom:4px;">All caught up!</div>
+                                    <div style="font-size:12px;">No student submissions currently pending evaluation.</div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            @* Table Footer *@
+            <div style="padding:var(--space-4) var(--space-6);background:var(--cv-slate-50);border-top:1px solid var(--cv-border-light);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--space-3);">
+                <span style="font-size:var(--fs-xs);color:var(--cv-slate);">
+                    Showing <strong>@(Model != null && Model.PendingSubmissions != null ? Model.PendingSubmissions.Count : 0)</strong> submissions in review queue
+                </span>
+                <a href="@Url.Action("Submissions", "Faculty")" class="cv-btn cv-btn-ghost cv-btn-sm" style="gap:6px;">
+                    View All Submissions
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;flex-shrink:0;"><polyline points="9 18 15 12 9 6"/></svg>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    @* ==================== RIGHT COLUMN: QUICK ACTIONS & RECENT ACTIVITY ==================== *@
+    <div style="display:flex;flex-direction:column;gap:var(--space-6);">
+
+        @* Quick Actions *@
+        <div class="cv-card">
+            <div class="cv-card-header" style="padding:var(--space-4) var(--space-5);">
+                <div class="d-flex items-center gap-2">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;color:var(--cv-navy);flex-shrink:0;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                    <h3 style="font-size:var(--fs-base);font-weight:var(--fw-bold);color:var(--cv-navy);margin:0;">Quick Actions</h3>
+                </div>
+            </div>
+            <div class="cv-card-body" style="padding:var(--space-4);display:flex;flex-direction:column;gap:var(--space-3);">
+                @* 1. Create Classroom *@
+                <a href="@Url.Action("CreateClassroom", "Faculty")" class="cv-quick-action-card">
+                    <div class="cv-quick-action-icon icon-classroom">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px;flex-shrink:0;"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><line x1="12" y1="8" x2="12" y2="14"/><line x1="9" y1="11" x2="15" y2="11"/></svg>
+                    </div>
+                    <div class="cv-quick-action-info">
+                        <div class="cv-quick-action-title">Create Classroom</div>
+                        <div class="cv-quick-action-desc">Set up a course workspace & invite students</div>
+                    </div>
+                    <div class="cv-quick-action-arrow">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex-shrink:0;"><polyline points="9 18 15 12 9 6"/></svg>
+                    </div>
+                </a>
+
+                @* 2. Create Task *@
+                <a href="@Url.Action("CreateTask", "Faculty")" class="cv-quick-action-card">
+                    <div class="cv-quick-action-icon icon-task">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px;flex-shrink:0;"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
+                    </div>
+                    <div class="cv-quick-action-info">
+                        <div class="cv-quick-action-title">Create Task</div>
+                        <div class="cv-quick-action-desc">Publish a new practical or assignment</div>
+                    </div>
+                    <div class="cv-quick-action-arrow">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex-shrink:0;"><polyline points="9 18 15 12 9 6"/></svg>
+                    </div>
+                </a>
+
+                @* 3. View Submissions *@
+                <a href="@Url.Action("Submissions", "Faculty")" class="cv-quick-action-card">
+                    <div class="cv-quick-action-icon icon-submissions">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px;flex-shrink:0;"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                    </div>
+                    <div class="cv-quick-action-info">
+                        <div class="d-flex items-center gap-2">
+                            <div class="cv-quick-action-title">View Submissions</div>
+                            @if (Model != null && Model.PendingReviewCount > 0)
+                            {
+                                <span class="cv-badge cv-badge-urgent" style="font-size:10px;padding:1px 6px;">@Model.PendingReviewCount Pending</span>
+                            }
+                        </div>
+                        <div class="cv-quick-action-desc">Grade student submissions & manage revisions</div>
+                    </div>
+                    <div class="cv-quick-action-arrow">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex-shrink:0;"><polyline points="9 18 15 12 9 6"/></svg>
+                    </div>
+                </a>
+            </div>
+        </div>
+
+        @* Recent Activity *@
+        <div class="cv-card">
+            <div class="cv-card-header" style="padding:var(--space-4) var(--space-5);display:flex;align-items:center;justify-content:space-between;">
+                <div class="d-flex items-center gap-2">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;color:var(--cv-navy);flex-shrink:0;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    <h3 style="font-size:var(--fs-base);font-weight:var(--fw-bold);color:var(--cv-navy);margin:0;">Recent Activity</h3>
+                </div>
+                <span class="cv-tag cv-tag-slate" style="font-size:10px;padding:2px 8px;">Live Feed</span>
+            </div>
+            <div class="cv-card-body" style="padding:var(--space-4) var(--space-5);">
+                @if (Model != null && Model.PendingSubmissions != null && Model.PendingSubmissions.Count > 0) {
+                    foreach (var sub in Model.PendingSubmissions.Take(5)) {
+                        <div class="cv-faculty-activity-item">
+                            <div class="cv-faculty-activity-icon" style="background:rgba(37, 99, 235, 0.12);color:#2563eb;">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;flex-shrink:0;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                            </div>
+                            <div class="cv-faculty-activity-content">
+                                <div class="cv-faculty-activity-title">
+                                    <strong>@(sub.StudentName ?? "A student") submitted a document.</strong><br/>
+                                    <span class="text-slate">Submitted <em>@(sub.TaskTitle ?? "a task")</em> in @(sub.ClassroomName ?? sub.CourseCode ?? "a classroom").</span>
+                                </div>
+                                <div class="cv-faculty-activity-time">@sub.SubmittedDate</div>
+                            </div>
+                        </div>
+                    }
+                } else {
+                    <div style="text-align:center;padding:var(--space-6) var(--space-4);color:var(--cv-slate);">
+                        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:36px;height:36px;margin-bottom:12px;opacity:0.35;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        <p style="margin:0;font-size:13px;">No recent activity yet.<br>Activity will appear once students start submitting.</p>
+                    </div>
+                }
+            </div>
+        </div>
+
+    </div>
+</div>
+
+@* ==================== CLIENT INTERACTION SCRIPTS ==================== *@
+<script>
+    function filterAttentionTable() {
+        var query = document.getElementById('submissionFilterInput').value.toLowerCase().trim();
+        var table = document.getElementById('attentionSubmissionsTable');
+        var rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+
+        for (var i = 0; i < rows.length; i++) {
+            var row = rows[i];
+            var student = row.getAttribute('data-student') || '';
+            var task = row.getAttribute('data-task') || '';
+            var subject = row.getAttribute('data-subject') || '';
+            var rowText = (student + ' ' + task + ' ' + subject).toLowerCase();
+
+            if (!query || rowText.indexOf(query) > -1) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        }
+    }
+</script>

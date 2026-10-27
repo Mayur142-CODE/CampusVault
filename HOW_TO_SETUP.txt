@@ -1,0 +1,39 @@
+﻿========================================================================
+             CAMPUSVAULT - QUICK SETUP GUIDE FOR YOUR FRIEND
+========================================================================
+
+STEP 1: IMPORT / RESTORE DATABASE IN SSMS
+------------------------------------------------------------------------
+1. Open SQL Server Management Studio (SSMS) and connect to your SQL Server.
+2. In Object Explorer (left panel):
+   - Right-click Databases -> Click Restore Database...
+3. In the Restore Database window:
+   - Select Device radio button -> Click the ... button.
+   - Click Add -> Browse to the project folder:
+     CampusVault\Database\CampusVaultDB.bak
+   - Click OK -> Click OK again.
+4. Click OK at the bottom to restore.
+   => The database CampusVaultDB is now fully restored with all tables,
+      procedures, and sample data!
+
+------------------------------------------------------------------------
+STEP 2: CHECK / UPDATE CONNECTION STRING
+------------------------------------------------------------------------
+1. Open Web.config in the root of the project.
+2. Find line 8 (CampusVaultConnection):
+   
+   <add name=CampusVaultConnection 
+        connectionString=Data Source=.\MSSQLSERVER02;Initial Catalog=CampusVaultDB;Integrated Security=True;TrustServerCertificate=True;Pooling=True;Min Pool Size=3;Max Pool Size=100;Connection Timeout=10; 
+        providerName=System.Data.SqlClient />
+
+3. If your SQL Server instance name is different:
+   - For Default SQL Server:  Change Data Source=.\MSSQLSERVER02 to Data Source=. or Data Source=localhost
+   - For SQLEXPRESS:          Change to Data Source=.\SQLEXPRESS
+   - Or whatever your SQL Server server name is in SSMS!
+
+------------------------------------------------------------------------
+STEP 3: RUN THE PROJECT
+------------------------------------------------------------------------
+1. Open CampusVault.sln in Visual Studio.
+2. Press F5 (or Ctrl+F5) to run!
+========================================================================

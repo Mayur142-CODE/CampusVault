@@ -1,0 +1,241 @@
+@model List<CampusVault.Models.Student.StudentTaskItem>
+@{
+    ViewBag.Title = "Academic Calendar";
+    ViewBag.Role = "Student";
+    var tasks = Model ?? new List<CampusVault.Models.Student.StudentTaskItem>();
+    var upcomingTasks = tasks.Where(t => t.DueDate >= DateTime.Now).OrderBy(t => t.DueDate).ToList();
+    var pastTasks = tasks.Where(t => t.DueDate < DateTime.Now).OrderByDescending(t => t.DueDate).ToList();
+    var submittedTasks = tasks.Where(t => t.SubmissionStatus == "Submitted" || t.SubmissionStatus == "Under Review" || t.SubmissionStatus == "Graded" || t.SubmissionStatus == "Reviewed").ToList();
+}
+
+<div class="cv-page-header animate-slide-up" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--space-4);margin-bottom:var(--space-6);">
+    <div>
+        <div style="display:flex;align-items:center;gap:var(--space-2);margin-bottom:4px;">
+            <a href="@Url.Action("Dashboard", "Student")" style="font-size:var(--fs-xs);color:var(--cv-slate);text-decoration:none;">Dashboard</a>
+            <span style="font-size:var(--fs-xs);color:var(--cv-border-dark);">/</span>
+            <span style="font-size:var(--fs-xs);color:var(--cv-navy);font-weight:var(--fw-medium);">Calendar</span>
+        </div>
+        <h1 style="font-family:var(--font-heading);font-size:var(--fs-2xl);font-weight:var(--fw-bold);color:var(--cv-navy);margin:0 0 4px 0;">
+            Academic Calendar &amp; Deadlines
+        </h1>
+        <p style="font-size:var(--fs-sm);color:var(--cv-slate);margin:0;">
+            Track all upcoming assignments, lab reports, and coursework deadlines.
+        </p>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:var(--space-3);">
+        <a href="@Url.Action("Tasks", "Student")" class="cv-btn cv-btn-secondary cv-btn-sm" style="display:inline-flex;align-items:center;gap:6px;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
+            <span>All Tasks List</span>
+        </a>
+    </div>
+</div>
+
+@* Filter Tabs *@
+<div class="cv-tabs animate-slide-up stagger-1" style="margin-bottom:var(--space-6);display:flex;gap:var(--space-2);border-bottom:1px solid var(--cv-border);padding-bottom:var(--space-2);">
+    <button type="button" class="cv-tab active" onclick="filterCalendar('upcoming', this)" style="background:none;border:none;padding:8px 16px;border-radius:var(--radius-md);font-weight:600;font-size:var(--fs-sm);cursor:pointer;color:var(--cv-indigo);">
+        Upcoming Deadlines (@upcomingTasks.Count)
+    </button>
+    <button type="button" class="cv-tab" onclick="filterCalendar('all', this)" style="background:none;border:none;padding:8px 16px;border-radius:var(--radius-md);font-weight:500;font-size:var(--fs-sm);cursor:pointer;color:var(--cv-slate);">
+        All Scheduled (@tasks.Count)
+    </button>
+    <button type="button" class="cv-tab" onclick="filterCalendar('past', this)" style="background:none;border:none;padding:8px 16px;border-radius:var(--radius-md);font-weight:500;font-size:var(--fs-sm);cursor:pointer;color:var(--cv-slate);">
+        Past Deadlines (@pastTasks.Count)
+    </button>
+</div>
+
+@* Upcoming Deadlines Section *@
+<div id="calendarUpcomingGroup" class="calendar-group animate-slide-up stagger-2">
+    @if (upcomingTasks.Count > 0)
+    {
+        <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(320px, 1fr));gap:var(--space-4);">
+            @foreach (var task in upcomingTasks)
+            {
+                var isSubmitted = !string.IsNullOrEmpty(task.SubmissionStatus) && task.SubmissionStatus != "Pending";
+                var daysLeft = (task.DueDate.Date - DateTime.Now.Date).Days;
+                
+                <div class="cv-card" style="display:flex;flex-direction:column;justify-content:space-between;padding:var(--space-5);border-radius:var(--radius-xl);background:var(--cv-white);border:1px solid var(--cv-border);box-shadow:var(--shadow-sm);transition:all 0.2s;">
+                    <div>
+                        <div style="display:flex;align-items:center;justify-content:space-between;gap:var(--space-2);margin-bottom:var(--space-3);">
+                            <span class="cv-badge" style="background:var(--cv-indigo-pale);color:var(--cv-indigo);font-size:11px;font-weight:600;padding:2px 8px;border-radius:12px;">
+                                @task.CourseCode
+                            </span>
+                            @if (isSubmitted)
+                            {
+                                <span class="cv-badge" style="background:#dcfce7;color:#15803d;font-size:11px;font-weight:600;padding:2px 8px;border-radius:12px;">
+                                    Submitted
+                                </span>
+                            }
+                            else if (daysLeft == 0)
+                            {
+                                <span class="cv-badge" style="background:#fee2e2;color:#b91c1c;font-size:11px;font-weight:700;padding:2px 8px;border-radius:12px;">
+                                    Due Today
+                                </span>
+                            }
+                            else if (daysLeft == 1)
+                            {
+                                <span class="cv-badge" style="background:#fef3c7;color:#b45309;font-size:11px;font-weight:600;padding:2px 8px;border-radius:12px;">
+                                    Due Tomorrow
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="cv-badge" style="background:var(--cv-bg-alt);color:var(--cv-slate);font-size:11px;font-weight:500;padding:2px 8px;border-radius:12px;">
+                                    @daysLeft days left
+                                </span>
+                            }
+                        </div>
+
+                        <h3 style="font-family:var(--font-heading);font-size:var(--fs-base);font-weight:var(--fw-bold);color:var(--cv-navy);margin:0 0 6px 0;line-height:1.3;">
+                            @task.Title
+                        </h3>
+                        <p style="font-size:var(--fs-xs);color:var(--cv-slate);margin:0 0 var(--space-3) 0;">
+                            @task.CourseName • @(string.IsNullOrEmpty(task.FacultyName) ? "Faculty" : task.FacultyName)
+                        </p>
+                    </div>
+
+                    <div style="padding-top:var(--space-3);border-top:1px solid var(--cv-border-light);display:flex;align-items:center;justify-content:space-between;gap:var(--space-2);">
+                        <div style="font-size:12px;color:var(--cv-slate);display:inline-flex;align-items:center;gap:4px;">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                            <span>@task.DueDate.ToString("MMM dd, yyyy • hh:mm tt")</span>
+                        </div>
+                        <a href="@Url.Action("TaskDetails", "Student", new { id = task.TaskId })" class="cv-btn cv-btn-secondary cv-btn-sm" style="font-size:12px;padding:4px 10px;">
+                            Open Task
+                        </a>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="cv-card" style="text-align:center;padding:var(--space-12) var(--space-6);background:var(--cv-white);border-radius:var(--radius-xl);border:1px solid var(--cv-border);">
+            <div style="width:48px;height:48px;border-radius:50%;background:var(--cv-bg-alt);display:inline-flex;align-items:center;justify-content:center;margin-bottom:var(--space-3);color:var(--cv-indigo);">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            </div>
+            <h3 style="font-family:var(--font-heading);font-size:var(--fs-lg);font-weight:var(--fw-bold);color:var(--cv-navy);margin:0 0 4px 0;">
+                You're all caught up!
+            </h3>
+            <p style="font-size:var(--fs-sm);color:var(--cv-slate);margin:0 auto;max-width:380px;">
+                No upcoming deadlines on your calendar. Great job staying on track!
+            </p>
+        </div>
+    }
+</div>
+
+@* All Tasks List Container (Hidden by default, shown when All tab clicked) *@
+<div id="calendarAllGroup" class="calendar-group" style="display:none;">
+    @if (tasks.Count > 0)
+    {
+        <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(320px, 1fr));gap:var(--space-4);">
+            @foreach (var task in tasks.OrderBy(t => t.DueDate))
+            {
+                var isSubmitted = !string.IsNullOrEmpty(task.SubmissionStatus) && task.SubmissionStatus != "Pending";
+                <div class="cv-card" style="display:flex;flex-direction:column;justify-content:space-between;padding:var(--space-5);border-radius:var(--radius-xl);background:var(--cv-white);border:1px solid var(--cv-border);box-shadow:var(--shadow-sm);">
+                    <div>
+                        <div style="display:flex;align-items:center;justify-content:space-between;gap:var(--space-2);margin-bottom:var(--space-3);">
+                            <span class="cv-badge" style="background:var(--cv-indigo-pale);color:var(--cv-indigo);font-size:11px;font-weight:600;padding:2px 8px;border-radius:12px;">
+                                @task.CourseCode
+                            </span>
+                            <span class="cv-badge" style="background:@(isSubmitted ? "#dcfce7" : (task.DueDate < DateTime.Now ? "#fee2e2" : "#f1f5f9"));color:@(isSubmitted ? "#15803d" : (task.DueDate < DateTime.Now ? "#b91c1c" : "var(--cv-slate)"));font-size:11px;font-weight:600;padding:2px 8px;border-radius:12px;">
+                                @(isSubmitted ? "Submitted" : (task.DueDate < DateTime.Now ? "Past Due" : "Scheduled"))
+                            </span>
+                        </div>
+                        <h3 style="font-family:var(--font-heading);font-size:var(--fs-base);font-weight:var(--fw-bold);color:var(--cv-navy);margin:0 0 6px 0;line-height:1.3;">
+                            @task.Title
+                        </h3>
+                        <p style="font-size:var(--fs-xs);color:var(--cv-slate);margin:0 0 var(--space-3) 0;">
+                            @task.CourseName
+                        </p>
+                    </div>
+                    <div style="padding-top:var(--space-3);border-top:1px solid var(--cv-border-light);display:flex;align-items:center;justify-content:space-between;gap:var(--space-2);">
+                        <div style="font-size:12px;color:var(--cv-slate);">
+                            Due: @task.DueDate.ToString("MMM dd, yyyy")
+                        </div>
+                        <a href="@Url.Action("TaskDetails", "Student", new { id = task.TaskId })" class="cv-btn cv-btn-secondary cv-btn-sm" style="font-size:12px;padding:4px 10px;">
+                            View
+                        </a>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="cv-card" style="text-align:center;padding:var(--space-12) var(--space-6);background:var(--cv-white);border-radius:var(--radius-xl);border:1px solid var(--cv-border);">
+            <p style="font-size:var(--fs-sm);color:var(--cv-slate);margin:0;">No tasks found on your calendar.</p>
+        </div>
+    }
+</div>
+
+@* Past Deadlines Container (Hidden by default) *@
+<div id="calendarPastGroup" class="calendar-group" style="display:none;">
+    @if (pastTasks.Count > 0)
+    {
+        <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(320px, 1fr));gap:var(--space-4);">
+            @foreach (var task in pastTasks)
+            {
+                var isSubmitted = !string.IsNullOrEmpty(task.SubmissionStatus) && task.SubmissionStatus != "Pending";
+                <div class="cv-card" style="display:flex;flex-direction:column;justify-content:space-between;padding:var(--space-5);border-radius:var(--radius-xl);background:var(--cv-white);border:1px solid var(--cv-border);box-shadow:var(--shadow-sm);opacity:@(isSubmitted ? "1" : "0.85");">
+                    <div>
+                        <div style="display:flex;align-items:center;justify-content:space-between;gap:var(--space-2);margin-bottom:var(--space-3);">
+                            <span class="cv-badge" style="background:var(--cv-bg-alt);color:var(--cv-slate);font-size:11px;font-weight:600;padding:2px 8px;border-radius:12px;">
+                                @task.CourseCode
+                            </span>
+                            <span class="cv-badge" style="background:@(isSubmitted ? "#dcfce7" : "#fee2e2");color:@(isSubmitted ? "#15803d" : "#b91c1c");font-size:11px;font-weight:600;padding:2px 8px;border-radius:12px;">
+                                @(isSubmitted ? "Submitted" : "Past Due")
+                            </span>
+                        </div>
+                        <h3 style="font-family:var(--font-heading);font-size:var(--fs-base);font-weight:var(--fw-bold);color:var(--cv-navy);margin:0 0 6px 0;line-height:1.3;">
+                            @task.Title
+                        </h3>
+                        <p style="font-size:var(--fs-xs);color:var(--cv-slate);margin:0 0 var(--space-3) 0;">
+                            @task.CourseName
+                        </p>
+                    </div>
+                    <div style="padding-top:var(--space-3);border-top:1px solid var(--cv-border-light);display:flex;align-items:center;justify-content:space-between;gap:var(--space-2);">
+                        <div style="font-size:12px;color:var(--cv-slate);">
+                            Due: @task.DueDate.ToString("MMM dd, yyyy")
+                        </div>
+                        <a href="@Url.Action("TaskDetails", "Student", new { id = task.TaskId })" class="cv-btn cv-btn-secondary cv-btn-sm" style="font-size:12px;padding:4px 10px;">
+                            View
+                        </a>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="cv-card" style="text-align:center;padding:var(--space-12) var(--space-6);background:var(--cv-white);border-radius:var(--radius-xl);border:1px solid var(--cv-border);">
+            <p style="font-size:var(--fs-sm);color:var(--cv-slate);margin:0;">No past deadlines recorded.</p>
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <script>
+        function filterCalendar(tab, btn) {
+            document.querySelectorAll('.cv-tabs .cv-tab').forEach(function (b) {
+                b.classList.remove('active');
+                b.style.color = 'var(--cv-slate)';
+                b.style.fontWeight = '500';
+            });
+            btn.classList.add('active');
+            btn.style.color = 'var(--cv-indigo)';
+            btn.style.fontWeight = '600';
+
+            document.querySelectorAll('.calendar-group').forEach(function (g) {
+                g.style.display = 'none';
+            });
+
+            if (tab === 'upcoming') {
+                document.getElementById('calendarUpcomingGroup').style.display = 'block';
+            } else if (tab === 'all') {
+                document.getElementById('calendarAllGroup').style.display = 'block';
+            } else if (tab === 'past') {
+                document.getElementById('calendarPastGroup').style.display = 'block';
+            }
+        }
+    </script>
+}

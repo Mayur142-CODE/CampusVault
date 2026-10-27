@@ -1,0 +1,13 @@
+@{
+    // Safeguard: Redirect immediately to Login or Dashboard
+    var role = Session["Role"] as string;
+    if (!string.IsNullOrEmpty(role))
+    {
+        string dashboardAction = role == "Admin" ? Url.Action("Dashboard", "Admin") : (role == "Faculty" ? Url.Action("Dashboard", "Faculty") : Url.Action("Dashboard", "Student"));
+        Response.Redirect(dashboardAction, true);
+    }
+    else
+    {
+        Response.Redirect(Url.Action("Login", "Account"), true);
+    }
+}

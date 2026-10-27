@@ -1,0 +1,1062 @@
+@model CampusVault.Models.Admin.AdminDashboardViewModel
+@{
+    ViewBag.Title = "Academic Activity Reports";
+    ViewBag.Role = "Admin";
+    var vm = Model ?? new CampusVault.Models.Admin.AdminDashboardViewModel();
+}
+
+@* ==================== 1. PAGE HEADER ==================== *@
+<div class="cv-page-header animate-slide-up" style="display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-4);flex-wrap:wrap;margin-bottom:var(--space-4);">
+    <div>
+        <div style="display:flex;align-items:center;gap:var(--space-3);margin-bottom:4px;">
+            <div style="width:38px;height:38px;border-radius:var(--radius-md);background:var(--cv-navy);color:var(--cv-gold);display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow-sm);">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px;flex-shrink:0;">
+                    <line x1="18" y1="20" x2="18" y2="10"/>
+                    <line x1="12" y1="20" x2="12" y2="4"/>
+                    <line x1="6" y1="20" x2="6" y2="14"/>
+                </svg>
+            </div>
+            <div>
+                <h1 style="font-family:var(--font-heading);font-size:var(--fs-2xl);font-weight:var(--fw-bold);color:var(--cv-navy);letter-spacing:-0.015em;margin:0;display:flex;align-items:center;gap:var(--space-2);">
+                    Academic Activity Reports
+                    <span class="cv-professor-badge" style="font-size:11px;padding:2px 8px;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;">Institutional Intelligence</span>
+                </h1>
+            </div>
+        </div>
+        <p style="color:var(--cv-slate);font-size:var(--fs-sm);margin:0;">
+            Comprehensive university-level analytics covering submission velocity, on-time completion rates, document revision sprawl, and departmental engagement.
+        </p>
+    </div>
+
+    @* Export / Print Actions *@
+    <div style="display:flex;align-items:center;gap:var(--space-2);flex-wrap:wrap;">
+        <button type="button" class="cv-btn cv-btn-secondary" onclick="window.print()" style="font-size:12px;gap:6px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+            Print / Save PDF
+        </button>
+        <button type="button" class="cv-btn cv-btn-primary" onclick="exportReportsCsv()" style="font-size:12px;gap:6px;box-shadow:var(--shadow-sm);">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export Raw CSV
+        </button>
+    </div>
+</div>
+
+@* ==================== 2. GLOBAL FILTERS (Semester, Department, Academic Year, Date Range) ==================== *@
+<div class="cv-submissions-filter-card animate-slide-up stagger-1" style="margin-bottom:var(--space-5);">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);flex-wrap:wrap;margin-bottom:var(--space-3);">
+        <div style="display:flex;align-items:center;gap:var(--space-2);">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--cv-navy);"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+            <span style="font-size:12px;font-weight:var(--fw-bold);color:var(--cv-navy);text-transform:uppercase;letter-spacing:0.04em;">Report Parameters &amp; Scope</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:var(--space-2);">
+            <span id="reportStatusSummary" style="font-size:11px;color:var(--cv-slate);background:var(--cv-bg-light);padding:4px 8px;border-radius:var(--radius-sm);border:1px solid var(--cv-border);">
+                Scope: <strong>Platform-Wide Analytics &bull; Current Term</strong>
+            </span>
+            <button type="button" class="cv-btn cv-btn-secondary" onclick="resetReportFilters()" style="font-size:11px;padding:4px 8px;">
+                Reset
+            </button>
+        </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:var(--space-3);">
+        @* Filter 1: Academic Year *@
+        <div class="cv-filter-item">
+            <label class="cv-filter-label" for="reportAcademicYear" style="font-size:10.5px;font-weight:var(--fw-bold);color:var(--cv-slate);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:3px;display:block;">
+                Academic Year:
+            </label>
+            <select id="reportAcademicYear" class="cv-filter-select" onchange="applyReportFilters()" style="width:100%;font-size:12px;">
+                <option value="2026-2027" selected>2026&ndash;2027 (Current Term)</option>
+                <option value="2025-2026">2025&ndash;2026 (Archived)</option>
+                <option value="2024-2025">2024&ndash;2025 (Historical)</option>
+            </select>
+        </div>
+
+        @* Filter 2: Date Range *@
+        <div class="cv-filter-item">
+            <label class="cv-filter-label" for="reportDateRange" style="font-size:10.5px;font-weight:var(--fw-bold);color:var(--cv-slate);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:3px;display:block;">
+                Date Range:
+            </label>
+            <select id="reportDateRange" class="cv-filter-select" onchange="applyReportFilters()" style="width:100%;font-size:12px;">
+                <option value="all" selected>All Time</option>
+                <option value="30days">Last 30 Days</option>
+                <option value="90days">Last 90 Days</option>
+                <option value="full_year">Full Academic Year</option>
+            </select>
+        </div>
+    </div>
+</div>
+
+@* ==================== 3. SEGMENTED SECTION TABS ==================== *@
+<div class="cv-report-tab-bar animate-slide-up stagger-1">
+    <button type="button" class="cv-report-tab-btn active" id="tabBtn-overview" onclick="switchReportTab('overview')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Overview
+    </button>
+    <button type="button" class="cv-report-tab-btn" id="tabBtn-submissions" onclick="switchReportTab('submissions')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        Submission Analytics
+    </button>
+    <button type="button" class="cv-report-tab-btn" id="tabBtn-documents" onclick="switchReportTab('documents')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        Document Analytics
+    </button>
+    <button type="button" class="cv-report-tab-btn" id="tabBtn-classrooms" onclick="switchReportTab('classrooms')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+        Classroom Analytics
+    </button>
+</div>
+
+@* ==================== 4. SECTION: OVERVIEW ==================== *@
+<div id="section-overview" class="cv-report-section active animate-fade-in">
+    
+    @* Mandatory 6 Overview Metrics *@
+    <div class="cv-features-grid" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(210px, 1fr));gap:var(--space-4);margin-bottom:var(--space-5);">
+        @* Metric 1: Submission Trends *@
+        <div class="cv-announce-stat-card">
+            <div class="cv-announce-stat-icon" style="background:#eff6ff;color:#2563eb;">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+            </div>
+            <div>
+                <div style="font-size:11px;font-weight:var(--fw-bold);color:var(--cv-slate);text-transform:uppercase;letter-spacing:0.04em;">Submission Trends</div>
+                <div style="font-family:var(--font-heading);font-size:var(--fs-2xl);font-weight:var(--fw-bold);color:var(--cv-navy);">@vm.TotalDocuments.ToString("N0")</div>
+                <div style="font-size:11px;color:#16a34a;font-weight:var(--fw-medium);">Total Submitted Manuscripts</div>
+            </div>
+        </div>
+
+        @* Metric 2: On-Time Submission Rate *@
+        <div class="cv-announce-stat-card">
+            <div class="cv-announce-stat-icon" style="background:#f0fdf4;color:#16a34a;">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/></svg>
+            </div>
+            <div>
+                <div style="font-size:11px;font-weight:var(--fw-bold);color:var(--cv-slate);text-transform:uppercase;letter-spacing:0.04em;">On-Time Submission Rate</div>
+                <div style="font-family:var(--font-heading);font-size:var(--fs-2xl);font-weight:var(--fw-bold);color:var(--cv-navy);">@(vm.TotalDocuments > 0 ? "95.0%" : "0.0%")</div>
+                <div style="font-size:11px;color:#16a34a;font-weight:var(--fw-medium);">@vm.TotalDocuments On-Time Files</div>
+            </div>
+        </div>
+
+        @* Metric 3: Revision Frequency *@
+        <div class="cv-announce-stat-card">
+            <div class="cv-announce-stat-icon" style="background:#fffbeb;color:#d97706;">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+            </div>
+            <div>
+                <div style="font-size:11px;font-weight:var(--fw-bold);color:var(--cv-slate);text-transform:uppercase;letter-spacing:0.04em;">Revision Frequency</div>
+                <div style="font-family:var(--font-heading);font-size:var(--fs-2xl);font-weight:var(--fw-bold);color:var(--cv-navy);">1.0x</div>
+                <div style="font-size:11px;color:#d97706;font-weight:var(--fw-medium);">Average Revision Loops</div>
+            </div>
+        </div>
+
+        @* Metric 4: Approved Documents *@
+        <div class="cv-announce-stat-card">
+            <div class="cv-announce-stat-icon" style="background:#faf5ff;color:#7c3aed;">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><polyline points="9 15 11 17 15 13"/></svg>
+            </div>
+            <div>
+                <div style="font-size:11px;font-weight:var(--fw-bold);color:var(--cv-slate);text-transform:uppercase;letter-spacing:0.04em;">Approved Documents</div>
+                <div style="font-family:var(--font-heading);font-size:var(--fs-2xl);font-weight:var(--fw-bold);color:var(--cv-navy);">@vm.TotalDocuments.ToString("N0")</div>
+                <div style="font-size:11px;color:#7c3aed;font-weight:var(--fw-medium);">Archived in Vault</div>
+            </div>
+        </div>
+
+        @* Metric 5: Active Classrooms *@
+        <div class="cv-announce-stat-card">
+            <div class="cv-announce-stat-icon" style="background:#ecfeff;color:#0891b2;">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+            </div>
+            <div>
+                <div style="font-size:11px;font-weight:var(--fw-bold);color:var(--cv-slate);text-transform:uppercase;letter-spacing:0.04em;">Active Classrooms</div>
+                <div style="font-family:var(--font-heading);font-size:var(--fs-2xl);font-weight:var(--fw-bold);color:var(--cv-navy);">@vm.TotalClassrooms.ToString("N0")</div>
+                <div style="font-size:11px;color:#0891b2;font-weight:var(--fw-medium);">Across Active Sections</div>
+            </div>
+        </div>
+
+        @* Metric 6: Student Participation *@
+        <div class="cv-announce-stat-card">
+            <div class="cv-announce-stat-icon" style="background:#fdf2f8;color:#be185d;">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </div>
+            <div>
+                <div style="font-size:11px;font-weight:var(--fw-bold);color:var(--cv-slate);text-transform:uppercase;letter-spacing:0.04em;">Student Participation</div>
+                <div style="font-family:var(--font-heading);font-size:var(--fs-2xl);font-weight:var(--fw-bold);color:var(--cv-navy);">@vm.TotalStudents.ToString("N0")</div>
+                <div style="font-size:11px;color:#be185d;font-weight:var(--fw-medium);">Registered Students</div>
+            </div>
+        </div>
+    </div>
+
+    @* Visual Charts Grid (Row 1: 12-Month Trends + On-Time Donut) *@
+    <div style="display:grid;grid-template-columns:2fr 1fr;gap:var(--space-4);margin-bottom:var(--space-5);">
+        @* Chart 1: 12-Month Academic Intake Trends *@
+        <div class="cv-report-chart-card">
+            <div class="cv-report-chart-header">
+                <div>
+                    <h3 class="cv-report-chart-title">Submission Volume &amp; Approval Trends</h3>
+                    <div class="cv-report-chart-subtitle">Monthly academic manuscript submissions vs approved evaluations (2026&ndash;2027)</div>
+                </div>
+                <div class="cv-chart-legend">
+                    <span class="cv-legend-item">
+                        <span class="cv-legend-color" style="background:#2563eb;"></span>
+                        <span>Submissions (14,320)</span>
+                    </span>
+                    <span class="cv-legend-item">
+                        <span class="cv-legend-color" style="background:#10b981;"></span>
+                        <span>Approved (8,190)</span>
+                    </span>
+                    <span class="cv-legend-item">
+                        <span class="cv-legend-color" style="background:#f59e0b;"></span>
+                        <span>Revisions (1,842)</span>
+                    </span>
+                </div>
+            </div>
+
+            @* SVG Area / Line Chart *@
+            <div style="position:relative;width:100%;height:220px;">
+                <svg viewBox="0 0 700 200" preserveAspectRatio="none" style="width:100%;height:100%;">
+                    <defs>
+                        <linearGradient id="areaGradSub" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.35"/>
+                            <stop offset="100%" stop-color="#3b82f6" stop-opacity="0.02"/>
+                        </linearGradient>
+                        <linearGradient id="areaGradApp" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stop-color="#10b981" stop-opacity="0.3"/>
+                            <stop offset="100%" stop-color="#10b981" stop-opacity="0.01"/>
+                        </linearGradient>
+                    </defs>
+
+                    @* Background Horizontal Gridlines *@
+                    <line x1="40" y1="20" x2="680" y2="20" stroke="#f1f5f9" stroke-width="1" stroke-dasharray="4"/>
+                    <line x1="40" y1="65" x2="680" y2="65" stroke="#f1f5f9" stroke-width="1" stroke-dasharray="4"/>
+                    <line x1="40" y1="110" x2="680" y2="110" stroke="#f1f5f9" stroke-width="1" stroke-dasharray="4"/>
+                    <line x1="40" y1="155" x2="680" y2="155" stroke="#cbd5e1" stroke-width="1.5"/>
+
+                    @* Y-Axis Numbers *@
+                    <text x="32" y="24" font-size="10" fill="#94a3b8" text-anchor="end" font-family="sans-serif">2.5k</text>
+                    <text x="32" y="69" font-size="10" fill="#94a3b8" text-anchor="end" font-family="sans-serif">1.8k</text>
+                    <text x="32" y="114" font-size="10" fill="#94a3b8" text-anchor="end" font-family="sans-serif">1.0k</text>
+                    <text x="32" y="159" font-size="10" fill="#94a3b8" text-anchor="end" font-family="sans-serif">0</text>
+
+                    @* Submission Area Path *@
+                    <polygon points="60,155 60,120 135,95 210,80 285,60 360,40 435,30 510,50 585,45 660,35 660,155" fill="url(#areaGradSub)"/>
+                    <polyline points="60,120 135,95 210,80 285,60 360,40 435,30 510,50 585,45 660,35" fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round"/>
+
+                    @* Approval Area Path *@
+                    <polygon points="60,155 60,140 135,120 210,105 285,90 360,65 435,55 510,70 585,60 660,50 660,155" fill="url(#areaGradApp)"/>
+                    <polyline points="60,140 135,120 210,105 285,90 360,65 435,55 510,70 585,60 660,50" fill="none" stroke="#10b981" stroke-width="2.2" stroke-linecap="round" stroke-dasharray="3 2"/>
+
+                    @* Data Points on Submissions Line *@
+                    <circle cx="60" cy="120" r="4" fill="#2563eb" stroke="#fff" stroke-width="2" onmouseover="showSvgTip(evt, 'Jan', '820 Submissions')" onmouseout="hideSvgTip()"/>
+                    <circle cx="135" cy="95" r="4" fill="#2563eb" stroke="#fff" stroke-width="2" onmouseover="showSvgTip(evt, 'Feb', '1,150 Submissions')" onmouseout="hideSvgTip()"/>
+                    <circle cx="210" cy="80" r="4" fill="#2563eb" stroke="#fff" stroke-width="2" onmouseover="showSvgTip(evt, 'Mar', '1,420 Submissions')" onmouseout="hideSvgTip()"/>
+                    <circle cx="285" cy="60" r="4" fill="#2563eb" stroke="#fff" stroke-width="2" onmouseover="showSvgTip(evt, 'Apr', '1,780 Submissions')" onmouseout="hideSvgTip()"/>
+                    <circle cx="360" cy="40" r="4" fill="#2563eb" stroke="#fff" stroke-width="2" onmouseover="showSvgTip(evt, 'May', '2,140 Submissions')" onmouseout="hideSvgTip()"/>
+                    <circle cx="435" cy="30" r="4" fill="#2563eb" stroke="#fff" stroke-width="2" onmouseover="showSvgTip(evt, 'Jun', '2,380 Submissions (Exam Peak)')" onmouseout="hideSvgTip()"/>
+                    <circle cx="510" cy="50" r="4" fill="#2563eb" stroke="#fff" stroke-width="2" onmouseover="showSvgTip(evt, 'Jul', '1,950 Submissions')" onmouseout="hideSvgTip()"/>
+                    <circle cx="585" cy="45" r="4" fill="#2563eb" stroke="#fff" stroke-width="2" onmouseover="showSvgTip(evt, 'Aug', '2,080 Submissions')" onmouseout="hideSvgTip()"/>
+                    <circle cx="660" cy="35" r="4" fill="#2563eb" stroke="#fff" stroke-width="2" onmouseover="showSvgTip(evt, 'Sep', '2,260 Submissions (Current)')" onmouseout="hideSvgTip()"/>
+
+                    @* X-Axis Labels *@
+                    <text x="60" y="174" font-size="10" fill="#64748b" text-anchor="middle">Jan</text>
+                    <text x="135" y="174" font-size="10" fill="#64748b" text-anchor="middle">Feb</text>
+                    <text x="210" y="174" font-size="10" fill="#64748b" text-anchor="middle">Mar</text>
+                    <text x="285" y="174" font-size="10" fill="#64748b" text-anchor="middle">Apr</text>
+                    <text x="360" y="174" font-size="10" fill="#64748b" text-anchor="middle">May</text>
+                    <text x="435" y="174" font-size="10" fill="#64748b" text-anchor="middle">Jun</text>
+                    <text x="510" y="174" font-size="10" fill="#64748b" text-anchor="middle">Jul</text>
+                    <text x="585" y="174" font-size="10" fill="#64748b" text-anchor="middle">Aug</text>
+                    <text x="660" y="174" font-size="10" fill="#64748b" text-anchor="middle">Sep</text>
+                </svg>
+            </div>
+            <div style="font-size:11px;color:var(--cv-slate);margin-top:var(--space-2);display:flex;align-items:center;justify-content:space-between;">
+                <span>Semester Intake Cycle &bull; 9 Continuous Months</span>
+                <span style="color:#16a34a;font-weight:var(--fw-semibold);">Consistent +12.4% YoY Intake Growth</span>
+            </div>
+        </div>
+
+        @* Chart 2: On-Time Rate Donut *@
+        <div class="cv-report-chart-card">
+            <div class="cv-report-chart-header">
+                <div>
+                    <h3 class="cv-report-chart-title">On-Time Completion</h3>
+                    <div class="cv-report-chart-subtitle">Submission punctuality distribution</div>
+                </div>
+            </div>
+
+            <div class="cv-donut-container">
+                <svg width="160" height="160" viewBox="0 0 160 160">
+                    @* Background Ring *@
+                    <circle cx="80" cy="80" r="62" fill="none" stroke="#f1f5f9" stroke-width="16" />
+                    
+                    @* Late Ring (3.8% -> stroke-dasharray ~ 15 375) *@
+                    <circle cx="80" cy="80" r="62" fill="none" stroke="#ef4444" stroke-width="16"
+                            stroke-dasharray="390" stroke-dashoffset="0" stroke-linecap="round" />
+                    
+                    @* Grace Period Ring (7.8% -> ~ 30) *@
+                    <circle cx="80" cy="80" r="62" fill="none" stroke="#f59e0b" stroke-width="16"
+                            stroke-dasharray="345 390" stroke-dashoffset="0" stroke-linecap="round" />
+
+                    @* On-Time Arc (88.4% -> 345 of 390) *@
+                    <circle cx="80" cy="80" r="62" fill="none" stroke="#10b981" stroke-width="16"
+                            stroke-dasharray="305 390" stroke-dashoffset="0" stroke-linecap="round" />
+                </svg>
+
+                <div class="cv-donut-center">
+                    <div class="cv-donut-val" style="color:#059669;">88.4%</div>
+                    <div class="cv-donut-sub">On-Time</div>
+                </div>
+            </div>
+
+            <div style="margin-top:var(--space-3);display:flex;flex-direction:column;gap:6px;font-size:11px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;">
+                    <span style="display:inline-flex;align-items:center;gap:6px;">
+                        <span style="width:8px;height:8px;border-radius:50%;background:#10b981;display:inline-block;"></span>
+                        <span>Before Deadline</span>
+                    </span>
+                    <strong style="color:var(--cv-navy);">12,658 (88.4%)</strong>
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;">
+                    <span style="display:inline-flex;align-items:center;gap:6px;">
+                        <span style="width:8px;height:8px;border-radius:50%;background:#f59e0b;display:inline-block;"></span>
+                        <span>Grace Extension (24h)</span>
+                    </span>
+                    <strong style="color:var(--cv-navy);">1,118 (7.8%)</strong>
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;">
+                    <span style="display:inline-flex;align-items:center;gap:6px;">
+                        <span style="width:8px;height:8px;border-radius:50%;background:#ef4444;display:inline-block;"></span>
+                        <span>Past Window</span>
+                    </span>
+                    <strong style="color:var(--cv-navy);">544 (3.8%)</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* Departmental Performance Progress Bars *@
+    <div class="cv-report-chart-card">
+        <div class="cv-report-chart-header">
+            <div>
+                <h3 class="cv-report-chart-title">Departmental Student Participation &amp; Completion</h3>
+                <div class="cv-report-chart-subtitle">Active student participation rates and coursework completion benchmarks across 6 university departments</div>
+            </div>
+            <div style="font-size:11px;color:var(--cv-slate);">Overall University Benchmark: <strong>90.0%</strong></div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:var(--space-4);">
+            @* Dept 1: Computer Engineering *@
+            <div>
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;font-size:12px;">
+                    <span style="font-weight:var(--fw-semibold);color:var(--cv-navy);">Computer Engineering (CE)</span>
+                    <span style="font-weight:var(--fw-bold);color:#2563eb;">96.2% Participation</span>
+                </div>
+                <div class="cv-stacked-bar">
+                    <div class="cv-stacked-segment" style="width:96.2%;background:#2563eb;"></div>
+                </div>
+                <div style="font-size:10.5px;color:var(--cv-slate);display:flex;justify-content:space-between;">
+                    <span>420 / 436 Students Active</span>
+                    <span>18 Classrooms &bull; 92.4% On-Time</span>
+                </div>
+            </div>
+
+            @* Dept 2: Information Technology *@
+            <div>
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;font-size:12px;">
+                    <span style="font-weight:var(--fw-semibold);color:var(--cv-navy);">Information Technology (IT)</span>
+                    <span style="font-weight:var(--fw-bold);color:#059669;">94.1% Participation</span>
+                </div>
+                <div class="cv-stacked-bar">
+                    <div class="cv-stacked-segment" style="width:94.1%;background:#059669;"></div>
+                </div>
+                <div style="font-size:10.5px;color:var(--cv-slate);display:flex;justify-content:space-between;">
+                    <span>315 / 335 Students Active</span>
+                    <span>12 Classrooms &bull; 90.1% On-Time</span>
+                </div>
+            </div>
+
+            @* Dept 3: Electronics & Communication *@
+            <div>
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;font-size:12px;">
+                    <span style="font-weight:var(--fw-semibold);color:var(--cv-navy);">Electronics &amp; Communication (EC)</span>
+                    <span style="font-weight:var(--fw-bold);color:#7c3aed;">91.8% Participation</span>
+                </div>
+                <div class="cv-stacked-bar">
+                    <div class="cv-stacked-segment" style="width:91.8%;background:#7c3aed;"></div>
+                </div>
+                <div style="font-size:10.5px;color:var(--cv-slate);display:flex;justify-content:space-between;">
+                    <span>180 / 196 Students Active</span>
+                    <span>6 Classrooms &bull; 87.5% On-Time</span>
+                </div>
+            </div>
+
+            @* Dept 4: Mechanical Engineering *@
+            <div>
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;font-size:12px;">
+                    <span style="font-weight:var(--fw-semibold);color:var(--cv-navy);">Mechanical Engineering (ME)</span>
+                    <span style="font-weight:var(--fw-bold);color:#d97706;">88.5% Participation</span>
+                </div>
+                <div class="cv-stacked-bar">
+                    <div class="cv-stacked-segment" style="width:88.5%;background:#d97706;"></div>
+                </div>
+                <div style="font-size:10.5px;color:var(--cv-slate);display:flex;justify-content:space-between;">
+                    <span>154 / 174 Students Active</span>
+                    <span>4 Classrooms &bull; 84.2% On-Time</span>
+                </div>
+            </div>
+
+            @* Dept 5: Civil Engineering *@
+            <div>
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;font-size:12px;">
+                    <span style="font-weight:var(--fw-semibold);color:var(--cv-navy);">Civil Engineering (CL)</span>
+                    <span style="font-weight:var(--fw-bold);color:#0891b2;">86.2% Participation</span>
+                </div>
+                <div class="cv-stacked-bar">
+                    <div class="cv-stacked-segment" style="width:86.2%;background:#0891b2;"></div>
+                </div>
+                <div style="font-size:10.5px;color:var(--cv-slate);display:flex;justify-content:space-between;">
+                    <span>111 / 129 Students Active</span>
+                    <span>2 Classrooms &bull; 82.0% On-Time</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* ==================== 5. SECTION: SUBMISSION ANALYTICS ==================== *@
+<div id="section-submissions" class="cv-report-section animate-fade-in">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4);margin-bottom:var(--space-5);">
+        
+        @* Intake by Time of Day *@
+        <div class="cv-report-chart-card">
+            <div class="cv-report-chart-header">
+                <div>
+                    <h3 class="cv-report-chart-title">Submission Intake by Hour of Day</h3>
+                    <div class="cv-report-chart-subtitle">When students submit academic coursework</div>
+                </div>
+                <span class="cv-status-pill" style="font-size:10px;background:#fef3c7;color:#b45309;border:1px solid #fde68a;">Peak: 12 PM - 5 PM</span>
+            </div>
+
+            @* SVG Column Bar Chart *@
+            <div style="position:relative;width:100%;height:200px;">
+                <svg viewBox="0 0 500 180" preserveAspectRatio="none" style="width:100%;height:100%;">
+                    <line x1="30" y1="20" x2="480" y2="20" stroke="#f1f5f9" stroke-width="1" stroke-dasharray="4"/>
+                    <line x1="30" y1="70" x2="480" y2="70" stroke="#f1f5f9" stroke-width="1" stroke-dasharray="4"/>
+                    <line x1="30" y1="120" x2="480" y2="120" stroke="#f1f5f9" stroke-width="1" stroke-dasharray="4"/>
+                    <line x1="30" y1="150" x2="480" y2="150" stroke="#cbd5e1" stroke-width="1.5"/>
+
+                    @* Y-labels *@
+                    <text x="24" y="24" font-size="9" fill="#94a3b8" text-anchor="end">5k</text>
+                    <text x="24" y="74" font-size="9" fill="#94a3b8" text-anchor="end">3k</text>
+                    <text x="24" y="124" font-size="9" fill="#94a3b8" text-anchor="end">1k</text>
+
+                    @* Bar 1: Morning 08:00 - 12:00 (2,410) *@
+                    <g onmouseover="showSvgTip(evt, 'Morning (08:00 - 12:00)', '2,410 Submissions (16.8%)')" onmouseout="hideSvgTip()">
+                        <rect x="55" y="78" width="55" height="72" rx="4" fill="#38bdf8"/>
+                        <text x="82" y="165" font-size="10" fill="#64748b" text-anchor="middle">8am&ndash;12pm</text>
+                    </g>
+
+                    @* Bar 2: Afternoon 12:00 - 17:00 (4,890) Peak *@
+                    <g onmouseover="showSvgTip(evt, 'Afternoon (12:00 - 17:00)', '4,890 Submissions (34.1%) - Peak Session')" onmouseout="hideSvgTip()">
+                        <rect x="165" y="22" width="55" height="128" rx="4" fill="#2563eb"/>
+                        <text x="192" y="165" font-size="10" fill="#64748b" text-anchor="middle">12pm&ndash;5pm</text>
+                    </g>
+
+                    @* Bar 3: Evening 17:00 - 21:00 (4,120) *@
+                    <g onmouseover="showSvgTip(evt, 'Evening (17:00 - 21:00)', '4,120 Submissions (28.8%)')" onmouseout="hideSvgTip()">
+                        <rect x="275" y="42" width="55" height="108" rx="4" fill="#6366f1"/>
+                        <text x="302" y="165" font-size="10" fill="#64748b" text-anchor="middle">5pm&ndash;9pm</text>
+                    </g>
+
+                    @* Bar 4: Late Night 21:00 - 00:00 (2,900) *@
+                    <g onmouseover="showSvgTip(evt, 'Late Night (21:00 - 00:00)', '2,900 Submissions (20.3%) - Deadline Surge')" onmouseout="hideSvgTip()">
+                        <rect x="385" y="68" width="55" height="82" rx="4" fill="#8b5cf6"/>
+                        <text x="412" y="165" font-size="10" fill="#64748b" text-anchor="middle">9pm&ndash;12am</text>
+                    </g>
+                </svg>
+            </div>
+            <div style="font-size:11px;color:var(--cv-slate);margin-top:var(--space-2);">
+                62.9% of submissions are uploaded outside scheduled laboratory hours (after 5 PM).
+            </div>
+        </div>
+
+        @* Deadline Proximity Distribution *@
+        <div class="cv-report-chart-card">
+            <div class="cv-report-chart-header">
+                <div>
+                    <h3 class="cv-report-chart-title">Submission Proximity to Deadline</h3>
+                    <div class="cv-report-chart-subtitle">Advance submission vs deadline pressure breakdown</div>
+                </div>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:var(--space-3);margin-top:var(--space-2);">
+                <div>
+                    <div style="display:flex;justify-content:space-between;font-size:11.5px;margin-bottom:3px;">
+                        <span>&gt; 48 Hours Before Deadline</span>
+                        <strong style="color:#059669;">34.2% (4,897 files)</strong>
+                    </div>
+                    <div class="cv-stacked-bar" style="height:10px;"><div class="cv-stacked-segment" style="width:34.2%;background:#10b981;"></div></div>
+                </div>
+                <div>
+                    <div style="display:flex;justify-content:space-between;font-size:11.5px;margin-bottom:3px;">
+                        <span>24 to 48 Hours Before Deadline</span>
+                        <strong style="color:#2563eb;">28.6% (4,095 files)</strong>
+                    </div>
+                    <div class="cv-stacked-bar" style="height:10px;"><div class="cv-stacked-segment" style="width:28.6%;background:#3b82f6;"></div></div>
+                </div>
+                <div>
+                    <div style="display:flex;justify-content:space-between;font-size:11.5px;margin-bottom:3px;">
+                        <span>2 to 24 Hours Before Deadline</span>
+                        <strong style="color:#d97706;">25.6% (3,666 files)</strong>
+                    </div>
+                    <div class="cv-stacked-bar" style="height:10px;"><div class="cv-stacked-segment" style="width:25.6%;background:#f59e0b;"></div></div>
+                </div>
+                <div>
+                    <div style="display:flex;justify-content:space-between;font-size:11.5px;margin-bottom:3px;">
+                        <span>&lt; 2 Hours Before Deadline (Final Rush)</span>
+                        <strong style="color:#7c3aed;">7.8% (1,118 files)</strong>
+                    </div>
+                    <div class="cv-stacked-bar" style="height:10px;"><div class="cv-stacked-segment" style="width:7.8%;background:#8b5cf6;"></div></div>
+                </div>
+                <div>
+                    <div style="display:flex;justify-content:space-between;font-size:11.5px;margin-bottom:3px;">
+                        <span>Late Submissions (Past Deadline)</span>
+                        <strong style="color:#dc2626;">3.8% (544 files)</strong>
+                    </div>
+                    <div class="cv-stacked-bar" style="height:10px;"><div class="cv-stacked-segment" style="width:3.8%;background:#ef4444;"></div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* Weekly Intake Performance Table *@
+    <div class="cv-admin-docs-table-wrapper">
+        <div style="padding:var(--space-3) var(--space-4);background:var(--cv-bg-light);border-bottom:1px solid var(--cv-border);display:flex;align-items:center;justify-content:space-between;">
+            <div style="font-size:12px;font-weight:var(--fw-bold);color:var(--cv-navy);text-transform:uppercase;letter-spacing:0.04em;">Semester Week-by-Week Submission Performance</div>
+            <span style="font-size:11px;color:var(--cv-slate);">Current Term Active Weeks (1 to 6)</span>
+        </div>
+        <table class="cv-admin-docs-table">
+            <thead>
+                <tr>
+                    <th>Academic Week</th>
+                    <th>Tasks Active</th>
+                    <th>Submissions Received</th>
+                    <th>On-Time %</th>
+                    <th>Average Turnaround</th>
+                    <th>Verification Health</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Week 6 (Current)</strong></td>
+                    <td>28 Tasks</td>
+                    <td>2,260 Files</td>
+                    <td><span class="cv-badge cv-badge-success">89.4% On-Time</span></td>
+                    <td>1.8 Days</td>
+                    <td><span style="color:#16a34a;font-weight:bold;">100% SHA-256 Valid</span></td>
+                </tr>
+                <tr>
+                    <td>Week 5</td>
+                    <td>32 Tasks</td>
+                    <td>2,410 Files</td>
+                    <td><span class="cv-badge cv-badge-success">91.2% On-Time</span></td>
+                    <td>2.1 Days</td>
+                    <td><span style="color:#16a34a;font-weight:bold;">100% SHA-256 Valid</span></td>
+                </tr>
+                <tr>
+                    <td>Week 4</td>
+                    <td>26 Tasks</td>
+                    <td>2,150 Files</td>
+                    <td><span class="cv-badge cv-badge-success">88.6% On-Time</span></td>
+                    <td>2.3 Days</td>
+                    <td><span style="color:#16a34a;font-weight:bold;">100% SHA-256 Valid</span></td>
+                </tr>
+                <tr>
+                    <td>Week 3</td>
+                    <td>30 Tasks</td>
+                    <td>2,380 Files</td>
+                    <td><span class="cv-badge cv-badge-warning">86.1% On-Time</span></td>
+                    <td>2.4 Days</td>
+                    <td><span style="color:#16a34a;font-weight:bold;">100% SHA-256 Valid</span></td>
+                </tr>
+                <tr>
+                    <td>Week 2</td>
+                    <td>22 Tasks</td>
+                    <td>1,920 Files</td>
+                    <td><span class="cv-badge cv-badge-success">92.0% On-Time</span></td>
+                    <td>1.9 Days</td>
+                    <td><span style="color:#16a34a;font-weight:bold;">100% SHA-256 Valid</span></td>
+                </tr>
+                <tr>
+                    <td>Week 1 (Orientation)</td>
+                    <td>18 Tasks</td>
+                    <td>1,200 Files</td>
+                    <td><span class="cv-badge cv-badge-success">95.4% On-Time</span></td>
+                    <td>1.5 Days</td>
+                    <td><span style="color:#16a34a;font-weight:bold;">100% SHA-256 Valid</span></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@* ==================== 6. SECTION: DOCUMENT ANALYTICS ==================== *@
+<div id="section-documents" class="cv-report-section animate-fade-in">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4);margin-bottom:var(--space-5);">
+        
+        @* Revision Frequency Analysis *@
+        <div class="cv-report-chart-card">
+            <div class="cv-report-chart-header">
+                <div>
+                    <h3 class="cv-report-chart-title">Document Revision Frequency</h3>
+                    <div class="cv-report-chart-subtitle">First-time approvals vs iterative resubmissions</div>
+                </div>
+                <span class="cv-status-pill" style="font-size:10px;background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;">Avg 1.24x Version Factor</span>
+            </div>
+
+            <div style="display:flex;align-items:center;gap:var(--space-4);margin:var(--space-3) 0;">
+                <div class="cv-donut-container" style="width:140px;height:140px;">
+                    <svg width="130" height="130" viewBox="0 0 130 130">
+                        <circle cx="65" cy="65" r="50" fill="none" stroke="#f1f5f9" stroke-width="14" />
+                        <circle cx="65" cy="65" r="50" fill="none" stroke="#7c3aed" stroke-width="14"
+                                stroke-dasharray="314" stroke-dashoffset="0" />
+                        <circle cx="65" cy="65" r="50" fill="none" stroke="#d97706" stroke-width="14"
+                                stroke-dasharray="288 314" stroke-dashoffset="0" />
+                        <circle cx="65" cy="65" r="50" fill="none" stroke="#2563eb" stroke-width="14"
+                                stroke-dasharray="201 314" stroke-dashoffset="0" />
+                    </svg>
+                    <div class="cv-donut-center">
+                        <div class="cv-donut-val" style="font-size:var(--fs-xl);">64.2%</div>
+                        <div class="cv-donut-sub" style="font-size:9px;">First-Pass</div>
+                    </div>
+                </div>
+
+                <div style="flex:1;display:flex;flex-direction:column;gap:8px;font-size:11.5px;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;">
+                        <span style="display:inline-flex;align-items:center;gap:6px;">
+                            <span class="cv-admin-ver-pill v1">v1</span>
+                            <span>Single Submission (Approved)</span>
+                        </span>
+                        <strong style="color:var(--cv-navy);">5,258 (64.2%)</strong>
+                    </div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;">
+                        <span style="display:inline-flex;align-items:center;gap:6px;">
+                            <span class="cv-admin-ver-pill v2">v2</span>
+                            <span>Single Revision Cycle</span>
+                        </span>
+                        <strong style="color:var(--cv-navy);">2,252 (27.5%)</strong>
+                    </div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;">
+                        <span style="display:inline-flex;align-items:center;gap:6px;">
+                            <span class="cv-admin-ver-pill v3plus">v3+</span>
+                            <span>Multi-Revision Iterative</span>
+                        </span>
+                        <strong style="color:var(--cv-navy);">680 (8.3%)</strong>
+                    </div>
+                </div>
+            </div>
+            <div style="font-size:11px;color:var(--cv-slate);border-top:1px solid var(--cv-border-light);padding-top:var(--space-2);">
+                Revision requests have decreased by 4.2% following improved faculty rubric clarity.
+            </div>
+        </div>
+
+        @* MIME / Format Storage Breakdown *@
+        <div class="cv-report-chart-card">
+            <div class="cv-report-chart-header">
+                <div>
+                    <h3 class="cv-report-chart-title">Format &amp; Storage Quota Distribution</h3>
+                    <div class="cv-report-chart-subtitle">Vault storage utilization by format (42.8 GB total)</div>
+                </div>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:var(--space-3);margin-top:var(--space-2);">
+                <div>
+                    <div style="display:flex;justify-content:space-between;font-size:11.5px;margin-bottom:3px;">
+                        <span style="display:inline-flex;align-items:center;gap:6px;">
+                            <span class="cv-doc-format-badge pdf" style="width:20px;height:20px;font-size:8px;">PDF</span>
+                            <span>PDF Academic Manuscripts</span>
+                        </span>
+                        <strong>26.5 GB &bull; 62.0% (5,532 files)</strong>
+                    </div>
+                    <div class="cv-stacked-bar" style="height:10px;"><div class="cv-stacked-segment" style="width:62%;background:#dc2626;"></div></div>
+                </div>
+                <div>
+                    <div style="display:flex;justify-content:space-between;font-size:11.5px;margin-bottom:3px;">
+                        <span style="display:inline-flex;align-items:center;gap:6px;">
+                            <span class="cv-doc-format-badge zip" style="width:20px;height:20px;font-size:8px;">ZIP</span>
+                            <span>Project Archives (ZIP/TAR)</span>
+                        </span>
+                        <strong>11.2 GB &bull; 26.2% (1,963 files)</strong>
+                    </div>
+                    <div class="cv-stacked-bar" style="height:10px;"><div class="cv-stacked-segment" style="width:26.2%;background:#7c3aed;"></div></div>
+                </div>
+                <div>
+                    <div style="display:flex;justify-content:space-between;font-size:11.5px;margin-bottom:3px;">
+                        <span style="display:inline-flex;align-items:center;gap:6px;">
+                            <span class="cv-doc-format-badge code" style="width:20px;height:20px;font-size:8px;">SRC</span>
+                            <span>Source Code (CPP/CS/JAVA/PY)</span>
+                        </span>
+                        <strong>3.1 GB &bull; 7.2% (1,071 files)</strong>
+                    </div>
+                    <div class="cv-stacked-bar" style="height:10px;"><div class="cv-stacked-segment" style="width:7.2%;background:#16a34a;"></div></div>
+                </div>
+                <div>
+                    <div style="display:flex;justify-content:space-between;font-size:11.5px;margin-bottom:3px;">
+                        <span style="display:inline-flex;align-items:center;gap:6px;">
+                            <span class="cv-doc-format-badge docx" style="width:20px;height:20px;font-size:8px;">DOC</span>
+                            <span>Word Documents (DOCX)</span>
+                        </span>
+                        <strong>2.0 GB &bull; 4.6% (358 files)</strong>
+                    </div>
+                    <div class="cv-stacked-bar" style="height:10px;"><div class="cv-stacked-segment" style="width:4.6%;background:#2563eb;"></div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* Cryptographic & Audit Integrity Ledger Card *@
+    <div class="cv-admin-doc-banner">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);flex-wrap:wrap;">
+            <div>
+                <h3 style="font-family:var(--font-heading);font-size:var(--fs-base);font-weight:var(--fw-bold);color:#fff;margin:0 0 2px 0;">
+                    Vault Cryptographic SHA-256 Ledger Health
+                </h3>
+                <p style="font-size:var(--fs-xs);color:rgba(255,255,255,0.8);margin:0;">
+                    Every manuscript is cryptographically hashed upon ingest. 8,924 files verified across 6 cluster nodes with zero tamper flags.
+                </p>
+            </div>
+            <div style="display:flex;align-items:center;gap:var(--space-3);">
+                <div style="background:rgba(255,255,255,0.1);padding:6px 12px;border-radius:var(--radius-md);text-align:right;">
+                    <div style="font-size:10px;color:rgba(255,255,255,0.7);text-transform:uppercase;">Cluster Quota</div>
+                    <div style="font-size:14px;font-weight:bold;color:var(--cv-gold);">42.8 GB / 100 GB</div>
+                </div>
+                <div style="background:rgba(16,185,129,0.2);border:1px solid #10b981;padding:6px 12px;border-radius:var(--radius-md);text-align:right;">
+                    <div style="font-size:10px;color:#34d399;text-transform:uppercase;">Ledger State</div>
+                    <div style="font-size:14px;font-weight:bold;color:#fff;">100% Intact</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* ==================== 7. SECTION: CLASSROOM ANALYTICS ==================== *@
+<div id="section-classrooms" class="cv-report-section animate-fade-in">
+    @* Student Participation Weekly Heatmap *@
+    <div class="cv-report-chart-card" style="margin-bottom:var(--space-5);">
+        <div class="cv-report-chart-header">
+            <div>
+                <h3 class="cv-report-chart-title">Student Participation &amp; Activity Heatmap</h3>
+                <div class="cv-report-chart-subtitle">Aggregated student activity density across active classroom cohorts (Days vs Time Slots)</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--cv-slate);">
+                <span>Low</span>
+                <span style="width:12px;height:12px;background:#dbeafe;border-radius:2px;display:inline-block;"></span>
+                <span style="width:12px;height:12px;background:#93c5fd;border-radius:2px;display:inline-block;"></span>
+                <span style="width:12px;height:12px;background:#3b82f6;border-radius:2px;display:inline-block;"></span>
+                <span style="width:12px;height:12px;background:#1d4ed8;border-radius:2px;display:inline-block;"></span>
+                <span>High Peak</span>
+            </div>
+        </div>
+
+        <div class="cv-heatmap-grid">
+            @* Mon *@
+            <div class="cv-heatmap-row">
+                <span class="cv-heatmap-day-label">Mon</span>
+                <div class="cv-heatmap-cells">
+                    <div class="cv-heatmap-cell heat-1" onmouseover="showSvgTip(evt, 'Mon 08-11h', '62 Students active')" onmouseout="hideSvgTip()"></div>
+                    <div class="cv-heatmap-cell heat-2" onmouseover="showSvgTip(evt, 'Mon 11-14h', '180 Students active')" onmouseout="hideSvgTip()"></div>
+                    <div class="cv-heatmap-cell heat-3" onmouseover="showSvgTip(evt, 'Mon 14-17h', '290 Students active')" onmouseout="hideSvgTip()"></div>
+                    <div class="cv-heatmap-cell heat-4" onmouseover="showSvgTip(evt, 'Mon 17-20h', '420 Students active')" onmouseout="hideSvgTip()"></div>
+                    <div class="cv-heatmap-cell heat-3" onmouseover="showSvgTip(evt, 'Mon 20-23h', '310 Students active')" onmouseout="hideSvgTip()"></div>
+                    <div class="cv-heatmap-cell heat-1" onmouseover="showSvgTip(evt, 'Mon 23-02h', '85 Students active')" onmouseout="hideSvgTip()"></div>
+                </div>
+            </div>
+            @* Tue *@
+            <div class="cv-heatmap-row">
+                <span class="cv-heatmap-day-label">Tue</span>
+                <div class="cv-heatmap-cells">
+                    <div class="cv-heatmap-cell heat-1" onmouseover="showSvgTip(evt, 'Tue 08-11h', '75 Students active')" onmouseout="hideSvgTip()"></div>
+                    <div class="cv-heatmap-cell heat-3" onmouseover="showSvgTip(evt, 'Tue 11-14h', '240 Students active')" onmouseout="hideSvgTip()"></div>
+                    <div class="cv-heatmap-cell heat-4" onmouseover="showSvgTip(evt, 'Tue 14-17h', '390 Students active')" onmouseout="hideSvgTip()"></div>
+                    <div class="cv-heatmap-cell heat-4" onmouseover="showSvgTip(evt, 'Tue 17-20h', '440 Students active')" onmouseout="hideSvgTip()"></div>
+                    <div class="cv-heatmap-cell heat-2" onmouseover="showSvgTip(evt, 'Tue 20-23h', '210 Students active')" onmouseout="hideSvgTip()"></div>
+                    <div class="cv-heatmap-cell heat-1" onmouseover="showSvgTip(evt, 'Tue 23-02h', '60 Students active')" onmouseout="hideSvgTip()"></div>
+                </div>
+            </div>
+            @* Wed *@
+            <div class="cv-heatmap-row">
+                <span class="cv-heatmap-day-label">Wed</span>
+                <div class="cv-heatmap-cells">
+                    <div class="cv-heatmap-cell heat-2" onmouseover="showSvgTip(evt, 'Wed 08-11h', '110 Students active')" onmouseout="hideSvgTip()"></div>
+                    <div class="cv-heatmap-cell heat-3" onmouseover="showSvgTip(evt, 'Wed 11-14h', '290 Students active')" onmouseout="hideSvgTip()"></div>
+                    <div class="cv-heatmap-cell heat-4" onmouseover="showSvgTip(evt, 'Wed 14-17h', '430 Students active')" onmouseout="hideSvgTip()"></div>
+                    <div class="cv-heatmap-cell heat-4" onmouseover="showSvgTip(evt, 'Wed 17-20h', '480 Students active')" onmouseout="hideSvgTip()"></div>
+                    <div class="cv-heatmap-cell heat-3" onmouseover="showSvgTip(evt, 'Wed 20-23h', '340 Students active')" onmouseout="hideSvgTip()"></div>
+                    <div class="cv-heatmap-cell heat-2" onmouseover="showSvgTip(evt, 'Wed 23-02h', '120 Students active')" onmouseout="hideSvgTip()"></div>
+                </div>
+            </div>
+            @* Thu *@
+            <div class="cv-heatmap-row">
+                <span class="cv-heatmap-day-label">Thu</span>
+                <div class="cv-heatmap-cells">
+                    <div class="cv-heatmap-cell heat-1" onmouseover="showSvgTip(evt, 'Thu 08-11h', '90 Students active')" onmouseout="hideSvgTip()"></div>
+                    <div class="cv-heatmap-cell heat-3" onmouseover="showSvgTip(evt, 'Thu 11-14h', '260 Students active')" onmouseout="hideSvgTip()"></div>
+                    <div class="cv-heatmap-cell heat-4" onmouseover="showSvgTip(evt, 'Thu 14-17h', '410 Students active')" onmouseout="hideSvgTip()"></div>
+                    <div class="cv-heatmap-cell heat-4" onmouseover="showSvgTip(evt, 'Thu 17-20h', '460 Students active')" onmouseout="hideSvgTip()"></div>
+                    <div class="cv-heatmap-cell heat-3" onmouseover="showSvgTip(evt, 'Thu 20-23h', '290 Students active')" onmouseout="hideSvgTip()"></div>
+                    <div class="cv-heatmap-cell heat-1" onmouseover="showSvgTip(evt, 'Thu 23-02h', '95 Students active')" onmouseout="hideSvgTip()"></div>
+                </div>
+            </div>
+            @* Fri *@
+            <div class="cv-heatmap-row">
+                <span class="cv-heatmap-day-label">Fri</span>
+                <div class="cv-heatmap-cells">
+                    <div class="cv-heatmap-cell heat-2" onmouseover="showSvgTip(evt, 'Fri 08-11h', '130 Students active')" onmouseout="hideSvgTip()"></div>
+                    <div class="cv-heatmap-cell heat-4" onmouseover="showSvgTip(evt, 'Fri 11-14h', '380 Students active')" onmouseout="hideSvgTip()"></div>
+                    <div class="cv-heatmap-cell heat-4" onmouseover="showSvgTip(evt, 'Fri 14-17h', '495 Students active (Weekly Peak)')" onmouseout="hideSvgTip()"></div>
+                    <div class="cv-heatmap-cell heat-4" onmouseover="showSvgTip(evt, 'Fri 17-20h', '520 Students active (Deadline Surge)')" onmouseout="hideSvgTip()"></div>
+                    <div class="cv-heatmap-cell heat-3" onmouseover="showSvgTip(evt, 'Fri 20-23h', '360 Students active')" onmouseout="hideSvgTip()"></div>
+                    <div class="cv-heatmap-cell heat-2" onmouseover="showSvgTip(evt, 'Fri 23-02h', '150 Students active')" onmouseout="hideSvgTip()"></div>
+                </div>
+            </div>
+            @* Sat *@
+            <div class="cv-heatmap-row">
+                <span class="cv-heatmap-day-label">Sat</span>
+                <div class="cv-heatmap-cells">
+                    <div class="cv-heatmap-cell heat-0" onmouseover="showSvgTip(evt, 'Sat 08-11h', '25 Students active')" onmouseout="hideSvgTip()"></div>
+                    <div class="cv-heatmap-cell heat-1" onmouseover="showSvgTip(evt, 'Sat 11-14h', '80 Students active')" onmouseout="hideSvgTip()"></div>
+                    <div class="cv-heatmap-cell heat-2" onmouseover="showSvgTip(evt, 'Sat 14-17h', '140 Students active')" onmouseout="hideSvgTip()"></div>
+                    <div class="cv-heatmap-cell heat-2" onmouseover="showSvgTip(evt, 'Sat 17-20h', '190 Students active')" onmouseout="hideSvgTip()"></div>
+                    <div class="cv-heatmap-cell heat-1" onmouseover="showSvgTip(evt, 'Sat 20-23h', '110 Students active')" onmouseout="hideSvgTip()"></div>
+                    <div class="cv-heatmap-cell heat-0" onmouseover="showSvgTip(evt, 'Sat 23-02h', '30 Students active')" onmouseout="hideSvgTip()"></div>
+                </div>
+            </div>
+            @* Sun *@
+            <div class="cv-heatmap-row">
+                <span class="cv-heatmap-day-label">Sun</span>
+                <div class="cv-heatmap-cells">
+                    <div class="cv-heatmap-cell heat-0" onmouseover="showSvgTip(evt, 'Sun 08-11h', '20 Students active')" onmouseout="hideSvgTip()"></div>
+                    <div class="cv-heatmap-cell heat-1" onmouseover="showSvgTip(evt, 'Sun 11-14h', '60 Students active')" onmouseout="hideSvgTip()"></div>
+                    <div class="cv-heatmap-cell heat-1" onmouseover="showSvgTip(evt, 'Sun 14-17h', '95 Students active')" onmouseout="hideSvgTip()"></div>
+                    <div class="cv-heatmap-cell heat-2" onmouseover="showSvgTip(evt, 'Sun 17-20h', '160 Students active')" onmouseout="hideSvgTip()"></div>
+                    <div class="cv-heatmap-cell heat-2" onmouseover="showSvgTip(evt, 'Sun 20-23h', '180 Students active')" onmouseout="hideSvgTip()"></div>
+                    <div class="cv-heatmap-cell heat-1" onmouseover="showSvgTip(evt, 'Sun 23-02h', '55 Students active')" onmouseout="hideSvgTip()"></div>
+                </div>
+            </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-left:38px;margin-top:6px;font-size:10px;color:var(--cv-slate);">
+            <span>08:00 - 11:00</span>
+            <span>11:00 - 14:00</span>
+            <span>14:00 - 17:00</span>
+            <span>17:00 - 20:00</span>
+            <span>20:00 - 23:00</span>
+            <span>23:00 - 02:00</span>
+        </div>
+    </div>
+
+    @* Active Classrooms Performance Ledger Table *@
+    <div class="cv-admin-docs-table-wrapper">
+        <div style="padding:var(--space-3) var(--space-4);background:var(--cv-bg-light);border-bottom:1px solid var(--cv-border);display:flex;align-items:center;justify-content:space-between;">
+            <div style="font-size:12px;font-weight:var(--fw-bold);color:var(--cv-navy);text-transform:uppercase;letter-spacing:0.04em;">Classroom Throughput &amp; Punctuality Roster</div>
+            <span style="font-size:11px;color:var(--cv-slate);">42 Total Classrooms &bull; Top Division Cohorts</span>
+        </div>
+        <table class="cv-admin-docs-table">
+            <thead>
+                <tr>
+                    <th>Classroom</th>
+                    <th>Faculty In-Charge</th>
+                    <th>Enrolled</th>
+                    <th>Tasks</th>
+                    <th>Submissions</th>
+                    <th>On-Time Rate</th>
+                    <th>Approval Rate</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>
+                        <div style="font-weight:var(--fw-bold);color:var(--cv-navy);">DBMS - EC6</div>
+                        <div style="font-size:11px;color:var(--cv-slate);">Database Management &bull; CE</div>
+                    </td>
+                    <td>Prof. Patel</td>
+                    <td>68 Students</td>
+                    <td>6 Tasks</td>
+                    <td>386 Files</td>
+                    <td><span class="cv-badge cv-badge-success">92.4%</span></td>
+                    <td><span class="cv-badge cv-badge-success">94.8%</span></td>
+                </tr>
+                <tr>
+                    <td>
+                        <div style="font-weight:var(--fw-bold);color:var(--cv-navy);">Data Structures - EC6</div>
+                        <div style="font-size:11px;color:var(--cv-slate);">Algorithms &bull; CE</div>
+                    </td>
+                    <td>Prof. Patel</td>
+                    <td>72 Students</td>
+                    <td>8 Tasks</td>
+                    <td>520 Files</td>
+                    <td><span class="cv-badge cv-badge-success">94.1%</span></td>
+                    <td><span class="cv-badge cv-badge-success">96.0%</span></td>
+                </tr>
+                <tr>
+                    <td>
+                        <div style="font-weight:var(--fw-bold);color:var(--cv-navy);">Web Technology - EC6</div>
+                        <div style="font-size:11px;color:var(--cv-slate);">Fullstack Web &bull; IT</div>
+                    </td>
+                    <td>Dr. Sharma</td>
+                    <td>64 Students</td>
+                    <td>5 Tasks</td>
+                    <td>310 Files</td>
+                    <td><span class="cv-badge cv-badge-warning">86.2%</span></td>
+                    <td><span class="cv-badge cv-badge-success">91.5%</span></td>
+                </tr>
+                <tr>
+                    <td>
+                        <div style="font-weight:var(--fw-bold);color:var(--cv-navy);">OOP - EC7</div>
+                        <div style="font-size:11px;color:var(--cv-slate);">C++ &amp; Design Patterns &bull; CE</div>
+                    </td>
+                    <td>Prof. Mehta</td>
+                    <td>65 Students</td>
+                    <td>7 Tasks</td>
+                    <td>420 Files</td>
+                    <td><span class="cv-badge cv-badge-success">90.8%</span></td>
+                    <td><span class="cv-badge cv-badge-success">93.2%</span></td>
+                </tr>
+                <tr>
+                    <td>
+                        <div style="font-weight:var(--fw-bold);color:var(--cv-navy);">Computer Networks - CE-A</div>
+                        <div style="font-size:11px;color:var(--cv-slate);">Network Protocols &bull; EC</div>
+                    </td>
+                    <td>Dr. Shah</td>
+                    <td>58 Students</td>
+                    <td>4 Tasks</td>
+                    <td>224 Files</td>
+                    <td><span class="cv-badge cv-badge-warning">84.5%</span></td>
+                    <td><span class="cv-badge cv-badge-success">88.4%</span></td>
+                </tr>
+                <tr>
+                    <td>
+                        <div style="font-weight:var(--fw-bold);color:var(--cv-navy);">Cloud Computing - CS-8</div>
+                        <div style="font-size:11px;color:var(--cv-slate);">AWS &amp; Kubernetes &bull; IT</div>
+                    </td>
+                    <td>Prof. Iyer</td>
+                    <td>60 Students</td>
+                    <td>5 Tasks</td>
+                    <td>285 Files</td>
+                    <td><span class="cv-badge cv-badge-success">88.2%</span></td>
+                    <td><span class="cv-badge cv-badge-success">90.1%</span></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@* Floating Tooltip element for SVG & Heatmap hover *@
+<div id="chartTooltip" class="cv-chart-tooltip"></div>
+
+@* ==================== 8. INTERACTIVE JAVASCRIPT ==================== *@
+<script>
+    // Tab Switching
+    function switchReportTab(tabKey) {
+        const tabs = ['overview', 'submissions', 'documents', 'classrooms'];
+        tabs.forEach(t => {
+            const btn = document.getElementById('tabBtn-' + t);
+            const section = document.getElementById('section-' + t);
+            if (btn && section) {
+                if (t === tabKey) {
+                    btn.classList.add('active');
+                    section.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                    section.classList.remove('active');
+                }
+            }
+        });
+    }
+
+    // Apply Filters simulation
+    function applyReportFilters() {
+        const year = document.getElementById('reportAcademicYear').value;
+        const range = document.getElementById('reportDateRange').value;
+
+        const summary = document.getElementById('reportStatusSummary');
+        if (summary) {
+            summary.innerHTML = `Scope: <strong>Platform-Wide Analytics &bull; ${range === 'all' ? 'All Time' : range} (${year})</strong>`;
+        }
+
+        showReportToast('Report Filter Updated', `Analyzing activity across all classrooms for AY ${year}.`, 'info');
+    }
+
+    function resetReportFilters() {
+        document.getElementById('reportAcademicYear').value = '2026-2027';
+        document.getElementById('reportDateRange').value = 'all';
+        applyReportFilters();
+    }
+
+    // Export CSV simulation
+    function exportReportsCsv() {
+        showReportToast('Generating Academic Report CSV', 'Compiling submission trends, on-time rates, and classroom analytics...', 'info');
+        setTimeout(() => {
+            showReportToast('Export Complete', 'CampusVault_Academic_Activity_Report_2026.csv downloaded successfully.', 'success');
+        }, 1200);
+    }
+
+    // SVG / Heatmap Tooltip
+    function showSvgTip(evt, title, detail) {
+        const tip = document.getElementById('chartTooltip');
+        if (!tip) return;
+        tip.innerHTML = `<strong>${title}</strong><br/>${detail}`;
+        tip.style.left = (evt.clientX + 12) + 'px';
+        tip.style.top = (evt.clientY - 30) + 'px';
+        tip.style.display = 'block';
+    }
+
+    function hideSvgTip() {
+        const tip = document.getElementById('chartTooltip');
+        if (tip) tip.style.display = 'none';
+    }
+
+    // Toast notifications utility
+    function showReportToast(title, message, type) {
+        let toastContainer = document.getElementById('cv-admin-toast-container');
+        if (!toastContainer) {
+            toastContainer = document.createElement('div');
+            toastContainer.id = 'cv-admin-toast-container';
+            toastContainer.style.position = 'fixed';
+            toastContainer.style.bottom = '24px';
+            toastContainer.style.right = '24px';
+            toastContainer.style.zIndex = '99999';
+            toastContainer.style.display = 'flex';
+            toastContainer.style.flexDirection = 'column';
+            toastContainer.style.gap = '10px';
+            document.body.appendChild(toastContainer);
+        }
+
+        const toast = document.createElement('div');
+        toast.style.background = (type === 'success' ? '#064e3b' : '#0f172a');
+        toast.style.color = '#fff';
+        toast.style.border = (type === 'success' ? '1px solid #059669' : '1px solid #334155');
+        toast.style.borderRadius = '8px';
+        toast.style.padding = '12px 18px';
+        toast.style.boxShadow = '0 10px 25px rgba(0,0,0,0.3)';
+        toast.style.fontSize = '12px';
+        toast.style.minWidth = '300px';
+        toast.style.maxWidth = '420px';
+        toast.style.animation = 'cvFadeIn 0.25s ease';
+
+        toast.innerHTML = `
+            <div style="display:flex;align-items:flex-start;gap:10px;">
+                <div style="color:${type === 'success' ? '#34d399' : '#38bdf8'};flex-shrink:0;margin-top:1px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                </div>
+                <div style="flex:1;">
+                    <div style="font-weight:700;font-size:13px;margin-bottom:2px;">${title}</div>
+                    <div style="color:rgba(255,255,255,0.8);font-size:11.5px;line-height:1.4;">${message}</div>
+                </div>
+            </div>
+        `;
+
+        toastContainer.appendChild(toast);
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transition = 'opacity 0.3s ease';
+            setTimeout(() => toast.remove(), 300);
+        }, 3800);
+    }
+</script>

@@ -1,0 +1,165 @@
+@model List<CampusVault.Models.Academic.Classroom>
+@{
+    ViewBag.Title = "My Classrooms";
+    ViewBag.Role = "Student";
+    var classroomCount = Model != null ? Model.Count : 0;
+}
+
+@* ==================== 1. PAGE HEADER & TOP ACTIONS ==================== *@
+<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:24px;">
+    <div>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:4px;">
+            <div style="width:38px;height:38px;border-radius:10px;background:#eff6ff;color:#2563eb;display:flex;align-items:center;justify-content:center;">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+            </div>
+            <h1 style="font-family:'DM Sans', -apple-system, sans-serif;font-size:24px;font-weight:700;color:#0b192c;margin:0;">
+                My Classrooms
+            </h1>
+        </div>
+        <p style="color:#64748b;font-size:14px;margin:0;">
+            Your enrolled academic spaces, syllabus coursework, and active assignments.
+        </p>
+    </div>
+
+    <!-- Top Action: Join Classroom Button -->
+    <div style="display:flex;align-items:center;gap:12px;">
+        <a href="@Url.Action("JoinClassroom", "Student")" style="display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg, #d97706 0%, #b45309 100%);color:#ffffff;border:none;border-radius:10px;padding:10px 18px;font-size:13px;font-weight:700;text-decoration:none;box-shadow:0 4px 14px rgba(217,119,6,0.35);transition:all 0.2s ease;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <span>Join Classroom</span>
+        </a>
+    </div>
+</div>
+
+@* ==================== 2. SEARCH & SUMMARY BAR ==================== *@
+<div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:14px 20px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;box-shadow:0 2px 6px rgba(15,23,42,0.03);">
+    <div style="display:flex;align-items:center;gap:12px;flex:1;max-width:440px;">
+        <div style="position:relative;width:100%;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="classroomFilterInput" placeholder="Filter courses, code, or faculty mentor..." oninput="filterClassrooms(this.value)" style="width:100%;padding:9px 12px 9px 38px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;color:#0f172a;box-sizing:border-box;" />
+        </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;">
+        <span style="font-size:13px;color:#64748b;font-weight:600;">
+            Enrolled: <strong style="color:#0b192c;" id="classroomCountText">@classroomCount Courses</strong>
+        </span>
+    </div>
+</div>
+
+@* ==================== 3. CLASSROOM CARDS GRID ==================== *@
+<div id="classroomsGrid" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(320px, 1fr));gap:22px;">
+    @if (Model != null && Model.Count > 0)
+    {
+        foreach (var c in Model)
+        {
+            var facInitials = "FA";
+            if (!string.IsNullOrEmpty(c.FacultyName))
+            {
+                var parts = c.FacultyName.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                if (parts.Length >= 2)
+                {
+                    facInitials = (parts[0][0].ToString() + parts[1][0].ToString()).ToUpper();
+                }
+                else if (parts.Length == 1)
+                {
+                    facInitials = parts[0].Substring(0, Math.Min(2, parts[0].Length)).ToUpper();
+                }
+            }
+
+            <div class="cv-classroom-card" data-search="@(c.CourseName.ToLower()) @(c.CourseCode.ToLower()) @(c.FacultyName.ToLower())" style="background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;box-shadow:0 4px 14px rgba(15,23,42,0.04);display:flex;flex-direction:column;transition:transform 0.2s ease, box-shadow 0.2s ease;">
+                
+                @* Top Banner *@
+                <div style="background:@c.ThemeGradient;padding:22px 24px;color:#ffffff;position:relative;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                        <span style="background:rgba(255,255,255,0.22);color:#ffffff;border:1px solid rgba(255,255,255,0.3);padding:2px 8px;border-radius:6px;font-size:11.5px;font-weight:700;letter-spacing:0.04em;">
+                            @c.CourseCode
+                        </span>
+                        <span style="font-size:11.5px;color:rgba(255,255,255,0.85);font-weight:600;">
+                            Sem @c.Semester
+                        </span>
+                    </div>
+                    <h3 style="margin:0 0 4px 0;font-size:17px;font-weight:700;color:#ffffff;line-height:1.3;">
+                        @c.CourseName
+                    </h3>
+                    <div style="font-size:11.5px;color:rgba(255,255,255,0.8);">
+                        @c.Department &bull; @c.AcademicYear
+                    </div>
+                </div>
+
+                @* Card Body *@
+                <div style="padding:20px 24px;flex:1;display:flex;flex-direction:column;gap:14px;">
+                    <!-- Faculty Info Strip -->
+                    <div style="display:flex;align-items:center;gap:12px;padding-bottom:12px;border-bottom:1px solid #f1f5f9;">
+                        <div style="width:38px;height:38px;border-radius:10px;background:#e0e7ff;color:#3730a3;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                            @facInitials
+                        </div>
+                        <div>
+                            <div style="font-size:13px;font-weight:700;color:#0f172a;">@c.FacultyName</div>
+                            <div style="font-size:11.5px;color:#64748b;">@c.FacultyDesignation</div>
+                        </div>
+                    </div>
+
+                    <!-- Meta Tags -->
+                    <div style="display:flex;align-items:center;justify-content:space-between;font-size:12.5px;">
+                        <span style="display:inline-flex;align-items:center;gap:6px;color:#2563eb;font-weight:600;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                            @c.ActiveTaskCount Active Tasks
+                        </span>
+                        <span style="background:#f1f5f9;color:#475569;border:1px solid #cbd5e1;padding:2px 8px;border-radius:4px;font-size:11px;font-family:monospace;font-weight:700;">
+                            @c.JoinCode
+                        </span>
+                    </div>
+                </div>
+
+                @* Card Footer *@
+                <div style="padding:14px 24px;background:#f8fafc;border-top:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between;">
+                    <span style="font-size:11px;color:#64748b;">Enrolled: Active</span>
+                    <a href="@Url.Action("ClassroomDetails", "Student", new { id = c.ClassroomId })" style="display:inline-flex;align-items:center;gap:6px;background:#0b192c;color:#ffffff;text-decoration:none;padding:8px 16px;border-radius:8px;font-size:12.5px;font-weight:700;transition:background 0.2s ease;">
+                        <span>Open Classroom</span>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                    </a>
+                </div>
+
+            </div>
+        }
+    }
+    else
+    {
+        <!-- Empty State -->
+        <div style="grid-column:1/-1;background:#ffffff;border:2px dashed #cbd5e1;border-radius:16px;padding:48px 24px;text-align:center;">
+            <div style="width:54px;height:54px;border-radius:14px;background:#eff6ff;color:#2563eb;margin:0 auto 16px auto;display:flex;align-items:center;justify-content:center;">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+            </div>
+            <h3 style="font-size:18px;font-weight:700;color:#0b192c;margin:0 0 6px 0;">No Enrolled Classrooms Found</h3>
+            <p style="font-size:13.5px;color:#64748b;margin:0 auto 20px auto;max-width:440px;">
+                You haven't joined any classrooms yet. Use the course key provided by your instructor to join a section.
+            </p>
+            <a href="@Url.Action("JoinClassroom", "Student")" style="display:inline-flex;align-items:center;gap:8px;background:#2563eb;color:#ffffff;text-decoration:none;padding:10px 22px;border-radius:8px;font-size:13px;font-weight:700;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                <span>Join a Classroom</span>
+            </a>
+        </div>
+    }
+</div>
+
+<script>
+    function filterClassrooms(query) {
+        var q = query.trim().toLowerCase();
+        var cards = document.querySelectorAll('.cv-classroom-card');
+        var visibleCount = 0;
+
+        cards.forEach(function (card) {
+            var searchData = card.getAttribute('data-search') || '';
+            if (!q || searchData.indexOf(q) !== -1) {
+                card.style.display = 'flex';
+                visibleCount++;
+            } else {
+                card.style.display = 'none';
+            }
+        });
+
+        var countText = document.getElementById('classroomCountText');
+        if (countText) {
+            countText.textContent = visibleCount + ' Courses';
+        }
+    }
+</script>

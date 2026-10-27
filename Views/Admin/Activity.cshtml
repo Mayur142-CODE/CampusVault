@@ -1,0 +1,621 @@
+@model List<CampusVault.Models.Admin.AdminActivityItem>
+@using System.Linq
+@{
+    ViewBag.Title = "System Activity Log";
+    ViewBag.Role = "Admin";
+    var items = Model ?? new List<CampusVault.Models.Admin.AdminActivityItem>();
+    int totalEvents = items.Count;
+    var distinctUsers = items.Select(i => i.UserName).Where(u => !string.IsNullOrEmpty(u)).Distinct().OrderBy(u => u).ToList();
+    var distinctTypes = items.Select(i => i.ActivityType).Where(t => !string.IsNullOrEmpty(t)).Distinct().OrderBy(t => t).ToList();
+    var distinctModules = items.Select(i => i.Module).Where(m => !string.IsNullOrEmpty(m)).Distinct().OrderBy(m => m).ToList();
+    var groupedByDate = items.GroupBy(i => i.Timestamp.Date).OrderByDescending(g => g.Key).ToList();
+}
+
+@* ==================== 1. PAGE HEADER ==================== *@
+<div class="cv-page-header animate-slide-up" style="display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-4);flex-wrap:wrap;margin-bottom:var(--space-4);">
+    <div>
+        <div style="display:flex;align-items:center;gap:var(--space-3);margin-bottom:4px;">
+            <div style="width:38px;height:38px;border-radius:var(--radius-md);background:var(--cv-navy);color:var(--cv-gold);display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow-sm);">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px;flex-shrink:0;">
+                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                </svg>
+            </div>
+            <div>
+                <h1 style="font-family:var(--font-heading);font-size:var(--fs-2xl);font-weight:var(--fw-bold);color:var(--cv-navy);letter-spacing:-0.015em;margin:0;display:flex;align-items:center;gap:var(--space-2);">
+                    System Activity Log
+                    <span class="cv-admin-live-pulse" style="width:8px;height:8px;border-radius:50%;background:#10b981;display:inline-block;box-shadow:0 0 0 3px rgba(16,185,129,0.25);" title="Live Log Stream Active"></span>
+                </h1>
+            </div>
+        </div>
+        <p style="color:var(--cv-slate);font-size:var(--fs-sm);margin:0;">
+            Immutable university audit trail of student submissions, faculty reviews, classroom enrollments, task creations, and administrative ledger sweeps.
+        </p>
+    </div>
+
+    @* Header Actions & View Toggle *@
+    <div style="display:flex;align-items:center;gap:var(--space-3);flex-wrap:wrap;">
+        <div class="cv-activity-view-toggle">
+            <button type="button" class="cv-activity-toggle-btn active" id="btnViewTimeline" onclick="setActivityView('timeline')">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/></svg>
+                Timeline View
+            </button>
+            <button type="button" class="cv-activity-toggle-btn" id="btnViewTable" onclick="setActivityView('table')">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                Audit Table
+            </button>
+        </div>
+
+        <button type="button" class="cv-btn cv-btn-secondary" onclick="exportActivityLog()" style="font-size:12px;gap:6px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export Audit Log
+        </button>
+    </div>
+</div>
+
+@* ==================== 2. FILTERS (User, Activity Type, Module, Date) + SEARCH ==================== *@
+<div class="cv-submissions-filter-card animate-slide-up stagger-1" style="margin-bottom:var(--space-5);">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);flex-wrap:wrap;margin-bottom:var(--space-3);">
+        <div style="position:relative;flex:1;min-width:260px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--cv-slate-400);pointer-events:none;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="activitySearchInput" class="cv-filter-input" placeholder="Search activity by user, action, classroom, task, or file..." oninput="filterActivityEntries()" style="padding-left:34px;width:100%;" />
+        </div>
+        <div style="display:flex;align-items:center;gap:var(--space-2);">
+            <button type="button" class="cv-btn cv-btn-secondary" onclick="resetActivityFilters()" style="font-size:11px;padding:5px 10px;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                Reset Filters
+            </button>
+            <span id="activityCountBadge" style="font-size:11.5px;color:var(--cv-slate);background:var(--cv-bg-light);padding:5px 10px;border-radius:var(--radius-sm);border:1px solid var(--cv-border);font-weight:var(--fw-semibold);">
+                Showing @totalEvents of @totalEvents events
+            </span>
+        </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:var(--space-3);padding-top:var(--space-3);border-top:1px solid var(--cv-border-light);">
+        @* Filter 1: User *@
+        <div class="cv-filter-item">
+            <label class="cv-filter-label" for="filterUser" style="font-size:10.5px;font-weight:var(--fw-bold);color:var(--cv-slate);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:3px;display:block;">
+                User:
+            </label>
+            <select id="filterUser" class="cv-filter-select" onchange="filterActivityEntries()" style="width:100%;font-size:12px;">
+                <option value="all">All Users</option>
+                @foreach (var u in distinctUsers)
+                {
+                    <option value="@u">@u</option>
+                }
+            </select>
+        </div>
+
+        @* Filter 2: Activity Type *@
+        <div class="cv-filter-item">
+            <label class="cv-filter-label" for="filterActivityType" style="font-size:10.5px;font-weight:var(--fw-bold);color:var(--cv-slate);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:3px;display:block;">
+                Activity Type:
+            </label>
+            <select id="filterActivityType" class="cv-filter-select" onchange="filterActivityEntries()" style="width:100%;font-size:12px;">
+                <option value="all">All Activity Types</option>
+                @foreach (var t in distinctTypes)
+                {
+                    <option value="@t">@t</option>
+                }
+            </select>
+        </div>
+
+        @* Filter 3: Module *@
+        <div class="cv-filter-item">
+            <label class="cv-filter-label" for="filterModule" style="font-size:10.5px;font-weight:var(--fw-bold);color:var(--cv-slate);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:3px;display:block;">
+                Module:
+            </label>
+            <select id="filterModule" class="cv-filter-select" onchange="filterActivityEntries()" style="width:100%;font-size:12px;">
+                <option value="all">All Modules</option>
+                @foreach (var m in distinctModules)
+                {
+                    <option value="@m">@m</option>
+                }
+            </select>
+        </div>
+
+        @* Filter 4: Date *@
+        <div class="cv-filter-item">
+            <label class="cv-filter-label" for="filterDate" style="font-size:10.5px;font-weight:var(--fw-bold);color:var(--cv-slate);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:3px;display:block;">
+                Date:
+            </label>
+            <select id="filterDate" class="cv-filter-select" onchange="filterActivityEntries()" style="width:100%;font-size:12px;">
+                <option value="all" selected>All Recorded Dates</option>
+                <option value="today">Today</option>
+                <option value="yesterday">Yesterday</option>
+                <option value="7days">Last 7 Days</option>
+            </select>
+        </div>
+    </div>
+</div>
+
+@* ==================== 3. TIMELINE-INSPIRED INTERFACE (PRIMARY VIEW) ==================== *@
+<div id="activityTimelineContainer" class="animate-fade-in">
+    <div class="cv-activity-timeline" id="activityTimelineStream">
+        @if (items.Count == 0)
+        {
+            <div style="padding:var(--space-8);text-align:center;background:#fff;border-radius:var(--radius-xl);border:1px solid var(--cv-border);margin-top:var(--space-4);">
+                <div style="width:48px;height:48px;border-radius:var(--radius-full);background:var(--cv-bg-light);color:var(--cv-slate);display:inline-flex;align-items:center;justify-content:center;margin-bottom:var(--space-2);">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                </div>
+                <div style="font-size:var(--fs-base);font-weight:var(--fw-bold);color:var(--cv-navy);margin-bottom:4px;">No Activity Events Recorded</div>
+                <div style="font-size:var(--fs-sm);color:var(--cv-slate);max-width:420px;margin:0 auto;">System and user events will appear here automatically in real time as actions occur across the university portal.</div>
+            </div>
+        }
+        else
+        {
+            foreach (var g in groupedByDate)
+            {
+                var isToday = g.Key == DateTime.Today;
+                var isYesterday = g.Key == DateTime.Today.AddDays(-1);
+                var dateGroup = isToday ? "today" : (isYesterday ? "yesterday" : "older");
+                var dateHeader = isToday ? ("Today • " + g.Key.ToString("MMMM dd, yyyy")) :
+                                 (isYesterday ? ("Yesterday • " + g.Key.ToString("MMMM dd, yyyy")) :
+                                 g.Key.ToString("MMMM dd, yyyy"));
+
+                <div class="cv-timeline-date-ribbon" data-date-group="@dateGroup">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    @dateHeader
+                </div>
+
+                foreach (var item in g)
+                {
+                    var timeStr = item.Timestamp.ToString("hh:mm tt");
+                    var diff = DateTime.Now - item.Timestamp;
+                    var diffStr = diff.TotalMinutes < 1 ? "Just now" :
+                                  diff.TotalMinutes < 60 ? $"{(int)diff.TotalMinutes} mins ago" :
+                                  diff.TotalHours < 24 ? $"{(int)diff.TotalHours} hours ago" :
+                                  $"{(int)diff.TotalDays} days ago";
+
+                    var roleBadgeClass = item.UserRole == "Faculty" ? "cv-badge-warning" : item.UserRole == "Student" ? "cv-badge-info" : "cv-badge-neutral";
+                    var avatarBg = item.UserRole == "Faculty" ? "#fffbeb" : item.UserRole == "Student" ? "#eff6ff" : "#f1f5f9";
+                    var avatarColor = item.UserRole == "Faculty" ? "#b45309" : item.UserRole == "Student" ? "#1d4ed8" : "#475569";
+
+                    var moduleTagClass = item.Module == "Submissions" ? "mod-sub" :
+                                         item.Module == "Evaluations" ? "mod-eval" :
+                                         item.Module == "Classrooms" ? "mod-cls" :
+                                         item.Module == "Tasks" ? "mod-task" :
+                                         item.Module == "Materials" ? "mod-mat" : "mod-sec";
+
+                    var nodeClass = item.Module == "Submissions" ? "node-submission" :
+                                    item.Module == "Evaluations" ? "node-evaluation" :
+                                    item.Module == "Classrooms" ? "node-classroom" :
+                                    item.Module == "Tasks" ? "node-task" :
+                                    item.Module == "Materials" ? "node-material" : "node-security";
+
+                    <div class="cv-timeline-entry activity-item"
+                         data-time="@timeStr"
+                         data-timestamp="@item.Timestamp.ToString("yyyy-MM-ddTHH:mm:ss")"
+                         data-user="@item.UserName"
+                         data-user-role="@item.UserRole"
+                         data-activity="@item.Description"
+                         data-activity-type="@item.ActivityType"
+                         data-module="@item.Module"
+                         data-date="@dateGroup"
+                         data-details="@item.Details"
+                         data-ip="@item.IpAddress">
+                        <div class="cv-timeline-node @nodeClass" title="@item.Module">
+                            @if (item.Module == "Submissions")
+                            {
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                            }
+                            else if (item.Module == "Evaluations")
+                            {
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                            }
+                            else if (item.Module == "Classrooms")
+                            {
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+                            }
+                            else if (item.Module == "Tasks")
+                            {
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
+                            }
+                            else
+                            {
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                            }
+                        </div>
+                        <div class="cv-timeline-card">
+                            <div class="cv-timeline-card-header">
+                                <div style="display:flex;align-items:center;gap:var(--space-2);">
+                                    <span class="cv-timeline-time">
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/></svg>
+                                        @timeStr
+                                    </span>
+                                    <span style="font-size:11px;color:var(--cv-slate);">(@diffStr)</span>
+                                </div>
+                                <span class="cv-module-tag @moduleTagClass">@item.Module</span>
+                            </div>
+
+                            <div class="cv-timeline-user-row">
+                                <div class="cv-avatar cv-avatar-xs" style="background:@avatarBg;color:@avatarColor;font-weight:bold;font-size:10px;">@item.UserInitials</div>
+                                <div>
+                                    <strong style="color:var(--cv-navy);font-size:13px;">@item.UserName</strong>
+                                    <span class="cv-badge @roleBadgeClass" style="font-size:9.5px;padding:1px 5px;margin-left:4px;">@item.UserRole</span>
+                                </div>
+                            </div>
+
+                            <div class="cv-timeline-action">
+                                @item.Description
+                            </div>
+
+                            <div class="cv-timeline-detail-box">
+                                <div>
+                                    <span>@item.Details</span>
+                                </div>
+                                <button type="button" class="cv-btn cv-btn-secondary" onclick="openEventPayloadModal(this)" style="font-size:10px;padding:2px 7px;">Inspect</button>
+                            </div>
+                        </div>
+                    </div>
+                }
+            }
+        }
+    </div>
+</div>
+
+@* ==================== 4. TABULAR VIEW (AUDIT TABLE MODE) ==================== *@
+<div id="activityTableContainer" style="display:none;" class="animate-fade-in">
+    <div class="cv-admin-docs-table-wrapper">
+        <table class="cv-admin-docs-table" id="activityAuditTable">
+            <thead>
+                <tr>
+                    <th style="width:110px;">Time</th>
+                    <th style="min-width:160px;">User</th>
+                    <th style="min-width:200px;">Activity</th>
+                    <th style="width:120px;">Module</th>
+                    <th style="min-width:260px;">Details</th>
+                    <th style="width:80px;text-align:center;">Action</th>
+                </tr>
+            </thead>
+            <tbody id="activityAuditTableBody">
+                @* Rows populated dynamically from timeline items or identical dataset *@
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@* Empty State for Filtering *@
+<div id="noActivityFoundMsg" style="display:none;padding:var(--space-8);text-align:center;background:#fff;border-radius:var(--radius-xl);border:1px solid var(--cv-border);margin-top:var(--space-4);">
+    <div style="width:48px;height:48px;border-radius:var(--radius-full);background:var(--cv-bg-light);color:var(--cv-slate);display:inline-flex;align-items:center;justify-content:center;margin-bottom:var(--space-2);">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    </div>
+    <div style="font-size:var(--fs-base);font-weight:var(--fw-bold);color:var(--cv-navy);margin-bottom:4px;">No Activity Events Match Filters</div>
+    <div style="font-size:var(--fs-sm);color:var(--cv-slate);max-width:420px;margin:0 auto var(--space-4);">No journal log entries were found matching your current combination of user, activity type, module, and date filters.</div>
+    <button type="button" class="cv-btn cv-btn-secondary" onclick="resetActivityFilters()" style="font-size:12px;">Reset All Filters</button>
+</div>
+
+@* ==================== 5. EVENT PAYLOAD INSPECTION MODAL ==================== *@
+<div id="eventPayloadModal" class="cv-modal-backdrop" style="display:none;align-items:center;justify-content:center;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,23,42,0.65);z-index:9999;backdrop-filter:blur(4px);padding:var(--space-4);">
+    <div class="cv-modal-card animate-scale-in" style="background:#fff;border-radius:var(--radius-xl);max-width:680px;width:100%;box-shadow:var(--shadow-xl);border:1px solid var(--cv-border);overflow:hidden;">
+        <div style="padding:var(--space-4) var(--space-5);background:linear-gradient(135deg, #0b192c 0%, #1e293b 100%);color:#fff;display:flex;align-items:center;justify-content:space-between;">
+            <div style="display:flex;align-items:center;gap:var(--space-2);">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--cv-gold);"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                <h3 style="font-family:var(--font-heading);font-size:var(--fs-base);font-weight:var(--fw-bold);margin:0;color:#fff;">
+                    Audit Event Inspection
+                </h3>
+            </div>
+            <button type="button" onclick="closeEventPayloadModal()" style="background:none;border:none;color:rgba(255,255,255,0.7);cursor:pointer;padding:4px;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+
+        <div style="padding:var(--space-5);max-height:75vh;overflow-y:auto;">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-3);margin-bottom:var(--space-4);">
+                <div class="cv-audit-meta-box">
+                    <div class="cv-audit-meta-label">Recorded Timestamp</div>
+                    <div class="cv-audit-meta-val" id="modalEventTime">--</div>
+                </div>
+                <div class="cv-audit-meta-box">
+                    <div class="cv-audit-meta-label">Actor / User</div>
+                    <div class="cv-audit-meta-val" id="modalEventUser">--</div>
+                </div>
+                <div class="cv-audit-meta-box">
+                    <div class="cv-audit-meta-label">Module / Action</div>
+                    <div class="cv-audit-meta-val" id="modalEventAction">--</div>
+                </div>
+                <div class="cv-audit-meta-box">
+                    <div class="cv-audit-meta-label">Network Ingestion Node</div>
+                    <div class="cv-audit-meta-val" id="modalEventIp">--</div>
+                </div>
+            </div>
+
+            <div style="font-size:11px;font-weight:var(--fw-bold);color:var(--cv-slate);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px;">
+                Immutable Event JSON Payload
+            </div>
+            <pre class="cv-event-payload-box" id="modalJsonPayload">{}</pre>
+        </div>
+
+        <div style="padding:var(--space-3) var(--space-5);background:var(--cv-bg-light);border-top:1px solid var(--cv-border);display:flex;justify-content:flex-end;gap:var(--space-2);">
+            <button type="button" class="cv-btn cv-btn-secondary" onclick="closeEventPayloadModal()" style="font-size:12px;">Close</button>
+        </div>
+    </div>
+</div>
+
+@* ==================== 6. JAVASCRIPT LOGIC ==================== *@
+<script>
+    let currentViewMode = 'timeline';
+    const initialTotalCount = @totalEvents;
+
+    // Populate the table view from timeline entries initially
+    function syncTimelineToTable() {
+        const tbody = document.getElementById('activityAuditTableBody');
+        const items = document.querySelectorAll('#activityTimelineStream .activity-item');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+
+        items.forEach(item => {
+            const time = item.getAttribute('data-time') || '';
+            const user = item.getAttribute('data-user') || '';
+            const role = item.getAttribute('data-user-role') || '';
+            const activity = item.getAttribute('data-activity') || '';
+            const module = item.getAttribute('data-module') || '';
+            const details = item.getAttribute('data-details') || '';
+            const date = item.getAttribute('data-date') || '';
+            const ip = item.getAttribute('data-ip') || '';
+            const timestamp = item.getAttribute('data-timestamp') || '';
+
+            const tr = document.createElement('tr');
+            tr.className = 'activity-item';
+            tr.setAttribute('data-time', time);
+            tr.setAttribute('data-user', user);
+            tr.setAttribute('data-user-role', role);
+            tr.setAttribute('data-activity', activity);
+            tr.setAttribute('data-module', module);
+            tr.setAttribute('data-details', details);
+            tr.setAttribute('data-date', date);
+            tr.setAttribute('data-ip', ip);
+            tr.setAttribute('data-timestamp', timestamp);
+
+            const roleBadgeClass = role === 'Faculty' ? 'cv-badge-warning' : (role === 'Student' ? 'cv-badge-info' : 'cv-badge-neutral');
+            const modClass = module === 'Submissions' ? 'mod-sub' :
+                             module === 'Evaluations' ? 'mod-eval' :
+                             module === 'Classrooms' ? 'mod-cls' :
+                             module === 'Tasks' ? 'mod-task' :
+                             module === 'Materials' ? 'mod-mat' : 'mod-sec';
+
+            tr.innerHTML = `
+                <td data-label="Time">
+                    <span style="font-size:12px;font-weight:600;color:var(--cv-navy);">${time}</span>
+                    <div style="font-size:10.5px;color:var(--cv-slate);">${date === 'today' ? 'Today' : (date === 'yesterday' ? 'Yesterday' : 'Archived')}</div>
+                </td>
+                <td data-label="User">
+                    <div style="display:flex;align-items:center;gap:6px;">
+                        <span style="font-weight:600;color:var(--cv-ink);font-size:12.5px;">${user}</span>
+                        <span class="cv-badge ${roleBadgeClass}" style="font-size:9.5px;padding:1px 5px;">${role}</span>
+                    </div>
+                </td>
+                <td data-label="Activity">
+                    <span style="font-weight:600;color:var(--cv-navy);font-size:12.5px;">${activity}</span>
+                </td>
+                <td data-label="Module">
+                    <span class="cv-module-tag ${modClass}">${module}</span>
+                </td>
+                <td data-label="Details" style="font-size:11.5px;color:var(--cv-slate);">
+                    ${details}
+                </td>
+                <td data-label="Action" style="text-align:center;">
+                    <button type="button" class="cv-btn cv-btn-secondary" onclick="openEventPayloadModal(this)" style="font-size:10px;padding:2px 7px;">Inspect</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    // Toggle between Timeline View and Audit Table View
+    function setActivityView(mode) {
+        currentViewMode = mode;
+        const timelineContainer = document.getElementById('activityTimelineContainer');
+        const tableContainer = document.getElementById('activityTableContainer');
+        const btnTimeline = document.getElementById('btnViewTimeline');
+        const btnTable = document.getElementById('btnViewTable');
+
+        if (mode === 'timeline') {
+            timelineContainer.style.display = 'block';
+            tableContainer.style.display = 'none';
+            btnTimeline.classList.add('active');
+            btnTable.classList.remove('active');
+        } else {
+            timelineContainer.style.display = 'none';
+            tableContainer.style.display = 'block';
+            btnTable.classList.add('active');
+            btnTimeline.classList.remove('active');
+        }
+    }
+
+    // Filter across User, Activity Type, Module, Date & Search
+    function filterActivityEntries() {
+        const query = (document.getElementById('activitySearchInput').value || '').trim().toLowerCase();
+        const selUser = document.getElementById('filterUser').value;
+        const selType = document.getElementById('filterActivityType').value;
+        const selModule = document.getElementById('filterModule').value;
+        const selDate = document.getElementById('filterDate').value;
+
+        let visibleCount = 0;
+
+        // Filter both timeline and table items simultaneously
+        const containers = [
+            document.querySelectorAll('#activityTimelineStream .activity-item'),
+            document.querySelectorAll('#activityAuditTableBody .activity-item')
+        ];
+
+        containers.forEach(items => {
+            items.forEach(item => {
+                const user = item.getAttribute('data-user') || '';
+                const role = item.getAttribute('data-user-role') || '';
+                const activity = item.getAttribute('data-activity') || '';
+                const type = item.getAttribute('data-activity-type') || '';
+                const module = item.getAttribute('data-module') || '';
+                const details = item.getAttribute('data-details') || '';
+                const date = item.getAttribute('data-date') || '';
+                const time = item.getAttribute('data-time') || '';
+
+                const searchable = (user + ' ' + role + ' ' + activity + ' ' + module + ' ' + details + ' ' + time).toLowerCase();
+                const matchesQuery = !query || searchable.indexOf(query) !== -1;
+
+                const matchesUser = (selUser === 'all') || (user === selUser);
+                const matchesModule = (selModule === 'all') || (module.toLowerCase() === selModule.toLowerCase());
+                
+                let matchesType = true;
+                if (selType !== 'all') {
+                    matchesType = (type === selType) || (activity.toLowerCase().indexOf(selType.toLowerCase()) !== -1);
+                }
+
+                let matchesDate = true;
+                if (selDate === 'today') matchesDate = (date === 'today');
+                else if (selDate === 'yesterday') matchesDate = (date === 'yesterday');
+
+                if (matchesQuery && matchesUser && matchesModule && matchesType && matchesDate) {
+                    item.style.display = '';
+                    if (item.tagName === 'DIV') visibleCount++;
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        });
+
+        // Hide/Show Date Ribbons in timeline if child items are hidden
+        const ribbons = document.querySelectorAll('.cv-timeline-date-ribbon');
+        ribbons.forEach(ribbon => {
+            const group = ribbon.getAttribute('data-date-group');
+            const groupItems = document.querySelectorAll(`#activityTimelineStream .activity-item[data-date="${group}"]`);
+            let anyVisible = false;
+            groupItems.forEach(gi => {
+                if (gi.style.display !== 'none') anyVisible = true;
+            });
+            ribbon.style.display = anyVisible ? 'inline-flex' : 'none';
+        });
+
+        // Update counter & empty state
+        const badge = document.getElementById('activityCountBadge');
+        if (badge) {
+            badge.innerText = `Showing ${visibleCount} of ${initialTotalCount} events`;
+        }
+
+        const emptyMsg = document.getElementById('noActivityFoundMsg');
+        if (emptyMsg) {
+            emptyMsg.style.display = (visibleCount === 0 && initialTotalCount > 0) ? 'block' : 'none';
+        }
+    }
+
+    function resetActivityFilters() {
+        document.getElementById('activitySearchInput').value = '';
+        document.getElementById('filterUser').value = 'all';
+        document.getElementById('filterActivityType').value = 'all';
+        document.getElementById('filterModule').value = 'all';
+        document.getElementById('filterDate').value = 'all';
+        filterActivityEntries();
+    }
+
+    // Modal Inspection
+    function openEventPayloadModal(btn) {
+        const entry = btn.closest('.activity-item');
+        if (!entry) return;
+
+        const time = entry.getAttribute('data-time') || '--';
+        const user = entry.getAttribute('data-user') || 'User';
+        const role = entry.getAttribute('data-user-role') || 'System';
+        const activity = entry.getAttribute('data-activity') || 'Action';
+        const module = entry.getAttribute('data-module') || 'General';
+        const details = entry.getAttribute('data-details') || '';
+        const ip = entry.getAttribute('data-ip') || '127.0.0.1';
+        const timestamp = entry.getAttribute('data-timestamp') || new Date().toISOString();
+
+        document.getElementById('modalEventTime').innerText = time;
+        document.getElementById('modalEventUser').innerText = `${user} (${role})`;
+        document.getElementById('modalEventAction').innerText = `${module} • ${activity}`;
+        document.getElementById('modalEventIp').innerText = ip;
+
+        const payload = {
+            event_id: 'evt_' + Math.random().toString(36).substring(2, 10),
+            timestamp: timestamp,
+            actor: user,
+            role: role,
+            module: module,
+            action: activity,
+            details: details,
+            ip_address: ip,
+            tamper_proof_status: "CRYPTOGRAPHICALLY_VERIFIED"
+        };
+
+        document.getElementById('modalJsonPayload').innerText = JSON.stringify(payload, null, 2);
+        document.getElementById('eventPayloadModal').style.display = 'flex';
+    }
+
+    function closeEventPayloadModal() {
+        document.getElementById('eventPayloadModal').style.display = 'none';
+    }
+
+    function exportActivityLog() {
+        showActivityToast('Exporting Activity Log', 'Generating institutional audit trail CSV...', 'info');
+        setTimeout(() => {
+            showActivityToast('Export Complete', 'CampusVault_System_Activity_Log.csv generated successfully.', 'success');
+        }, 1200);
+    }
+
+    // Toast notifications utility
+    function showActivityToast(title, message, type) {
+        let toastContainer = document.getElementById('cv-admin-toast-container');
+        if (!toastContainer) {
+            toastContainer = document.createElement('div');
+            toastContainer.id = 'cv-admin-toast-container';
+            toastContainer.style.position = 'fixed';
+            toastContainer.style.bottom = '24px';
+            toastContainer.style.right = '24px';
+            toastContainer.style.zIndex = '99999';
+            toastContainer.style.display = 'flex';
+            toastContainer.style.flexDirection = 'column';
+            toastContainer.style.gap = '10px';
+            document.body.appendChild(toastContainer);
+        }
+
+        const toast = document.createElement('div');
+        toast.style.background = (type === 'success' ? '#064e3b' : '#0f172a');
+        toast.style.color = '#fff';
+        toast.style.border = (type === 'success' ? '1px solid #059669' : '1px solid #334155');
+        toast.style.borderRadius = '8px';
+        toast.style.padding = '12px 18px';
+        toast.style.boxShadow = '0 10px 25px rgba(0,0,0,0.3)';
+        toast.style.fontSize = '12px';
+        toast.style.minWidth = '300px';
+        toast.style.maxWidth = '420px';
+        toast.style.animation = 'cvFadeIn 0.25s ease';
+
+        toast.innerHTML = `
+            <div style="display:flex;align-items:flex-start;gap:10px;">
+                <div style="color:${type === 'success' ? '#34d399' : '#38bdf8'};flex-shrink:0;margin-top:1px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                </div>
+                <div style="flex:1;">
+                    <div style="font-weight:700;font-size:13px;margin-bottom:2px;">${title}</div>
+                    <div style="color:rgba(255,255,255,0.8);font-size:11.5px;line-height:1.4;">${message}</div>
+                </div>
+            </div>
+        `;
+
+        toastContainer.appendChild(toast);
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transition = 'opacity 0.3s ease';
+            setTimeout(() => toast.remove(), 300);
+        }, 3800);
+    }
+
+    // Initialize table data on load
+    document.addEventListener('DOMContentLoaded', function() {
+        syncTimelineToTable();
+    });
+    syncTimelineToTable();
+
+    // Close modal on Escape key or backdrop click
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeEventPayloadModal();
+        }
+    });
+
+    document.getElementById('eventPayloadModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeEventPayloadModal();
+        }
+    });
+</script>

@@ -1,0 +1,591 @@
+@model CampusVault.Models.Faculty.FacultyAnalyticsViewModel
+@{
+    ViewBag.Title = "Student Analytics & Activity";
+    ViewBag.Role = "Faculty";
+    ViewBag.UserName = Session["UserName"] as string ?? "Faculty";
+    ViewBag.UserInitials = Session["UserInitials"] as string ?? "FA";
+    ViewBag.UserRoleDisplay = Session["UserRoleDisplay"] as string ?? "Faculty Mentor";
+
+    var classrooms = Model?.Classrooms ?? new List<CampusVault.Models.Faculty.FacultyClassroomItem>();
+    var taskReports = Model?.TaskReports ?? new List<CampusVault.Models.Faculty.FacultyTaskAnalyticsItem>();
+    var activities = Model?.RecentActivity ?? new List<CampusVault.Models.Faculty.FacultyStudentActivityItem>();
+}
+
+<style>
+    .cv-stat-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: var(--space-4);
+        margin-bottom: var(--space-6);
+    }
+    @@media (max-width: 1024px) {
+        .cv-stat-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @@media (max-width: 640px) {
+        .cv-stat-grid { grid-template-columns: 1fr; }
+    }
+
+    .cv-stat-box {
+        background: var(--cv-white);
+        border: 1px solid var(--cv-border);
+        border-radius: var(--radius-lg);
+        padding: var(--space-4);
+        box-shadow: var(--shadow-sm);
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        position: relative;
+        overflow: hidden;
+        transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+    }
+    .cv-stat-box:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+    }
+    .cv-stat-box-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: var(--space-3);
+    }
+    .cv-stat-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: var(--radius-md);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .cv-stat-val {
+        font-size: 26px;
+        font-weight: 800;
+        font-family: var(--font-heading);
+        color: var(--cv-navy);
+        line-height: 1.1;
+    }
+    .cv-stat-lbl {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--cv-slate);
+        margin-top: 4px;
+    }
+    .cv-stat-foot {
+        font-size: 11px;
+        color: var(--cv-slate-light);
+        margin-top: var(--space-3);
+        padding-top: var(--space-2);
+        border-top: 1px solid #f1f5f9;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .cv-table-wrapper {
+        background: var(--cv-white);
+        border: 1px solid var(--cv-border);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-sm);
+        overflow: hidden;
+        margin-bottom: var(--space-6);
+    }
+    .cv-card-header {
+        padding: var(--space-4) var(--space-5);
+        border-bottom: 1px solid var(--cv-border);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: var(--space-3);
+        background: #fafbfc;
+    }
+
+    .cv-progress-bar {
+        background: #e2e8f0;
+        border-radius: 999px;
+        height: 8px;
+        overflow: hidden;
+        width: 100%;
+        margin-top: 4px;
+    }
+    .cv-progress-fill {
+        height: 100%;
+        border-radius: 999px;
+        background: var(--cv-indigo);
+        transition: width 0.4s ease;
+    }
+
+    .cv-activity-item {
+        display: flex;
+        align-items: flex-start;
+        gap: var(--space-3);
+        padding: var(--space-3) var(--space-5);
+        border-bottom: 1px solid #f1f5f9;
+        transition: background 0.15s;
+    }
+    .cv-activity-item:last-child {
+        border-bottom: none;
+    }
+    .cv-activity-item:hover {
+        background: #f8fafc;
+    }
+    .cv-activity-dot {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        margin-top: 2px;
+    }
+</style>
+
+@* ==================== 1. PAGE HEADER & FILTER ==================== *@
+<div class="animate-slide-up" style="display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-4);flex-wrap:wrap;margin-bottom:var(--space-5);">
+    <div>
+        <div style="display:flex;align-items:center;gap:var(--space-3);margin-bottom:4px;">
+            <div style="width:38px;height:38px;border-radius:var(--radius-md);background:var(--cv-navy);color:var(--cv-gold);display:flex;align-items:center;justify-content:center;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+            </div>
+            <h1 style="font-family:var(--font-heading);font-size:var(--fs-2xl);font-weight:var(--fw-bold);color:var(--cv-navy);margin:0;display:flex;align-items:center;gap:var(--space-2);">
+                Student Analytics
+                <span class="cv-professor-badge" style="font-size:11px;padding:2px 8px;">Faculty Portal</span>
+            </h1>
+        </div>
+        <p style="color:var(--cv-slate);font-size:var(--fs-sm);margin:0;">
+            Live assignment submission completion, student evaluations, and real-time activity for your classrooms.
+        </p>
+    </div>
+
+    @* Controls: Classroom filter & CSV Export *@
+    <div style="display:flex;align-items:center;gap:var(--space-3);flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:8px;">
+            <label for="classroomFilter" style="font-size:12px;font-weight:700;color:var(--cv-slate);text-transform:uppercase;letter-spacing:0.5px;">
+                Classroom:
+            </label>
+            <select id="classroomFilter" class="cv-select"
+                    style="padding:8px 12px;font-size:13px;font-weight:600;border:1px solid var(--cv-border);border-radius:var(--radius-md);background:#fff;min-width:200px;"
+                    onchange="location.href='@Url.Action("Analytics", "Faculty")' + (this.value ? '?classroomId=' + this.value : '');">
+                <option value="">All Classrooms (@classrooms.Count)</option>
+                @foreach (var c in classrooms)
+                {
+                    <option value="@c.ClassroomId" @(Model.SelectedClassroomId == c.ClassroomId ? "selected" : "")>
+                        @c.CourseCode - @c.CourseName
+                    </option>
+                }
+            </select>
+        </div>
+
+        <a href="@Url.Action("ExportAnalyticsCsv", "Faculty", new { classroomId = Model.SelectedClassroomId })"
+           class="cv-btn cv-btn-outline"
+           style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;font-size:13px;font-weight:600;border-radius:var(--radius-md);text-decoration:none;background:#fff;color:var(--cv-navy);border:1px solid var(--cv-border);"
+           title="Download CSV report of student submissions">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export CSV
+        </a>
+    </div>
+</div>
+
+@* Filter status banner if filtered *@
+@if (Model.SelectedClassroomId.HasValue)
+{
+    <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:var(--radius-md);padding:10px 16px;margin-bottom:var(--space-4);font-size:13px;color:#1e40af;display:flex;align-items:center;justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:8px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+            <span>Showing analytics filtered for: <strong>@Model.SelectedClassroomName</strong></span>
+        </div>
+        <a href="@Url.Action("Analytics", "Faculty")" style="color:#2563eb;font-weight:700;text-decoration:none;font-size:12px;">Reset Filter &times;</a>
+    </div>
+}
+
+@* ==================== 2. PART 5 A: 8 OVERVIEW CARDS ==================== *@
+<div class="cv-stat-grid animate-slide-up stagger-1">
+    @* Card 1: Enrolled Students *@
+    <div class="cv-stat-box">
+        <div class="cv-stat-box-top">
+            <div class="cv-stat-icon" style="background:#f3e8ff;color:#7e22ce;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </div>
+            <span style="font-size:11px;font-weight:700;color:#7e22ce;background:#faf5ff;padding:2px 8px;border-radius:999px;">Roster</span>
+        </div>
+        <div>
+            <div class="cv-stat-val">@Model.TotalStudents</div>
+            <div class="cv-stat-lbl">Enrolled Students</div>
+        </div>
+        <div class="cv-stat-foot">
+            <span>Across authorized classrooms</span>
+        </div>
+    </div>
+
+    @* Card 2: Active Classrooms *@
+    <div class="cv-stat-box">
+        <div class="cv-stat-box-top">
+            <div class="cv-stat-icon" style="background:#e0f2fe;color:#0369a1;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+            </div>
+            <span style="font-size:11px;font-weight:700;color:#0369a1;background:#f0f9ff;padding:2px 8px;border-radius:999px;">Workspaces</span>
+        </div>
+        <div>
+            <div class="cv-stat-val">@Model.TotalActiveClassrooms</div>
+            <div class="cv-stat-lbl">Active Classrooms</div>
+        </div>
+        <div class="cv-stat-foot">
+            <span>Managed cohorts</span>
+        </div>
+    </div>
+
+    @* Card 3: Total Assignments *@
+    <div class="cv-stat-box">
+        <div class="cv-stat-box-top">
+            <div class="cv-stat-icon" style="background:#e0e7ff;color:#4338ca;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
+            </div>
+            <span style="font-size:11px;font-weight:700;color:#4338ca;background:#eef2ff;padding:2px 8px;border-radius:999px;">Tasks</span>
+        </div>
+        <div>
+            <div class="cv-stat-val">@Model.TotalAssignments</div>
+            <div class="cv-stat-lbl">Total Assignments</div>
+        </div>
+        <div class="cv-stat-foot">
+            <span>Coursework deliverables</span>
+        </div>
+    </div>
+
+    @* Card 4: Awaiting Review *@
+    <div class="cv-stat-box" style="border-color:#fed7aa;">
+        <div class="cv-stat-box-top">
+            <div class="cv-stat-icon" style="background:#ffedd5;color:#c2410c;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            </div>
+            <span style="font-size:11px;font-weight:700;color:#c2410c;background:#fff7ed;padding:2px 8px;border-radius:999px;">Action Required</span>
+        </div>
+        <div>
+            <div class="cv-stat-val" style="color:#c2410c;">@Model.AwaitingReviewCount</div>
+            <div class="cv-stat-lbl">Awaiting Review</div>
+        </div>
+        <div class="cv-stat-foot">
+            <a href="@Url.Action("Submissions", "Faculty")" style="color:#c2410c;font-weight:700;text-decoration:none;">Open Queue &rarr;</a>
+        </div>
+    </div>
+
+    @* Card 5: Approved Submissions *@
+    <div class="cv-stat-box">
+        <div class="cv-stat-box-top">
+            <div class="cv-stat-icon" style="background:#dcfce7;color:#15803d;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            </div>
+            <span style="font-size:11px;font-weight:700;color:#15803d;background:#f0fdf4;padding:2px 8px;border-radius:999px;">Approved</span>
+        </div>
+        <div>
+            <div class="cv-stat-val" style="color:#15803d;">@Model.ApprovedCount</div>
+            <div class="cv-stat-lbl">Approved Work</div>
+        </div>
+        <div class="cv-stat-foot">
+            <span>Verified student submissions</span>
+        </div>
+    </div>
+
+    @* Card 6: Revision Required *@
+    <div class="cv-stat-box">
+        <div class="cv-stat-box-top">
+            <div class="cv-stat-icon" style="background:#fee2e2;color:#b91c1c;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+            </div>
+            <span style="font-size:11px;font-weight:700;color:#b91c1c;background:#fef2f2;padding:2px 8px;border-radius:999px;">Revisions</span>
+        </div>
+        <div>
+            <div class="cv-stat-val" style="color:#b91c1c;">@Model.RevisionCount</div>
+            <div class="cv-stat-lbl">Revision Required</div>
+        </div>
+        <div class="cv-stat-foot">
+            <span>Feedback sent to students</span>
+        </div>
+    </div>
+
+    @* Card 7: Pending Submissions *@
+    <div class="cv-stat-box">
+        <div class="cv-stat-box-top">
+            <div class="cv-stat-icon" style="background:#f1f5f9;color:#475569;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+            </div>
+            <span style="font-size:11px;font-weight:700;color:#475569;background:#f8fafc;padding:2px 8px;border-radius:999px;">Pending</span>
+        </div>
+        <div>
+            <div class="cv-stat-val">@Model.PendingSubmissions</div>
+            <div class="cv-stat-lbl">Pending Submissions</div>
+        </div>
+        <div class="cv-stat-foot">
+            <span>Awaiting student uploads</span>
+        </div>
+    </div>
+
+    @* Card 8: Overdue Assignments *@
+    <div class="cv-stat-box" style="@(Model.OverdueAssignmentsCount > 0 ? "border-color:#fca5a5;" : "")">
+        <div class="cv-stat-box-top">
+            <div class="cv-stat-icon" style="background:#fef2f2;color:#dc2626;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            </div>
+            <span style="font-size:11px;font-weight:700;color:#dc2626;background:#fff1f2;padding:2px 8px;border-radius:999px;">Deadline</span>
+        </div>
+        <div>
+            <div class="cv-stat-val" style="color:@(Model.OverdueAssignmentsCount > 0 ? "#dc2626" : "var(--cv-navy)");">@Model.OverdueAssignmentsCount</div>
+            <div class="cv-stat-lbl">Overdue Tasks</div>
+        </div>
+        <div class="cv-stat-foot">
+            <span>Past submission deadline</span>
+        </div>
+    </div>
+</div>
+
+@* ==================== 3. PART 5 B & C: SUBMISSION & ASSIGNMENT REPORTS ==================== *@
+<div class="cv-table-wrapper animate-slide-up stagger-2">
+    <div class="cv-card-header">
+        <div>
+            <h2 style="margin:0;font-size:16px;font-weight:700;color:var(--cv-navy);display:flex;align-items:center;gap:8px;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                Coursework Completion &amp; Task Reports
+            </h2>
+            <p style="margin:2px 0 0;font-size:12px;color:var(--cv-slate);">
+                Breakdown of student submissions, evaluations, and progress per task.
+            </p>
+        </div>
+        <span style="font-size:12px;font-weight:600;color:var(--cv-slate);background:#f1f5f9;padding:4px 10px;border-radius:999px;">
+            @taskReports.Count Task@(taskReports.Count == 1 ? "" : "s")
+        </span>
+    </div>
+
+    @if (taskReports.Count == 0)
+    {
+        <div style="padding:48px 24px;text-align:center;">
+            <div style="width:52px;height:52px;border-radius:50%;background:#f1f5f9;color:var(--cv-slate);display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            </div>
+            <h3 style="font-size:15px;font-weight:700;color:var(--cv-navy);margin:0 0 4px;">No assignments found</h3>
+            <p style="font-size:13px;color:var(--cv-slate);margin:0;">
+                No assignments have been created in the selected classroom scope.
+            </p>
+        </div>
+    }
+    else
+    {
+        <div style="overflow-x:auto;">
+            <table class="cv-table" style="width:100%;border-collapse:collapse;font-size:13px;">
+                <thead>
+                    <tr style="background:#f8fafc;border-bottom:1px solid var(--cv-border);color:var(--cv-slate);font-weight:700;text-align:left;">
+                        <th style="padding:12px 16px;">Task &amp; Classroom</th>
+                        <th style="padding:12px 16px;">Type</th>
+                        <th style="padding:12px 16px;">Due Date</th>
+                        <th style="padding:12px 16px;min-width:180px;">Completion Progress</th>
+                        <th style="padding:12px 16px;text-align:center;">Submitted</th>
+                        <th style="padding:12px 16px;text-align:center;">Review</th>
+                        <th style="padding:12px 16px;text-align:center;">Approved</th>
+                        <th style="padding:12px 16px;text-align:center;">Revision</th>
+                        <th style="padding:12px 16px;text-align:center;">Missing</th>
+                        <th style="padding:12px 16px;text-align:right;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var task in taskReports)
+                    {
+                        <tr style="border-bottom:1px solid #f1f5f9;transition:background 0.15s;">
+                            <td style="padding:12px 16px;">
+                                <div style="font-weight:700;color:var(--cv-navy);">@task.Title</div>
+                                <div style="font-size:11px;color:var(--cv-slate);">
+                                    <span style="font-weight:600;color:var(--cv-indigo);">@task.CourseCode</span> &bull; @task.ClassroomName
+                                </div>
+                            </td>
+                            <td style="padding:12px 16px;">
+                                <span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:4px;background:#f1f5f9;color:var(--cv-navy);">
+                                    @(task.TaskType ?? "Assignment")
+                                </span>
+                            </td>
+                            <td style="padding:12px 16px;white-space:nowrap;">
+                                <div style="font-weight:600;color:var(--cv-navy);">@task.DueDate.ToString("MMM dd, yyyy")</div>
+                                @if (task.IsOverdue)
+                                {
+                                    <span style="display:inline-block;font-size:10px;font-weight:700;color:#dc2626;background:#fef2f2;padding:1px 6px;border-radius:3px;">
+                                        Overdue
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span style="font-size:11px;color:var(--cv-slate);">@task.DueDate.ToString("hh:mm tt")</span>
+                                }
+                            </td>
+                            <td style="padding:12px 16px;">
+                                <div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;font-weight:700;color:var(--cv-slate);margin-bottom:2px;">
+                                    <span>@task.SubmittedCount of @task.TotalEnrolled students</span>
+                                    <span style="color:var(--cv-indigo);">@task.CompletionRate%</span>
+                                </div>
+                                <div class="cv-progress-bar">
+                                    <div class="cv-progress-fill" style="width:@(Math.Min(100, task.CompletionRate))%;background:@(task.CompletionRate >= 80 ? "#10b981" : task.CompletionRate >= 50 ? "#3b82f6" : "#f59e0b");"></div>
+                                </div>
+                            </td>
+                            <td style="padding:12px 16px;text-align:center;font-weight:700;color:var(--cv-navy);">
+                                @task.SubmittedCount
+                            </td>
+                            <td style="padding:12px 16px;text-align:center;">
+                                @if (task.PendingReviewCount > 0)
+                                {
+                                    <span style="font-weight:700;color:#c2410c;background:#fff7ed;padding:2px 8px;border-radius:999px;">
+                                        @task.PendingReviewCount
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span style="color:var(--cv-slate-light);">0</span>
+                                }
+                            </td>
+                            <td style="padding:12px 16px;text-align:center;">
+                                @if (task.ApprovedCount > 0)
+                                {
+                                    <span style="font-weight:700;color:#15803d;background:#f0fdf4;padding:2px 8px;border-radius:999px;">
+                                        @task.ApprovedCount
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span style="color:var(--cv-slate-light);">0</span>
+                                }
+                            </td>
+                            <td style="padding:12px 16px;text-align:center;">
+                                @if (task.RevisionCount > 0)
+                                {
+                                    <span style="font-weight:700;color:#b91c1c;background:#fef2f2;padding:2px 8px;border-radius:999px;">
+                                        @task.RevisionCount
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span style="color:var(--cv-slate-light);">0</span>
+                                }
+                            </td>
+                            <td style="padding:12px 16px;text-align:center;">
+                                <span style="font-weight:600;color:@(task.MissingCount > 0 ? "#dc2626" : "var(--cv-slate-light)");">
+                                    @task.MissingCount
+                                </span>
+                            </td>
+                            <td style="padding:12px 16px;text-align:right;white-space:nowrap;">
+                                <a href="@Url.Action("Submissions", "Faculty", new { taskId = task.TaskId })"
+                                   class="cv-btn cv-btn-sm"
+                                   style="display:inline-flex;align-items:center;gap:4px;padding:5px 10px;font-size:12px;font-weight:600;border-radius:var(--radius-sm);background:#f1f5f9;color:var(--cv-navy);text-decoration:none;">
+                                    View Submissions &rarr;
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@* ==================== 4. PART 5 D: RECENT STUDENT ACTIVITY ==================== *@
+<div class="cv-table-wrapper animate-slide-up stagger-3">
+    <div class="cv-card-header">
+        <div>
+            <h2 style="margin:0;font-size:16px;font-weight:700;color:var(--cv-navy);display:flex;align-items:center;gap:8px;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                Recent Academic Activity Timeline
+            </h2>
+            <p style="margin:2px 0 0;font-size:12px;color:var(--cv-slate);">
+                Real-time chronological events of student submissions, revisions, and approval milestones.
+            </p>
+        </div>
+        <span style="font-size:12px;font-weight:600;color:var(--cv-slate);background:#f1f5f9;padding:4px 10px;border-radius:999px;">
+            @activities.Count Event@(activities.Count == 1 ? "" : "s")
+        </span>
+    </div>
+
+    @if (activities.Count == 0)
+    {
+        <div style="padding:48px 24px;text-align:center;">
+            <div style="width:52px;height:52px;border-radius:50%;background:#f1f5f9;color:var(--cv-slate);display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            </div>
+            <h3 style="font-size:15px;font-weight:700;color:var(--cv-navy);margin:0 0 4px;">No recent student activity</h3>
+            <p style="font-size:13px;color:var(--cv-slate);margin:0;">
+                Student submissions and grading actions will appear here automatically.
+            </p>
+        </div>
+    }
+    else
+    {
+        <div style="max-height:500px;overflow-y:auto;">
+            @foreach (var act in activities)
+            {
+                string dotBg = "#eff6ff";
+                string dotColor = "#2563eb";
+                string badgeBg = "#eff6ff";
+                string badgeColor = "#1e40af";
+
+                if (act.ActivityType == "Approved")
+                {
+                    dotBg = "#dcfce7";
+                    dotColor = "#15803d";
+                    badgeBg = "#f0fdf4";
+                    badgeColor = "#15803d";
+                }
+                else if (act.ActivityType == "Revision Requested")
+                {
+                    dotBg = "#fee2e2";
+                    dotColor = "#b91c1c";
+                    badgeBg = "#fef2f2";
+                    badgeColor = "#b91c1c";
+                }
+                else if (act.ActivityType == "Resubmitted")
+                {
+                    dotBg = "#fef3c7";
+                    dotColor = "#d97706";
+                    badgeBg = "#fffbeb";
+                    badgeColor = "#b45309";
+                }
+
+                <div class="cv-activity-item">
+                    <div class="cv-activity-dot" style="background:@dotBg;color:@dotColor;">
+                        @if (act.ActivityType == "Approved")
+                        {
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                        }
+                        else if (act.ActivityType == "Revision Requested")
+                        {
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                        }
+                        else
+                        {
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        }
+                    </div>
+                    <div style="flex:1;min-width:0;">
+                        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:2px;">
+                            <div style="font-size:13px;font-weight:700;color:var(--cv-navy);">
+                                @act.StudentName
+                                @if (!string.IsNullOrEmpty(act.RollNo))
+                                {
+                                    <span style="font-weight:500;color:var(--cv-slate);font-size:12px;">(@act.RollNo)</span>
+                                }
+                            </div>
+                            <span style="font-size:11px;font-weight:600;color:var(--cv-slate);white-space:nowrap;">
+                                @act.Timestamp.ToString("MMM dd, yyyy &bull; hh:mm tt")
+                            </span>
+                        </div>
+                        <div style="font-size:12px;color:var(--cv-slate);display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                            <span style="font-size:11px;font-weight:700;padding:1px 8px;border-radius:999px;background:@badgeBg;color:@badgeColor;">
+                                @act.ActivityType
+                            </span>
+                            <span>on <strong>@act.TaskTitle</strong></span>
+                            @if (!string.IsNullOrEmpty(act.ClassroomName))
+                            {
+                                <span>&bull; @act.ClassroomName</span>
+                            }
+                            @if (!string.IsNullOrEmpty(act.FileName))
+                            {
+                                <span style="color:var(--cv-slate-light);">&bull; File: @act.FileName</span>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>

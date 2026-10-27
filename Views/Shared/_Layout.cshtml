@@ -1,0 +1,105 @@
+@{
+    var role = Session["Role"] as string ?? ViewBag.Role as string ?? "Student";
+    var pageTitle = ViewBag.Title as string ?? "CampusVault";
+    var userName = Session["UserName"] as string ?? ViewBag.UserName as string ?? "Student";
+    var userInitials = Session["UserInitials"] as string ?? ViewBag.UserInitials as string ?? "ST";
+    var userRole = Session["UserRoleDisplay"] as string ?? ViewBag.UserRoleDisplay as string ?? "Enrolled Student";
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@(ViewBag.BrowserTitle as string ?? pageTitle) — CampusVault</title>
+    <meta name="description" content="CampusVault — University Academic Document Management & Learning Workspace" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="@Url.Content("~/Content/css/campusvault.css?v=" + DateTime.UtcNow.Ticks)" rel="stylesheet" />
+</head>
+<body>
+    <div class="cv-app" id="cvApp">
+        @* ==================== SIDEBAR ==================== *@
+        @Html.Partial("_Sidebar")
+
+        @* Mobile sidebar overlay *@
+        <div class="cv-sidebar-overlay" id="sidebarOverlay"></div>
+
+        @* ==================== APP BODY ==================== *@
+        <div class="cv-app-body">
+            @* ==================== NAVBAR ==================== *@
+            @Html.Partial("_Navbar")
+
+            @* ==================== MAIN CONTENT ==================== *@
+            <main class="cv-main">
+                <div class="cv-main-inner">
+                    @RenderBody()
+                </div>
+            </main>
+        </div>
+
+        @* ==================== SEARCH / COMMAND PALETTE OVERLAY ==================== *@
+        <div class="cv-search-overlay" id="searchOverlay" role="dialog" aria-modal="true" aria-label="CampusVault Global Search">
+            <div class="cv-search-modal" onclick="event.stopPropagation()">
+                <div class="cv-search-input-wrapper">
+                    <svg class="search-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <input type="text" class="cv-search-input" id="globalSearchInput" placeholder="Search classrooms, tasks, documents, materials..." autocomplete="off" spellcheck="false" />
+                    <button type="button" class="cv-search-clear-btn" id="searchClearBtn" title="Clear input" style="display:none;" onclick="CampusVault.clearSearch()">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                    <button type="button" class="cv-search-close-btn" onclick="CampusVault.closeSearch()" title="Close search (Esc)">
+                        <kbd>ESC</kbd>
+                    </button>
+                </div>
+
+                @* Category Filter Pills *@
+                <div class="cv-search-categories-bar" id="searchCategoryPills">
+                    <button type="button" class="cv-search-cat-pill active" data-category="all">
+                        <span>All</span>
+                    </button>
+                    <button type="button" class="cv-search-cat-pill" data-category="Classroom">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                        <span>Classrooms</span>
+                    </button>
+                    <button type="button" class="cv-search-cat-pill" data-category="Task">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
+                        <span>Tasks</span>
+                    </button>
+                    <button type="button" class="cv-search-cat-pill" data-category="Document">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        <span>Documents</span>
+                    </button>
+                    <button type="button" class="cv-search-cat-pill" data-category="Material">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+                        <span>Materials</span>
+                    </button>
+                </div>
+
+                @* Search Results / Recent Searches Container *@
+                <div class="cv-search-results" id="globalSearchResults"></div>
+
+                @* Command Palette Keyboard Footer *@
+                <div class="cv-search-footer">
+                    <div class="cv-search-footer-shortcuts">
+                        <span><kbd>&uarr;</kbd> <kbd>&darr;</kbd> navigate</span>
+                        <span><kbd>&crarr;</kbd> open</span>
+                        <span><kbd>ESC</kbd> close</span>
+                    </div>
+                    <div class="cv-search-footer-status" id="searchFooterStatus">
+                        Ready to search
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @* ==================== TOAST CONTAINER ==================== *@
+        <div class="cv-toast-container" id="toastContainer"></div>
+    </div>
+
+    <script src="@Url.Content("~/Content/js/campusvault.js")"></script>
+    @if (IsSectionDefined("Scripts"))
+    {
+        @RenderSection("Scripts", required: false)
+    }
+</body>
+</html>

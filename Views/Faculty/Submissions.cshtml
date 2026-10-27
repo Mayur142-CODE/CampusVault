@@ -1,0 +1,674 @@
+﻿@model List<CampusVault.Models.Faculty.FacultySubmissionItem>
+@{
+    ViewBag.Title = "Submissions";
+    ViewBag.Role = "Faculty";
+    ViewBag.UserName = Session["UserName"] as string ?? "Prof. Patel";
+    ViewBag.UserInitials = Session["UserInitials"] as string ?? "PP";
+    ViewBag.UserRoleDisplay = Session["UserRoleDisplay"] as string ?? "Computer Engineering";
+
+    var allSubs      = Model ?? new List<CampusVault.Models.Faculty.FacultySubmissionItem>();
+    int totalSubs    = allSubs.Count;
+    int pendingSubs  = allSubs.Count(s => (s.Status ?? "").Equals("Under Review",       StringComparison.OrdinalIgnoreCase)
+                                       || (s.Status ?? "").Equals("Pending",            StringComparison.OrdinalIgnoreCase)
+                                       || (s.Status ?? "").Equals("PendingReview",      StringComparison.OrdinalIgnoreCase)
+                                       || (s.Status ?? "").Equals("Submitted",          StringComparison.OrdinalIgnoreCase));
+    int revisionSubs = allSubs.Count(s => (s.Status ?? "").IndexOf("Revision",          StringComparison.OrdinalIgnoreCase) >= 0
+                                       || (s.Status ?? "").IndexOf("Needs Revision",    StringComparison.OrdinalIgnoreCase) >= 0);
+    int resubmitted  = allSubs.Count(s => (s.Status ?? "").IndexOf("Resubmitted",       StringComparison.OrdinalIgnoreCase) >= 0);
+    int approved     = allSubs.Count(s => (s.Status ?? "").Equals("Approved",           StringComparison.OrdinalIgnoreCase)
+                                       || (s.Status ?? "").Equals("Graded",             StringComparison.OrdinalIgnoreCase));
+
+    int safeDenom    = totalSubs > 0 ? totalSubs : 1;
+    string pctPending  = ((pendingSubs  * 100.0 / safeDenom)).ToString("0.#") + "%";
+    string pctRevision = ((revisionSubs * 100.0 / safeDenom)).ToString("0.#") + "%";
+    string pctApproved = ((approved     * 100.0 / safeDenom)).ToString("0.#") + "%";
+    double barPending  = pendingSubs  * 100.0 / safeDenom;
+    double barRevision = revisionSubs * 100.0 / safeDenom;
+    double barApproved = approved     * 100.0 / safeDenom;
+
+    var classroomNames = allSubs.Select(s => s.CourseName).Where(x => !string.IsNullOrEmpty(x)).Distinct().OrderBy(x => x).ToList();
+    var taskNames      = allSubs.Select(s => s.TaskTitle).Where(x => !string.IsNullOrEmpty(x)).Distinct().OrderBy(x => x).ToList();
+}
+@* ==================== 1. PAGE HEADER ==================== *@
+<div class="cv-page-header animate-slide-up" style="display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-4);flex-wrap:wrap;margin-bottom:var(--space-5);">
+    <div>
+        <div style="display:flex;align-items:center;gap:var(--space-3);margin-bottom:4px;">
+            <div style="width:38px;height:38px;border-radius:var(--radius-md);background:var(--cv-navy-deep);color:var(--cv-gold);display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow-sm);">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px;flex-shrink:0;">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <line x1="16" y1="13" x2="8" y2="13"/>
+                    <line x1="16" y1="17" x2="8" y2="17"/>
+                    <polyline points="10 9 9 9 8 9"/>
+                </svg>
+            </div>
+            <div>
+                <h1 style="font-family:var(--font-heading);font-size:var(--fs-2xl);font-weight:var(--fw-bold);color:var(--cv-navy);letter-spacing:-0.015em;margin:0;display:flex;align-items:center;gap:var(--space-2);">
+                    Submissions
+                    <span class="cv-professor-badge" style="font-size:11px;padding:2px 8px;">Evaluation Queue</span>
+                </h1>
+            </div>
+        </div>
+        <p style="color:var(--cv-slate);font-size:var(--fs-sm);margin:0;">
+            Central repository of student submissions across all classrooms. Review, evaluate, request revisions, and issue grades.
+        </p>
+    </div>
+
+    <div class="cv-submissions-header-actions">
+        <div class="cv-live-indicator-pill">
+            <span class="cv-dot-pulse-amber"></span>
+            <span>@pendingSubs Submissions Require Review</span>
+        </div>
+        <button type="button" class="cv-btn cv-btn-secondary cv-btn-sm" onclick="exportSubmissionsCSV()" style="font-size:11px;gap:5px;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;flex-shrink:0;">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Export Sheet
+        </button>
+        <a href="@Url.Action("Tasks", "Faculty")" class="cv-btn cv-btn-secondary cv-btn-sm" style="font-size:11px;gap:5px;text-decoration:none;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;flex-shrink:0;">
+                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+                <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
+            </svg>
+            Manage Tasks
+        </a>
+    </div>
+</div>
+
+@* ==================== 2. SUMMARY STRIP (48 Total, 17 Under Review, 8 Revision Required, 23 Approved) ==================== *@
+<div class="cv-submissions-summary-grid animate-slide-up stagger-1">
+    
+    @* Card 1: Total *@
+    <div class="cv-sub-summary-card card-total active" id="cardSummaryTotal" onclick="filterByCardStatus('all')">
+        <div class="cv-sub-summary-top">
+            <span class="cv-sub-summary-title">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;color:#2563eb;flex-shrink:0;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                Total Submissions
+            </span>
+            <span class="cv-sub-summary-badge" style="background:#eff6ff;color:#1d4ed8;">100%</span>
+        </div>
+        <div>
+            <div class="cv-sub-summary-value" style="color:var(--cv-navy);">@totalSubs</div>
+            <div class="cv-sub-summary-sub">Across @classroomNames.Count active classroom@(classroomNames.Count == 1 ? "" : "s")</div>
+        </div>
+        <div class="cv-sub-summary-bar">
+            <div class="cv-sub-summary-bar-fill" style="width:100%;background:#2563eb;"></div>
+        </div>
+    </div>
+
+    @* Card 2: Under Review *@
+    <div class="cv-sub-summary-card card-pending" id="cardSummaryReview" onclick="filterByCardStatus('Under Review')">
+        <div class="cv-sub-summary-top">
+            <span class="cv-sub-summary-title" style="color:#b45309;font-weight:var(--fw-bold);">
+                <span class="cv-dot-pulse-amber"></span>
+                Under Review
+            </span>
+            <span class="cv-sub-summary-badge" style="background:#fef3c7;color:#b45309;font-weight:var(--fw-extrabold);border:1px solid #fde68a;">
+                ACTION REQUIRED
+            </span>
+        </div>
+        <div>
+            <div class="cv-sub-summary-value" style="color:#d97706;">@pendingSubs</div>
+            <div class="cv-sub-summary-sub" style="color:#92400e;font-weight:var(--fw-medium);">Submissions awaiting your evaluation</div>
+        </div>
+        <div class="cv-sub-summary-bar">
+            <div class="cv-sub-summary-bar-fill" style="width:@(barPending.ToString("0.#"))%;background:#d97706;"></div>
+        </div>
+    </div>
+
+    @* Card 3: Revision Required *@
+    <div class="cv-sub-summary-card card-revision" id="cardSummaryRevision" onclick="filterByCardStatus('Revision Required')">
+        <div class="cv-sub-summary-top">
+            <span class="cv-sub-summary-title">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;color:#9333ea;flex-shrink:0;"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                Revision Required
+            </span>
+            <span class="cv-sub-summary-badge" style="background:#faf5ff;color:#7e22ce;">@pctRevision</span>
+        </div>
+        <div>
+            <div class="cv-sub-summary-value" style="color:#9333ea;">@revisionSubs</div>
+            <div class="cv-sub-summary-sub">Returned to students for correction</div>
+        </div>
+        <div class="cv-sub-summary-bar">
+            <div class="cv-sub-summary-bar-fill" style="width:@(barRevision.ToString("0.#"))%;background:#9333ea;"></div>
+        </div>
+    </div>
+
+    @* Card 4: Approved *@
+    <div class="cv-sub-summary-card card-approved" id="cardSummaryApproved" onclick="filterByCardStatus('Approved')">
+        <div class="cv-sub-summary-top">
+            <span class="cv-sub-summary-title">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;color:#059669;flex-shrink:0;"><polyline points="20 6 9 17 4 12"/></svg>
+                Approved
+            </span>
+            <span class="cv-sub-summary-badge" style="background:#ecfdf5;color:#065f46;">@pctApproved</span>
+        </div>
+        <div>
+            <div class="cv-sub-summary-value" style="color:#059669;">@approved</div>
+            <div class="cv-sub-summary-sub">Graded &amp; digitally sealed into vault</div>
+        </div>
+        <div class="cv-sub-summary-bar">
+            <div class="cv-sub-summary-bar-fill" style="width:@(barApproved.ToString("0.#"))%;background:#059669;"></div>
+        </div>
+    </div>
+</div>
+
+@* ==================== 3. FILTERS TOOLBAR ==================== *@
+<div class="cv-submissions-filter-card animate-slide-up stagger-2">
+    <div class="cv-filter-grid">
+        
+        @* Filter: Student (Search) *@
+        <div class="cv-filter-item">
+            <label class="cv-filter-label" for="filterStudent">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;flex-shrink:0;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                Student
+            </label>
+            <div class="cv-filter-input-wrap">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;flex-shrink:0;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="text" id="filterStudent" class="cv-filter-input" placeholder="Search student name or roll no (e.g. 24CE014)..." oninput="applyAllFilters()" />
+            </div>
+        </div>
+
+        @* Filter: Classroom *@
+        <div class="cv-filter-item">
+            <label class="cv-filter-label" for="filterClassroom">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;flex-shrink:0;"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                Classroom
+            </label>
+            <select id="filterClassroom" class="cv-filter-select" onchange="onClassroomFilterChange()">
+                <option value="all">All Classrooms (@classroomNames.Count)</option>
+                @foreach (var cn in classroomNames)
+                {
+                    <option value="@cn">@cn</option>
+                }
+            </select>
+        </div>
+
+        @* Filter: Task *@
+        <div class="cv-filter-item">
+            <label class="cv-filter-label" for="filterTask">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;flex-shrink:0;"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
+                Task
+            </label>
+            <select id="filterTask" class="cv-filter-select" onchange="applyAllFilters()">
+                <option value="all">All Assigned Tasks</option>
+                @foreach (var tn in taskNames)
+                {
+                    <option value="@tn">@tn</option>
+                }
+            </select>
+        </div>
+
+        @* Filter: Status *@
+        <div class="cv-filter-item">
+            <label class="cv-filter-label" for="filterStatus">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;flex-shrink:0;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/></svg>
+                Status
+            </label>
+            <select id="filterStatus" class="cv-filter-select" onchange="applyAllFilters()">
+                <option value="all">All Statuses (@totalSubs)</option>
+                <option value="Under Review">Under Review / Pending</option>
+                <option value="Revision Required">Revision Required</option>
+                <option value="Resubmitted">Resubmitted</option>
+                <option value="Approved">Approved</option>
+                <option value="Late">Late Submissions</option>
+            </select>
+        </div>
+
+        @* Filter: Date *@
+        <div class="cv-filter-item">
+            <label class="cv-filter-label" for="filterDate">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;flex-shrink:0;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                Date
+            </label>
+            <select id="filterDate" class="cv-filter-select" onchange="applyAllFilters()">
+                <option value="all">All Dates</option>
+                <option value="today">Today (Sep 11)</option>
+                <option value="yesterday">Yesterday (Sep 10)</option>
+                <option value="last3days">Last 3 Days</option>
+                <option value="last7days">Last 7 Days</option>
+                <option value="august">August 2026</option>
+            </select>
+        </div>
+
+        @* Reset Button *@
+        <div class="cv-filter-actions">
+            <button type="button" class="cv-btn cv-btn-secondary cv-btn-sm" onclick="resetAllFilters()" title="Clear all filters" style="font-size:11px;padding:7px 14px;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;flex-shrink:0;">
+                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                    <path d="M3 3v5h5"/>
+                </svg>
+                Reset
+            </button>
+        </div>
+    </div>
+
+    @* Quick Filter Tabs Bar *@
+    <div class="cv-quick-filter-bar">
+        <div class="cv-quick-pills">
+            <span style="font-size:11px;font-weight:var(--fw-bold);color:var(--cv-slate-500);text-transform:uppercase;letter-spacing:0.04em;margin-right:2px;">
+                Quick View:
+            </span>
+            <button type="button" class="cv-quick-pill active" id="pillAll" onclick="filterByCardStatus('all')">
+                All (@totalSubs)
+            </button>
+            <button type="button" class="cv-quick-pill pill-urgent" id="pillReview" onclick="filterByCardStatus('Under Review')">
+                <span class="cv-dot-pulse-amber"></span>
+                Needs Review (@pendingSubs)
+            </button>
+            <button type="button" class="cv-quick-pill" id="pillResubmitted" onclick="filterByCardStatus('Resubmitted')">
+                Resubmitted (@resubmitted)
+            </button>
+            <button type="button" class="cv-quick-pill" id="pillRevision" onclick="filterByCardStatus('Revision Required')">
+                Revision Required (@revisionSubs)
+            </button>
+            <button type="button" class="cv-quick-pill" id="pillApproved" onclick="filterByCardStatus('Approved')">
+                Approved (@approved)
+            </button>
+            <button type="button" class="cv-quick-pill" id="pillLate" onclick="filterByCardStatus('Late')">
+                Late Submissions
+            </button>
+        </div>
+
+        <div style="font-size:11px;color:var(--cv-slate);">
+            Active Academic Year: <strong style="color:var(--cv-navy);">2026&ndash;2027</strong>
+        </div>
+    </div>
+</div>
+
+@* ==================== 4. SUBMISSIONS TABLE CARD ==================== *@
+<div class="cv-submissions-table-card animate-slide-up stagger-3">
+    
+    @* Table Topbar with Live Counts *@
+    <div class="cv-submissions-table-header">
+        <div style="display:flex;align-items:center;gap:var(--space-2);">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;color:var(--cv-navy);flex-shrink:0;">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+            </svg>
+            <span style="font-weight:var(--fw-bold);color:var(--cv-navy);">
+                Submission Queue:
+            </span>
+            <span id="subCountNotice">Showing <strong style="color:var(--cv-navy);" id="visibleRowCount">@totalSubs</strong> of <strong style="color:var(--cv-navy);">@totalSubs</strong> verified student submissions</span>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:var(--space-3);font-size:11px;">
+            <span style="display:flex;align-items:center;gap:5px;color:var(--cv-slate);">
+                <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#f59e0b;"></span>
+                Pending review rows are highlighted in amber
+            </span>
+        </div>
+    </div>
+
+    @* Responsive Table *@
+    <div style="overflow-x:auto;">
+        <table class="cv-submissions-table" id="submissionsMasterTable">
+            <thead>
+                <tr>
+                    <th style="min-width:220px;">Student</th>
+                    <th style="min-width:240px;">Task</th>
+                    <th style="min-width:90px;">Version</th>
+                    <th style="min-width:140px;">Submitted</th>
+                    <th style="min-width:150px;">Deadline</th>
+                    <th style="min-width:140px;">Status</th>
+                    <th style="min-width:140px;text-align:right;">Action</th>
+                </tr>
+            </thead>
+            <tbody id="subTableBody">
+@if (Model != null && Model.Count > 0)
+{
+    foreach (var sub in Model)
+    {
+        var initials = !string.IsNullOrWhiteSpace(sub.StudentName) && sub.StudentName.Length >= 2 ? sub.StudentName.Substring(0, 2).ToUpper() : "ST";
+        var isPending = (sub.Status ?? "Under Review").Equals("Under Review", System.StringComparison.OrdinalIgnoreCase) || (sub.Status ?? "").Equals("Pending", System.StringComparison.OrdinalIgnoreCase);
+
+        <tr class="sub-row @(isPending ? "row-pending-review is-pending" : "")" 
+            data-student="@sub.StudentName" 
+            data-classroom="@sub.CourseName" 
+            data-task="@sub.TaskTitle" 
+            data-status="@sub.Status" 
+            data-date="@sub.SubmittedAt.ToString("yyyy-MM-dd")" 
+            data-punctuality="On Time">
+            <td data-label="Student">
+                <div class="cv-sub-student-cell">
+                    <div class="cv-sub-avatar" style="background: linear-gradient(135deg, #1e3a8a, #3b82f6);">
+                        @initials
+                    </div>
+                    <div>
+                        <div class="cv-sub-student-name">@sub.StudentName</div>
+                        <div class="cv-sub-student-roll">
+                            <span>Enrolled Student</span>
+                            <span>&bull;</span>
+                            <span>@sub.CourseCode</span>
+                        </div>
+                    </div>
+                </div>
+            </td>
+            <td data-label="Task">
+                <div class="cv-sub-task-title">@sub.TaskTitle</div>
+                <div class="cv-sub-task-meta">
+                    <span class="cv-classroom-pill" style="background:var(--cv-indigo-pale);color:var(--cv-indigo);">@sub.CourseName</span>
+                    <span>&bull;</span>
+                    <span>@(string.IsNullOrWhiteSpace(sub.FileName) ? "SubmissionDocument.pdf" : sub.FileName) (@(string.IsNullOrWhiteSpace(sub.FileSize) ? "1.5 MB" : sub.FileSize))</span>
+                </div>
+            </td>
+            <td data-label="Version">
+                <span class="cv-sub-version-pill v-v1" title="Initial Submission">v1</span>
+            </td>
+            <td data-label="Submitted">
+                <div class="cv-sub-time-rel">@sub.SubmittedAt.ToString("MMM dd, yyyy")</div>
+                <div class="cv-sub-time-exact">@sub.SubmittedAt.ToString("hh:mm tt")</div>
+            </td>
+            <td data-label="Deadline">
+                <div class="cv-sub-deadline-date">Regular Deadline</div>
+                <span class="cv-punctuality-chip on-time">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="width:10px;height:10px;flex-shrink:0;"><polyline points="20 6 9 17 4 12"/></svg>
+                    On Time
+                </span>
+            </td>
+            <td data-label="Status">
+                <span class="cv-status-badge @(isPending ? "status-under-review" : "status-approved")" title="Status">
+                    <span class="cv-dot-pulse-amber"></span>
+                    @sub.Status
+                </span>
+            </td>
+            <td data-label="Action" style="text-align:right;">
+                <a href="@Url.Action("ReviewSubmission", "Faculty", new { id = sub.SubmissionId })" class="cv-btn cv-btn-primary cv-btn-sm" style="font-size:12px;padding:6px 12px;text-decoration:none;display:inline-block;">
+                    Review
+                </a>
+            </td>
+        </tr>
+    }
+}
+else
+{
+    <tr>
+        <td colspan="7" style="text-align:center;padding:36px;color:var(--cv-slate);">
+            No student submissions currently in queue.
+        </td>
+    </tr>
+}
+            </tbody>
+        </table>
+    </div>
+
+    @* Empty State (Hidden unless no rows match filter) *@
+    <div id="emptySubmissionsState" class="cv-sub-empty-state" style="display:none;">
+        <div class="cv-sub-empty-icon">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:26px;height:26px;flex-shrink:0;">
+                <circle cx="11" cy="11" r="8"/>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+        </div>
+        <h3 style="font-size:var(--fs-base);font-weight:var(--fw-bold);color:var(--cv-navy);margin-bottom:4px;">
+            No Submissions Found
+        </h3>
+        <p style="font-size:var(--fs-xs);color:var(--cv-slate);max-width:360px;margin:0 auto var(--space-4);">
+            No student submissions match your current filter criteria. Try selecting another classroom, task, or clearing your search term.
+        </p>
+        <button type="button" class="cv-btn cv-btn-secondary cv-btn-sm" onclick="resetAllFilters()">
+            Clear All Filters
+        </button>
+    </div>
+
+    @* Table Pagination / Status Footer *@
+    <div style="padding:var(--space-3) var(--space-5);background:var(--cv-slate-50);border-top:1px solid var(--cv-border);display:flex;align-items:center;justify-content:space-between;font-size:var(--fs-xs);color:var(--cv-slate);flex-wrap:wrap;gap:var(--space-2);">
+        <div>
+            Total queue size: <strong style="color:var(--cv-navy);">@totalSubs submission@(totalSubs == 1 ? "" : "s")</strong> across your active classrooms.
+        </div>
+        <div style="display:flex;align-items:center;gap:var(--space-2);">
+            <button type="button" class="cv-btn cv-btn-secondary cv-btn-xs" disabled style="opacity:0.6;font-size:11px;">
+                &larr; Previous
+            </button>
+            <span style="font-size:11px;font-weight:600;padding:2px 8px;background:var(--cv-navy);color:var(--cv-white);border-radius:var(--radius-sm);">1</span>
+            <span style="font-size:11px;padding:2px 8px;color:var(--cv-slate);">2</span>
+            <span style="font-size:11px;padding:2px 8px;color:var(--cv-slate);">3</span>
+            <button type="button" class="cv-btn cv-btn-secondary cv-btn-xs" style="font-size:11px;">
+                Next &rarr;
+            </button>
+        </div>
+    </div>
+</div>
+
+@* ==================== 5. JAVASCRIPT LOGIC ==================== *@
+<script>
+    // Classroom-to-Tasks mapping for dynamic filtering
+    var classroomTaskMap = {
+        "all": [
+            { val: "all", label: "All Assigned Tasks" },
+            { val: "Linked List Implementation", label: "Linked List Implementation" },
+            { val: "DBMS Practical 3", label: "DBMS Practical 3: Complex SQL" },
+            { val: "CSS Grid & Responsive Layouts", label: "CSS Grid & Responsive Layouts" },
+            { val: "OOP Polymorphism & Abstract Classes", label: "OOP Polymorphism & Abstract Classes" },
+            { val: "Subnetting & CIDR Calculation", label: "Subnetting & CIDR Calculation" },
+            { val: "Binary Search Trees", label: "Binary Search Trees & AVL" },
+            { val: "Relational Schema Normalization", label: "Relational Schema Normalization" }
+        ],
+        "Data Structures": [
+            { val: "all", label: "All Data Structures Tasks" },
+            { val: "Linked List Implementation", label: "Linked List Implementation" },
+            { val: "Binary Search Trees", label: "Binary Search Trees & AVL" }
+        ],
+        "DBMS": [
+            { val: "all", label: "All DBMS Tasks" },
+            { val: "DBMS Practical 3", label: "DBMS Practical 3: Complex SQL" },
+            { val: "Relational Schema Normalization", label: "Relational Schema Normalization" }
+        ],
+        "Web Technology": [
+            { val: "all", label: "All Web Technology Tasks" },
+            { val: "CSS Grid & Responsive Layouts", label: "CSS Grid & Responsive Layouts" }
+        ],
+        "Object Oriented Programming": [
+            { val: "all", label: "All OOP Tasks" },
+            { val: "OOP Polymorphism & Abstract Classes", label: "OOP Polymorphism & Abstract Classes" }
+        ],
+        "Computer Networks": [
+            { val: "all", label: "All Computer Networks Tasks" },
+            { val: "Subnetting & CIDR Calculation", label: "Subnetting & CIDR Calculation" }
+        ]
+    };
+
+    function onClassroomFilterChange() {
+        var classroomSelect = document.getElementById("filterClassroom");
+        var taskSelect = document.getElementById("filterTask");
+        var selectedClass = classroomSelect.value;
+        
+        var tasks = classroomTaskMap[selectedClass] || classroomTaskMap["all"];
+        taskSelect.innerHTML = "";
+        tasks.forEach(function(item) {
+            var opt = document.createElement("option");
+            opt.value = item.val;
+            opt.textContent = item.label;
+            taskSelect.appendChild(opt);
+        });
+        
+        applyAllFilters();
+    }
+
+    function normalizeStatus(s) {
+        s = (s || '').toLowerCase().trim();
+        if (s === 'pendingreview' || s === 'pending' || s === 'under review' || s === 'submitted') return 'under review';
+        if (s === 'needs revision' || s === 'revision required' || s === 'revision requested') return 'revision required';
+        if (s === 'resubmitted') return 'resubmitted';
+        if (s === 'approved' || s === 'graded' || s === 'reviewed') return 'approved';
+        if (s === 'late') return 'late';
+        return s;
+    }
+
+    function filterByCardStatus(status) {
+        // Remove active from all summary cards
+        document.querySelectorAll('.cv-sub-summary-card').forEach(function(card) {
+            card.classList.remove('active');
+        });
+
+        // Remove active from all quick pills
+        document.querySelectorAll('.cv-quick-pill').forEach(function(pill) {
+            pill.classList.remove('active');
+        });
+
+        var statusSelect = document.getElementById("filterStatus");
+
+        if (status === 'all') {
+            statusSelect.value = "all";
+            document.getElementById("cardSummaryTotal").classList.add("active");
+            document.getElementById("pillAll").classList.add("active");
+        } else if (status === 'Under Review') {
+            statusSelect.value = "Under Review";
+            document.getElementById("cardSummaryReview").classList.add("active");
+            document.getElementById("pillReview").classList.add("active");
+        } else if (status === 'Revision Required') {
+            statusSelect.value = "Revision Required";
+            document.getElementById("cardSummaryRevision").classList.add("active");
+            document.getElementById("pillRevision").classList.add("active");
+        } else if (status === 'Approved') {
+            statusSelect.value = "Approved";
+            document.getElementById("cardSummaryApproved").classList.add("active");
+            document.getElementById("pillApproved").classList.add("active");
+        } else if (status === 'Resubmitted') {
+            statusSelect.value = "Resubmitted";
+            document.getElementById("pillResubmitted").classList.add("active");
+        } else if (status === 'Late') {
+            statusSelect.value = "Late";
+            document.getElementById("pillLate").classList.add("active");
+        }
+
+        applyAllFilters();
+    }
+
+    function applyAllFilters() {
+        var studentQuery = (document.getElementById("filterStudent").value || "").toLowerCase().trim();
+        var selectedClassroom = document.getElementById("filterClassroom").value;
+        var selectedTask = document.getElementById("filterTask").value;
+        var selectedStatus = document.getElementById("filterStatus").value;
+        var selectedDate = document.getElementById("filterDate").value;
+
+        var rows = document.querySelectorAll("#subTableBody .sub-row");
+        var visibleCount = 0;
+
+        rows.forEach(function(row) {
+            var rowStudent = (row.getAttribute("data-student") || "").toLowerCase();
+            var rowClassroom = row.getAttribute("data-classroom") || "";
+            var rowTask = row.getAttribute("data-task") || "";
+            var rowStatus = row.getAttribute("data-status") || "";
+            var rowDate = row.getAttribute("data-date") || "";
+            var rowPunctuality = row.getAttribute("data-punctuality") || "";
+
+            // 1. Student / Roll filter
+            var matchesStudent = true;
+            if (studentQuery.length > 0) {
+                matchesStudent = rowStudent.indexOf(studentQuery) > -1 || rowTask.toLowerCase().indexOf(studentQuery) > -1;
+            }
+
+            // 2. Classroom filter
+            var matchesClassroom = true;
+            if (selectedClassroom !== "all") {
+                matchesClassroom = (rowClassroom === selectedClassroom);
+            }
+
+            // 3. Task filter
+            var matchesTask = true;
+            if (selectedTask !== "all") {
+                matchesTask = (rowTask.indexOf(selectedTask) > -1);
+            }
+
+            // 4. Status filter
+            var matchesStatus = true;
+            if (selectedStatus !== "all") {
+                var normalizedRow    = normalizeStatus(rowStatus);
+                var normalizedFilter = normalizeStatus(selectedStatus);
+                if (selectedStatus === "Late") {
+                    matchesStatus = (rowPunctuality === "Late" || normalizedRow === 'late');
+                } else {
+                    matchesStatus = (normalizedRow === normalizedFilter);
+                }
+            }
+
+            // 5. Date filter
+            var matchesDate = true;
+            if (selectedDate === "today") {
+                matchesDate = (rowDate === "2026-09-11");
+            } else if (selectedDate === "yesterday") {
+                matchesDate = (rowDate === "2026-09-10");
+            } else if (selectedDate === "last3days") {
+                matchesDate = (rowDate >= "2026-09-08");
+            } else if (selectedDate === "last7days") {
+                matchesDate = (rowDate >= "2026-09-04");
+            } else if (selectedDate === "august") {
+                matchesDate = (rowDate.startsWith("2026-08"));
+            }
+
+            if (matchesStudent && matchesClassroom && matchesTask && matchesStatus && matchesDate) {
+                row.style.display = "";
+                visibleCount++;
+            } else {
+                row.style.display = "none";
+            }
+        });
+
+        // Update count notice
+        var countEl = document.getElementById("visibleRowCount");
+        if (countEl) {
+            countEl.textContent = visibleCount;
+        }
+
+        // Show/hide empty state
+        var emptyEl = document.getElementById("emptySubmissionsState");
+        var tableEl = document.getElementById("submissionsMasterTable");
+        if (emptyEl && tableEl) {
+            if (visibleCount === 0) {
+                emptyEl.style.display = "block";
+                tableEl.style.display = "none";
+            } else {
+                emptyEl.style.display = "none";
+                tableEl.style.display = "table";
+            }
+        }
+    }
+
+    function resetAllFilters() {
+        document.getElementById("filterStudent").value = "";
+        document.getElementById("filterClassroom").value = "all";
+        onClassroomFilterChange();
+        document.getElementById("filterStatus").value = "all";
+        document.getElementById("filterDate").value = "all";
+
+        // Reset active pill & card
+        document.querySelectorAll('.cv-sub-summary-card').forEach(function(card) {
+            card.classList.remove('active');
+        });
+        document.querySelectorAll('.cv-quick-pill').forEach(function(pill) {
+            pill.classList.remove('active');
+        });
+        document.getElementById("cardSummaryTotal").classList.add("active");
+        document.getElementById("pillAll").classList.add("active");
+
+        applyAllFilters();
+    }
+
+    function exportSubmissionsCSV() {
+        var csv = "Student Name,Roll No,Classroom,Task,Version,Submitted,Deadline,Punctuality,Status\n";
+        var rows = document.querySelectorAll("#subTableBody .sub-row");
+        rows.forEach(function(row) {
+            if (row.style.display !== "none") {
+                var studentInfo = row.getAttribute("data-student") || "";
+                var classroom = row.getAttribute("data-classroom") || "";
+                var task = row.getAttribute("data-task") || "";
+                var status = row.getAttribute("data-status") || "";
+                var punctuality = row.getAttribute("data-punctuality") || "";
+                var date = row.getAttribute("data-date") || "";
+                csv += '"' + studentInfo + '","' + classroom + '","' + task + '","v1","' + date + '","2026-09-11","' + punctuality + '","' + status + '"\n';
+            }
+        });
+        
+        var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        var link = document.createElement("a");
+        var url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", "CampusVault_Submissions_" + new Date().toISOString().slice(0,10) + ".csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+</script>

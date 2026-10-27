@@ -1,0 +1,846 @@
+@model List<CampusVault.Models.Admin.AdminUserItem>
+@{
+    ViewBag.Title = "User Management";
+    ViewBag.Role = "Admin";
+    ViewBag.UserName = "Admin User";
+    ViewBag.UserInitials = "AU";
+    ViewBag.UserRoleDisplay = "System Administrator";
+}
+
+@* ==================== 1. PAGE HEADER ==================== *@
+<div class="cv-page-header animate-slide-up" style="display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-4);flex-wrap:wrap;margin-bottom:var(--space-5);">
+    <div>
+        <div style="display:flex;align-items:center;gap:var(--space-3);margin-bottom:4px;">
+            <div style="width:38px;height:38px;border-radius:var(--radius-md);background:var(--cv-navy);color:var(--cv-gold);display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow-sm);">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px;flex-shrink:0;">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                    <circle cx="9" cy="7" r="4"/>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+            </div>
+            <div>
+                <h1 style="font-family:var(--font-heading);font-size:var(--fs-2xl);font-weight:var(--fw-bold);color:var(--cv-navy);letter-spacing:-0.015em;margin:0;display:flex;align-items:center;gap:var(--space-2);">
+                    User Management
+                    <span class="cv-professor-badge" style="font-size:11px;padding:2px 8px;background:#f3e8ff;color:#7e22ce;border:1px solid #e9d5ff;">Directory & IAM</span>
+                </h1>
+            </div>
+        </div>
+        <p style="color:var(--cv-slate);font-size:var(--fs-sm);margin:0;">
+            Manage student enrollments, faculty appointments, department assignments, and administrative access credentials.
+        </p>
+    </div>
+
+    @* Header Actions *@
+    <div style="display:flex;align-items:center;gap:var(--space-2);flex-wrap:wrap;">
+        <button type="button" class="cv-btn cv-btn-secondary" onclick="exportUserDirectory()" style="font-size:12px;gap:6px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;flex-shrink:0;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export Directory
+        </button>
+        <button type="button" class="cv-btn cv-btn-primary" onclick="openCreateUserModal()" style="font-size:12px;gap:6px;box-shadow:var(--shadow-sm);">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;flex-shrink:0;">
+                <line x1="12" y1="5" x2="12" y2="19"/>
+                <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Add New User
+        </button>
+    </div>
+</div>
+
+@* ==================== 2. DIRECTORY METRICS STRIP ==================== *@
+<div class="cv-features-grid animate-slide-up stagger-1" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(210px, 1fr));gap:var(--space-4);margin-bottom:var(--space-6);">
+    @* Stat 1: Total Users *@
+    <div class="cv-announce-stat-card">
+        <div class="cv-announce-stat-icon" style="background:#eff6ff;color:#2563eb;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </div>
+        <div>
+            <div style="font-size:11px;font-weight:var(--fw-bold);color:var(--cv-slate);text-transform:uppercase;letter-spacing:0.04em;">Total Accounts</div>
+            <div style="font-family:var(--font-heading);font-size:var(--fs-2xl);font-weight:var(--fw-bold);color:var(--cv-navy);" id="statTotalUsers">@(Model != null ? Model.Count : 0)</div>
+            <div style="font-size:11px;color:#16a34a;font-weight:var(--fw-medium);">All Roles Enrolled</div>
+        </div>
+    </div>
+
+    @* Stat 2: Students *@
+    <div class="cv-announce-stat-card">
+        <div class="cv-announce-stat-icon" style="background:#eff6ff;color:#1d4ed8;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+        </div>
+        <div>
+            <div style="font-size:11px;font-weight:var(--fw-bold);color:var(--cv-slate);text-transform:uppercase;letter-spacing:0.04em;">Enrolled Students</div>
+            <div style="font-family:var(--font-heading);font-size:var(--fs-2xl);font-weight:var(--fw-bold);color:var(--cv-navy);" id="statStudentCount">1,248</div>
+            <div style="font-size:11px;color:var(--cv-slate);font-weight:var(--fw-medium);">Across 42 Classrooms</div>
+        </div>
+    </div>
+
+    @* Stat 3: Faculty *@
+    <div class="cv-announce-stat-card">
+        <div class="cv-announce-stat-icon" style="background:#fef3c7;color:#d97706;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/></svg>
+        </div>
+        <div>
+            <div style="font-size:11px;font-weight:var(--fw-bold);color:var(--cv-slate);text-transform:uppercase;letter-spacing:0.04em;">Faculty Members</div>
+            <div style="font-family:var(--font-heading);font-size:var(--fs-2xl);font-weight:var(--fw-bold);color:var(--cv-navy);" id="statFacultyCount">86</div>
+            <div style="font-size:11px;color:#d97706;font-weight:var(--fw-medium);">98% Active Reviewers</div>
+        </div>
+    </div>
+
+    @* Stat 4: Administrators *@
+    <div class="cv-announce-stat-card">
+        <div class="cv-announce-stat-icon" style="background:#f3e8ff;color:#7e22ce;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        </div>
+        <div>
+            <div style="font-size:11px;font-weight:var(--fw-bold);color:var(--cv-slate);text-transform:uppercase;letter-spacing:0.04em;">Administrators</div>
+            <div style="font-family:var(--font-heading);font-size:var(--fs-2xl);font-weight:var(--fw-bold);color:var(--cv-navy);" id="statAdminCount">12</div>
+            <div style="font-size:11px;color:#7e22ce;font-weight:var(--fw-medium);">IAM & Security Leads</div>
+        </div>
+    </div>
+</div>
+
+@* ==================== 3. TABS: STUDENTS, FACULTY, ADMINISTRATORS ==================== *@
+<div class="cv-users-tabs-bar animate-slide-up stagger-2" role="tablist">
+    <button type="button" class="cv-users-tab-btn active" id="tabAll" onclick="switchUserTab('all')">
+        <span>All Users</span>
+        <span class="cv-users-tab-count" id="countTabAll">@(Model != null ? Model.Count : 0)</span>
+    </button>
+    <button type="button" class="cv-users-tab-btn" id="tabStudents" onclick="switchUserTab('Student')">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;color:#2563eb;flex-shrink:0;"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+        <span>Students</span>
+        <span class="cv-users-tab-count" id="countTabStudents">@(Model != null ? Model.Count(u => u.RoleName == "Student") : 0)</span>
+    </button>
+    <button type="button" class="cv-users-tab-btn" id="tabFaculty" onclick="switchUserTab('Faculty')">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;color:#d97706;flex-shrink:0;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/></svg>
+        <span>Faculty</span>
+        <span class="cv-users-tab-count" id="countTabFaculty">@(Model != null ? Model.Count(u => u.RoleName == "Faculty") : 0)</span>
+    </button>
+    <button type="button" class="cv-users-tab-btn" id="tabAdministrators" onclick="switchUserTab('Administrator')">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;color:#7e22ce;flex-shrink:0;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        <span>Administrators</span>
+        <span class="cv-users-tab-count" id="countTabAdmins">@(Model != null ? Model.Count(u => u.RoleName == "Admin" || u.RoleName == "Administrator") : 0)</span>
+    </button>
+</div>
+
+@* ==================== 4. SEARCH & THREE FILTERS (ROLE, DEPARTMENT, STATUS) ==================== *@
+<div class="cv-submissions-filter-card animate-slide-up stagger-2" style="margin-bottom:var(--space-5);">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);flex-wrap:wrap;">
+        
+        @* Search Input *@
+        <div style="position:relative;flex:1;min-width:260px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--cv-slate-400);pointer-events:none;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="userSearchInput" class="cv-filter-input" placeholder="Search by name, email, roll number, or faculty ID..." oninput="filterUsersTable()" style="padding-left:34px;width:100%;" />
+        </div>
+
+        @* Filter 1: Role *@
+        <div style="display:flex;align-items:center;gap:6px;">
+            <span style="font-size:11px;color:var(--cv-slate);font-weight:var(--fw-bold);text-transform:uppercase;">Role:</span>
+            <select id="userFilterRole" class="cv-filter-select" onchange="filterUsersTable()" style="min-width:140px;">
+                <option value="all">All Roles</option>
+                <option value="Student">Student</option>
+                <option value="Faculty">Faculty</option>
+                <option value="HOD">Head of Dept (HOD)</option>
+                <option value="Administrator">Administrator</option>
+                <option value="Examiner">External Examiner</option>
+            </select>
+        </div>
+
+        @* Filter 2: Status *@
+        <div style="display:flex;align-items:center;gap:6px;">
+            <span style="font-size:11px;color:var(--cv-slate);font-weight:var(--fw-bold);text-transform:uppercase;">Status:</span>
+            <select id="userFilterStatus" class="cv-filter-select" onchange="filterUsersTable()" style="min-width:130px;">
+                <option value="all">All Statuses</option>
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+                <option value="Pending">Pending</option>
+            </select>
+        </div>
+
+        @* Clear Button *@
+        <button type="button" class="cv-action-btn-sm" onclick="resetUserFilters()" style="padding:7px 12px;" title="Reset all filters">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+            Reset
+        </button>
+    </div>
+</div>
+
+@* ==================== 5. RESPONSIVE USERS TABLE ==================== *@
+<div class="cv-announce-table-card animate-slide-up stagger-3">
+    <div style="padding:var(--space-3) var(--space-4);background:#f8fafc;border-bottom:1px solid var(--cv-border);display:flex;align-items:center;justify-content:space-between;font-size:12px;color:var(--cv-slate);">
+        <div>
+            Showing <strong id="visibleUsersCount" style="color:var(--cv-navy);">@(Model != null ? Model.Count : 0)</strong> registered university accounts
+        </div>
+        <div style="font-size:11px;color:var(--cv-slate-500);">
+            Active Directory Sync: <strong>Enabled</strong>
+        </div>
+    </div>
+
+    <table class="cv-announce-table cv-admin-users-table" id="usersTable">
+        <thead>
+            <tr>
+                <th style="width:22%;">Name & Profile</th>
+                <th style="width:20%;">Email</th>
+                <th style="width:12%;">Role</th>
+                <th style="width:16%;">Department</th>
+                <th style="width:11%;">Status</th>
+                <th style="width:11%;">Joined</th>
+                <th style="width:18%;text-align:right;">Actions</th>
+            </tr>
+        </thead>
+        <tbody id="usersTableBody">
+            <!-- Dynamically populated and filtered via JS -->
+        </tbody>
+    </table>
+
+    @* Empty Search State *@
+    <div id="usersEmptyState" style="display:none;padding:var(--space-12) var(--space-4);text-align:center;">
+        <div style="width:48px;height:48px;border-radius:50%;background:#f1f5f9;color:var(--cv-slate);display:flex;align-items:center;justify-content:center;margin:0 auto var(--space-3);">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </div>
+        <h4 style="font-size:var(--fs-md);font-weight:var(--fw-bold);color:var(--cv-navy);margin:0 0 4px 0;">No matching users found</h4>
+        <p style="font-size:var(--fs-xs);color:var(--cv-slate);margin:0 auto;max-width:320px;">
+            We couldn't find any users matching your query or active filters. Try adjusting the filters.
+        </p>
+    </div>
+</div>
+
+@* ==================== 6. MODALS: VIEW, EDIT, AND ADD USER ==================== *@
+
+@* View User Modal *@
+<div class="cv-notice-modal-backdrop" id="viewUserModal" onclick="closeUserModal(event, 'viewUserModal')">
+    <div class="cv-notice-modal" onclick="event.stopPropagation()" style="max-width:560px;">
+        <div style="padding:var(--space-4) var(--space-6);background:var(--cv-navy);color:var(--cv-white);display:flex;align-items:center;justify-content:space-between;">
+            <div style="display:flex;align-items:center;gap:var(--space-2);">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--cv-gold);"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                <h3 style="font-size:var(--fs-sm);font-weight:var(--fw-bold);margin:0;color:var(--cv-white);">User Profile & Directory Details</h3>
+            </div>
+            <button type="button" onclick="closeModalDirect('viewUserModal')" style="background:none;border:none;color:rgba(255,255,255,0.7);cursor:pointer;padding:4px;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+        <div style="padding:var(--space-6);" id="viewUserModalBody">
+            <!-- Populated via JS -->
+        </div>
+        <div style="padding:var(--space-4) var(--space-6);background:#f8fafc;border-top:1px solid var(--cv-border);display:flex;align-items:center;justify-content:flex-end;gap:var(--space-2);">
+            <button type="button" class="cv-btn cv-btn-primary" onclick="closeModalDirect('viewUserModal')" style="font-size:12px;">Close</button>
+        </div>
+    </div>
+</div>
+
+@* Edit User Modal *@
+<div class="cv-notice-modal-backdrop" id="editUserModal" onclick="closeUserModal(event, 'editUserModal')">
+    <div class="cv-notice-modal" onclick="event.stopPropagation()" style="max-width:540px;">
+        <div style="padding:var(--space-4) var(--space-6);background:var(--cv-navy);color:var(--cv-white);display:flex;align-items:center;justify-content:space-between;">
+            <div style="display:flex;align-items:center;gap:var(--space-2);">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--cv-gold);"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                <h3 style="font-size:var(--fs-sm);font-weight:var(--fw-bold);margin:0;color:var(--cv-white);">Edit User Record</h3>
+            </div>
+            <button type="button" onclick="closeModalDirect('editUserModal')" style="background:none;border:none;color:rgba(255,255,255,0.7);cursor:pointer;padding:4px;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+        <form id="editUserForm" onsubmit="handleSaveEditUser(event)" style="margin:0;">
+            <input type="hidden" id="editUserId" />
+            <div style="padding:var(--space-6);">
+                <div style="margin-bottom:var(--space-4);">
+                    <label style="display:block;font-size:12px;font-weight:600;color:var(--cv-slate-700);margin-bottom:6px;">Full Name</label>
+                    <input type="text" id="editUserName" class="cv-filter-input" style="width:100%;" required />
+                </div>
+                <div style="margin-bottom:var(--space-4);">
+                    <label style="display:block;font-size:12px;font-weight:600;color:var(--cv-slate-700);margin-bottom:6px;">University Email</label>
+                    <input type="email" id="editUserEmail" class="cv-filter-input" style="width:100%;" required />
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-3);margin-bottom:var(--space-4);">
+                    <div>
+                        <label style="display:block;font-size:12px;font-weight:600;color:var(--cv-slate-700);margin-bottom:6px;">Role</label>
+                        <select id="editUserRole" class="cv-filter-select" style="width:100%;">
+                            <option value="Student">Student</option>
+                            <option value="Faculty">Faculty</option>
+                            <option value="HOD">Head of Dept (HOD)</option>
+                            <option value="Administrator">Administrator</option>
+                            <option value="Examiner">External Examiner</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="display:block;font-size:12px;font-weight:600;color:var(--cv-slate-700);margin-bottom:6px;">Department</label>
+                        <select id="editUserDept" class="cv-filter-select" style="width:100%;">
+                            <option value="Computer Engineering">Computer Engineering</option>
+                            <option value="Information Technology">Information Technology</option>
+                            <option value="Electronics & Communication">Electronics & Comm</option>
+                            <option value="Central Administration">Central Administration</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label style="display:block;font-size:12px;font-weight:600;color:var(--cv-slate-700);margin-bottom:6px;">Account Status</label>
+                    <select id="editUserStatus" class="cv-filter-select" style="width:100%;">
+                        <option value="Active">Active</option>
+                        <option value="Inactive">Inactive</option>
+                        <option value="Pending">Pending Verification</option>
+                    </select>
+                </div>
+            </div>
+            <div style="padding:var(--space-4) var(--space-6);background:#f8fafc;border-top:1px solid var(--cv-border);display:flex;align-items:center;justify-content:flex-end;gap:var(--space-2);">
+                <button type="button" class="cv-btn cv-btn-ghost" onclick="closeModalDirect('editUserModal')" style="font-size:12px;">Cancel</button>
+                <button type="submit" class="cv-btn cv-btn-primary" style="font-size:12px;">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@* Add User Modal *@
+<div class="cv-notice-modal-backdrop" id="createUserModal" onclick="closeUserModal(event, 'createUserModal')">
+    <div class="cv-notice-modal" onclick="event.stopPropagation()" style="max-width:540px;">
+        <div style="padding:var(--space-4) var(--space-6);background:var(--cv-navy);color:var(--cv-white);display:flex;align-items:center;justify-content:space-between;">
+            <div style="display:flex;align-items:center;gap:var(--space-2);">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--cv-gold);"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+                <h3 style="font-size:var(--fs-sm);font-weight:var(--fw-bold);margin:0;color:var(--cv-white);">Provision New University User</h3>
+            </div>
+            <button type="button" onclick="closeModalDirect('createUserModal')" style="background:none;border:none;color:rgba(255,255,255,0.7);cursor:pointer;padding:4px;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+        <form id="createUserForm" onsubmit="handleCreateUser(event)" style="margin:0;">
+            <div style="padding:var(--space-6);">
+                <div style="margin-bottom:var(--space-4);">
+                    <label style="display:block;font-size:12px;font-weight:600;color:var(--cv-slate-700);margin-bottom:6px;">Full Name *</label>
+                    <input type="text" id="newUserName" class="cv-filter-input" placeholder="e.g., Harshit Singhania" style="width:100%;" required />
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-3);margin-bottom:var(--space-4);">
+                    <div>
+                        <label style="display:block;font-size:12px;font-weight:600;color:var(--cv-slate-700);margin-bottom:6px;">University ID *</label>
+                        <input type="text" id="newUserId" class="cv-filter-input" placeholder="e.g., 24CE064" style="width:100%;" required />
+                    </div>
+                    <div>
+                        <label style="display:block;font-size:12px;font-weight:600;color:var(--cv-slate-700);margin-bottom:6px;">Role *</label>
+                        <select id="newUserRole" class="cv-filter-select" style="width:100%;">
+                            <option value="Student">Student</option>
+                            <option value="Faculty">Faculty</option>
+                            <option value="HOD">Head of Department</option>
+                            <option value="Administrator">Administrator</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="margin-bottom:var(--space-4);">
+                    <label style="display:block;font-size:12px;font-weight:600;color:var(--cv-slate-700);margin-bottom:6px;">University Email *</label>
+                    <input type="email" id="newUserEmail" class="cv-filter-input" placeholder="e.g., harshit.s@university.edu" style="width:100%;" required />
+                </div>
+                <div>
+                    <label style="display:block;font-size:12px;font-weight:600;color:var(--cv-slate-700);margin-bottom:6px;">Department *</label>
+                    <select id="newUserDept" class="cv-filter-select" style="width:100%;">
+                        <option value="Computer Engineering">Computer Engineering</option>
+                        <option value="Information Technology">Information Technology</option>
+                        <option value="Electronics & Communication">Electronics & Communication</option>
+                        <option value="Central Administration">Central Administration</option>
+                    </select>
+                </div>
+            </div>
+            <div style="padding:var(--space-4) var(--space-6);background:#f8fafc;border-top:1px solid var(--cv-border);display:flex;align-items:center;justify-content:flex-end;gap:var(--space-2);">
+                <button type="button" class="cv-btn cv-btn-ghost" onclick="closeModalDirect('createUserModal')" style="font-size:12px;">Cancel</button>
+                <button type="submit" class="cv-btn cv-btn-primary" style="font-size:12px;">Create Account</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@* ==================== JAVASCRIPT LOGIC ==================== *@
+@section Scripts {
+<script>
+    // In-memory Users Dataset
+    var usersDataset = [
+@if (Model != null) {
+    foreach (var u in Model) {
+        <text>{
+            id: @u.UserId,
+            name: "@Html.Raw(HttpUtility.JavaScriptStringEncode(u.FullName))",
+            code: "@Html.Raw(HttpUtility.JavaScriptStringEncode(u.Code ?? ""))",
+            email: "@Html.Raw(HttpUtility.JavaScriptStringEncode(u.Email ?? ""))",
+            role: "@Html.Raw(HttpUtility.JavaScriptStringEncode(u.RoleName ?? ""))",
+            roleCategory: "@(u.RoleName == "Student" ? "Student" : (u.RoleName == "Faculty" ? "Faculty" : "Administrator"))",
+            department: "@Html.Raw(HttpUtility.JavaScriptStringEncode(u.Department ?? "General"))",
+            status: "@(u.IsActive ? "Active" : "Inactive")",
+            joined: "@u.CreatedAt.ToString("MMM dd, yyyy")",
+            classroomsCount: @u.ClassroomsCount,
+            submissionsCount: @u.SubmissionsCount
+        },</text>
+    }
+}
+];
+
+    var currentActiveTab = "all";
+
+    document.addEventListener("DOMContentLoaded", function () {
+        renderUsersTable();
+        updateTabCounters();
+    });
+
+    // Tab Switching
+    function switchUserTab(category) {
+        currentActiveTab = category;
+        var tabButtons = ["tabAll", "tabStudents", "tabFaculty", "tabAdministrators"];
+        tabButtons.forEach(function (tid) {
+            var btn = document.getElementById(tid);
+            if (btn) btn.classList.remove("active");
+        });
+
+        var activeId = "tabAll";
+        if (category === "Student") activeId = "tabStudents";
+        else if (category === "Faculty") activeId = "tabFaculty";
+        else if (category === "Administrator") activeId = "tabAdministrators";
+
+        var activeBtn = document.getElementById(activeId);
+        if (activeBtn) activeBtn.classList.add("active");
+
+        filterUsersTable();
+    }
+
+    // Render Table Body
+    function renderUsersTable() {
+        var tbody = document.getElementById("usersTableBody");
+        if (!tbody) return;
+        tbody.innerHTML = "";
+
+        usersDataset.forEach(function (user) {
+            var tr = document.createElement("tr");
+            tr.id = "user-row-" + user.id;
+            tr.setAttribute("data-id", user.id);
+            tr.setAttribute("data-role", user.role);
+            tr.setAttribute("data-category", user.roleCategory);
+            tr.setAttribute("data-dept", user.department);
+            tr.setAttribute("data-status", user.status);
+
+            // Role Badge
+            var roleBadgeHtml = "";
+            if (user.role === "Student") {
+                roleBadgeHtml = '<span class="cv-role-badge student">Student</span>';
+            } else if (user.role === "Faculty") {
+                roleBadgeHtml = '<span class="cv-role-badge faculty">Faculty</span>';
+            } else if (user.role === "HOD") {
+                roleBadgeHtml = '<span class="cv-role-badge faculty" style="background:#fef08a;color:#854d0e;border-color:#fde047;">HOD</span>';
+            } else if (user.role === "Administrator") {
+                roleBadgeHtml = '<span class="cv-role-badge admin">Administrator</span>';
+            } else {
+                roleBadgeHtml = '<span class="cv-role-badge admin" style="background:#e0e7ff;color:#3730a3;border-color:#c7d2fe;">Examiner</span>';
+            }
+
+            // Status Pill
+            var statusPillHtml = "";
+            var toggleBtnHtml = "";
+            if (user.status === "Active") {
+                statusPillHtml = '<span class="cv-user-status-pill active"><span class="cv-user-status-dot"></span>Active</span>';
+                toggleBtnHtml = `<button type="button" class="cv-user-btn-toggle btn-deactivate" onclick="toggleUserStatus(${user.id})" title="Deactivate user">Deactivate</button>`;
+            } else if (user.status === "Inactive") {
+                statusPillHtml = '<span class="cv-user-status-pill inactive"><span class="cv-user-status-dot"></span>Inactive</span>';
+                toggleBtnHtml = `<button type="button" class="cv-user-btn-toggle btn-activate" onclick="toggleUserStatus(${user.id})" title="Activate user">Activate</button>`;
+            } else {
+                statusPillHtml = '<span class="cv-user-status-pill pending"><span class="cv-user-status-dot"></span>Pending</span>';
+                toggleBtnHtml = `<button type="button" class="cv-user-btn-toggle btn-activate" onclick="toggleUserStatus(${user.id})" title="Approve & Activate user">Activate</button>`;
+            }
+
+            // Initials
+            var initials = user.name.split(' ').map(function (n) { return n[0]; }).join('').substring(0, 2);
+
+            tr.innerHTML = `
+                <td data-label="Name">
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <div style="width:32px;height:32px;border-radius:50%;background:var(--cv-navy);color:var(--cv-gold);font-weight:var(--fw-bold);font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                            ${initials}
+                        </div>
+                        <div>
+                            <div style="font-weight:var(--fw-semibold);color:var(--cv-navy);font-size:var(--fs-sm);">
+                                ${escapeHtml(user.name)}
+                            </div>
+                            <div style="font-size:10px;color:var(--cv-slate);font-family:var(--font-mono, monospace);">
+                                ${escapeHtml(user.code)}
+                            </div>
+                        </div>
+                    </div>
+                </td>
+                <td data-label="Email">
+                    <div style="font-size:12px;color:var(--cv-slate-800);font-weight:var(--fw-medium);">
+                        ${escapeHtml(user.email)}
+                    </div>
+                </td>
+                <td data-label="Role">
+                    ${roleBadgeHtml}
+                </td>
+                <td data-label="Department">
+                    <span style="font-size:12px;color:var(--cv-slate-700);">
+                        ${escapeHtml(user.department)}
+                    </span>
+                </td>
+                <td data-label="Status">
+                    ${statusPillHtml}
+                </td>
+                <td data-label="Joined">
+                    <div style="font-size:11px;color:var(--cv-slate-700);">${escapeHtml(user.joined)}</div>
+                </td>
+                <td data-label="Actions" style="text-align:right;">
+                    <div style="display:inline-flex;align-items:center;gap:4px;">
+                        <button type="button" class="cv-action-btn-sm" onclick="viewUserProfile(${user.id})" title="View user details">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                            View
+                        </button>
+                        <button type="button" class="cv-action-btn-sm" onclick="openEditUserModal(${user.id})" title="Edit user">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                            Edit
+                        </button>
+                        ${toggleBtnHtml}
+                        <button type="button" class="cv-user-btn-toggle" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5;" onclick="deleteUserAccount(${user.id})" title="Permanently delete user">Delete</button>
+                    </div>
+                </td>
+            `;
+
+            tbody.appendChild(tr);
+        });
+
+        filterUsersTable();
+    }
+
+    // Filter Logic
+    // Filter Logic
+    function filterUsersTable() {
+        var query = document.getElementById("userSearchInput").value.toLowerCase().trim();
+        var roleFilter = document.getElementById("userFilterRole").value;
+        var statusFilter = document.getElementById("userFilterStatus").value;
+
+        var rows = document.querySelectorAll("#usersTableBody tr");
+        var visibleCount = 0;
+
+        rows.forEach(function (row) {
+            var role = row.getAttribute("data-role") || "";
+            var category = row.getAttribute("data-category") || "";
+            var status = row.getAttribute("data-status") || "";
+            var text = row.textContent.toLowerCase();
+
+            // Tab Filter
+            var matchesTab = (currentActiveTab === "all") || (category === currentActiveTab);
+
+            // Search Query
+            var matchesQuery = !query || text.indexOf(query) !== -1;
+
+            // Role Select
+            var matchesRole = (roleFilter === "all") || (role === roleFilter);
+
+            // Status Select
+            var matchesStatus = (statusFilter === "all") || (status === statusFilter);
+
+            if (matchesTab && matchesQuery && matchesRole && matchesStatus) {
+                row.style.display = "";
+                visibleCount++;
+            } else {
+                row.style.display = "none";
+            }
+        });
+
+        var emptyState = document.getElementById("usersEmptyState");
+        if (emptyState) {
+            emptyState.style.display = visibleCount === 0 ? "block" : "none";
+        }
+
+        var visibleEl = document.getElementById("visibleUsersCount");
+        if (visibleEl) {
+            visibleEl.textContent = visibleCount;
+        }
+    }
+
+    // Reset Filters
+    function resetUserFilters() {
+        document.getElementById("userSearchInput").value = "";
+        document.getElementById("userFilterRole").value = "all";
+        document.getElementById("userFilterStatus").value = "all";
+        switchUserTab("all");
+    }
+
+    // Toggle Activate / Deactivate
+    function toggleUserStatus(id) {
+        var user = usersDataset.find(function (u) { return u.id === id; });
+        if (!user) return;
+
+        if (user.status === "Active") {
+            user.status = "Inactive";
+            showUserToast(`${user.name} has been deactivated.`, "warning");
+        } else {
+            user.status = "Active";
+            showUserToast(`${user.name} has been activated.`, "success");
+        }
+
+        renderUsersTable();
+    }
+
+    // View User Profile
+    function viewUserProfile(id) {
+        var user = usersDataset.find(function (u) { return u.id === id; });
+        if (!user) return;
+
+        var initials = user.name.split(' ').map(function (n) { return n[0]; }).join('').substring(0, 2);
+
+        document.getElementById("viewUserModalBody").innerHTML = `
+            <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px;">
+                <div style="width:50px;height:50px;border-radius:50%;background:var(--cv-navy);color:var(--cv-gold);font-size:18px;font-weight:bold;display:flex;align-items:center;justify-content:center;">
+                    ${initials}
+                </div>
+                <div>
+                    <h3 style="font-size:17px;color:var(--cv-navy);margin:0 0 2px 0;">${escapeHtml(user.name)}</h3>
+                    <div style="font-size:12px;color:var(--cv-slate);">${escapeHtml(user.email)} &bull; ID: <strong>${escapeHtml(user.code)}</strong></div>
+                </div>
+            </div>
+
+            <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px;font-size:12px;display:flex;flex-direction:column;gap:10px;margin-bottom:14px;">
+                <div style="display:flex;justify-content:space-between;">
+                    <span style="color:var(--cv-slate);">Institutional Role:</span>
+                    <strong style="color:var(--cv-navy);">${escapeHtml(user.role)}</strong>
+                </div>
+                <div style="display:flex;justify-content:space-between;">
+                    <span style="color:var(--cv-slate);">Department:</span>
+                    <strong style="color:var(--cv-navy);">${escapeHtml(user.department)}</strong>
+                </div>
+                <div style="display:flex;justify-content:space-between;">
+                    <span style="color:var(--cv-slate);">Account Status:</span>
+                    <span style="font-weight:600;color:${user.status === 'Active' ? '#16a34a' : (user.status === 'Inactive' ? '#dc2626' : '#d97706')}">${user.status}</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;">
+                    <span style="color:var(--cv-slate);">Date Joined:</span>
+                    <span style="color:var(--cv-slate-700);">${escapeHtml(user.joined)}</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;">
+                    <span style="color:var(--cv-slate);">Enrolled Classrooms:</span>
+                    <strong style="color:var(--cv-navy);">${user.classroomsCount} Active Classrooms</strong>
+                </div>
+                <div style="display:flex;justify-content:space-between;">
+                    <span style="color:var(--cv-slate);">Vault Submissions:</span>
+                    <strong style="color:var(--cv-navy);">${user.submissionsCount} Records</strong>
+                </div>
+            </div>
+
+            <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 14px;font-size:11px;color:#1e40af;display:flex;align-items:center;gap:8px;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                <span>Active Directory & LDAP Single Sign-On (SSO) Synchronized</span>
+            </div>
+        `;
+
+        document.getElementById("viewUserModal").classList.add("open");
+    }
+
+    // Open Edit User Modal
+    function openEditUserModal(id) {
+        var user = usersDataset.find(function (u) { return u.id === id; });
+        if (!user) return;
+
+        document.getElementById("editUserId").value = user.id;
+        document.getElementById("editUserName").value = user.name;
+        document.getElementById("editUserEmail").value = user.email;
+        document.getElementById("editUserRole").value = user.role;
+        document.getElementById("editUserDept").value = user.department;
+        document.getElementById("editUserStatus").value = user.status;
+
+        document.getElementById("editUserModal").classList.add("open");
+    }
+
+    // Save Edit User
+    function handleSaveEditUser(e) {
+        e.preventDefault();
+        var id = parseInt(document.getElementById("editUserId").value);
+        var user = usersDataset.find(function (u) { return u.id === id; });
+        if (!user) return;
+
+        user.name = document.getElementById("editUserName").value.trim();
+        user.email = document.getElementById("editUserEmail").value.trim();
+        user.role = document.getElementById("editUserRole").value;
+        user.department = document.getElementById("editUserDept").value;
+        user.status = document.getElementById("editUserStatus").value;
+
+        if (user.role === "Student") user.roleCategory = "Student";
+        else if (user.role === "Faculty" || user.role === "HOD") user.roleCategory = "Faculty";
+        else user.roleCategory = "Administrator";
+
+        closeModalDirect("editUserModal");
+        renderUsersTable();
+        updateTabCounters();
+        showUserToast(`User "${user.name}" updated successfully.`, "success");
+    }
+
+    // Open Create User Modal
+    function openCreateUserModal() {
+        document.getElementById("createUserForm").reset();
+        document.getElementById("createUserModal").classList.add("open");
+    }
+
+    // Create User (Real Backend)
+    function handleCreateUser(e) {
+        e.preventDefault();
+        var name = document.getElementById("newUserName").value.trim();
+        var code = document.getElementById("newUserId").value.trim();
+        var role = document.getElementById("newUserRole").value;
+        var email = document.getElementById("newUserEmail").value.trim();
+        var dept = document.getElementById("newUserDept").value;
+
+        var nameParts = name.split(" ");
+        var firstName = nameParts[0] || name;
+        var lastName = nameParts.slice(1).join(" ") || "User";
+
+        var fd = new FormData();
+        fd.append('roleName', role === "Administrator" ? "Admin" : (role === "HOD" ? "Faculty" : role));
+        fd.append('email', email);
+        fd.append('password', 'CampusVault@2026');
+        fd.append('firstName', firstName);
+        fd.append('lastName', lastName);
+        fd.append('department', dept);
+
+        if (role === "Student") {
+            fd.append('enrollmentNumber', code);
+            fd.append('semester', 1);
+        } else {
+            fd.append('employeeCode', code);
+            fd.append('designation', role === "HOD" ? "Head of Department" : "Assistant Professor");
+        }
+
+        fetch('@Url.Action("CreateUser", "Admin")', {
+            method: 'POST',
+            body: new URLSearchParams(fd)
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(res) {
+            if (res.success) {
+                closeModalDirect("createUserModal");
+                showUserToast(`User "${name}" provisioned in CampusVaultDB. Default password: CampusVault@2026`, "success");
+                setTimeout(function() { window.location.reload(); }, 1200);
+            } else {
+                showUserToast(res.message || 'Failed to create user.', 'error');
+            }
+        })
+        .catch(function() {
+            showUserToast('Error connecting to server.', 'error');
+        });
+    }
+
+    // Toggle User Active / Inactive
+    function toggleUserStatus(userId) {
+        var user = usersDataset.find(function(u) { return u.id === userId; });
+        if (!user) return;
+        var newStatus = (user.status === "Active") ? false : true;
+
+        var fd = new FormData();
+        fd.append('userId', userId);
+        fd.append('isActive', newStatus);
+
+        fetch('@Url.Action("ToggleUser", "Admin")', {
+            method: 'POST',
+            body: new URLSearchParams(fd)
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(res) {
+            if (res.success) {
+                user.status = newStatus ? "Active" : "Inactive";
+                renderUsersTable();
+                showUserToast(res.message || 'Status updated.', 'success');
+            } else {
+                showUserToast(res.message || 'Failed to update status.', 'error');
+            }
+        })
+        .catch(function() {
+            showUserToast('Error connecting to server.', 'error');
+        });
+    }
+
+    // Permanently Delete User
+    function deleteUserAccount(userId) {
+        if (!confirm('Are you sure you want to permanently delete this user account? All associated submissions and profiles will be removed.')) {
+            return;
+        }
+
+        var fd = new FormData();
+        fd.append('userId', userId);
+
+        fetch('@Url.Action("DeleteUser", "Admin")', {
+            method: 'POST',
+            body: new URLSearchParams(fd)
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(res) {
+            if (res.success) {
+                usersDataset = usersDataset.filter(function(u) { return u.id !== userId; });
+                renderUsersTable();
+                updateTabCounters();
+                showUserToast('User account deleted successfully.', 'success');
+            } else {
+                showUserToast(res.message || 'Failed to delete user.', 'error');
+            }
+        })
+        .catch(function() {
+            showUserToast('Error connecting to server.', 'error');
+        });
+    }
+
+    // Update Tab Counters
+    function updateTabCounters() {
+        var total = usersDataset.length;
+        var students = usersDataset.filter(function (u) { return u.roleCategory === "Student"; }).length;
+        var faculty = usersDataset.filter(function (u) { return u.roleCategory === "Faculty"; }).length;
+        var admins = usersDataset.filter(function (u) { return u.roleCategory === "Administrator"; }).length;
+
+        var cAll = document.getElementById("countTabAll");
+        if (cAll) cAll.textContent = total;
+
+        var cStud = document.getElementById("countTabStudents");
+        if (cStud) cStud.textContent = students;
+
+        var cFac = document.getElementById("countTabFaculty");
+        if (cFac) cFac.textContent = faculty;
+
+        var cAdm = document.getElementById("countTabAdmins");
+        if (cAdm) cAdm.textContent = admins;
+    }
+
+    function closeModalDirect(modalId) {
+        var modal = document.getElementById(modalId);
+        if (modal) modal.classList.remove("open");
+    }
+
+    function closeUserModal(e, modalId) {
+        if (e.target.id === modalId) {
+            closeModalDirect(modalId);
+        }
+    }
+
+    function exportUserDirectory() {
+        showUserToast("Generating directory CSV export...", "info");
+        setTimeout(function () {
+            showUserToast("CampusVault User Directory exported successfully.", "success");
+        }, 1200);
+    }
+
+    function showUserToast(message, type) {
+        if (window.CampusVault && typeof window.CampusVault.showToast === "function") {
+            window.CampusVault.showToast(message, type);
+            return;
+        }
+
+        var container = document.getElementById("toastContainer");
+        if (!container) {
+            container = document.createElement("div");
+            container.id = "toastContainer";
+            container.className = "cv-toast-container";
+            document.body.appendChild(container);
+        }
+
+        var toast = document.createElement("div");
+        toast.className = "cv-toast cv-toast-" + (type || "info");
+        toast.style.cssText = "background:var(--cv-navy);color:#fff;padding:12px 18px;border-radius:8px;margin-top:8px;box-shadow:0 4px 12px rgba(0,0,0,0.25);font-size:13px;display:flex;align-items:center;gap:8px;";
+        toast.textContent = message;
+        container.appendChild(toast);
+
+        setTimeout(function() {
+            toast.style.opacity = "0";
+            toast.style.transition = "opacity 0.3s ease";
+            setTimeout(function() {
+                if (toast.parentNode) toast.parentNode.removeChild(toast);
+            }, 300);
+        }, 3200);
+    }
+
+    function escapeHtml(str) {
+        if (!str) return "";
+        return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+</script>
+}

@@ -1,0 +1,310 @@
+@model List<CampusVault.Models.Student.StudentDocumentItem>
+@{
+    ViewBag.Title = "Submission History — My Academic Portfolio";
+    ViewBag.Role = "Student";
+    ViewBag.UserName        = Session["UserName"]        as string ?? "Student";
+    ViewBag.UserInitials    = Session["UserInitials"]    as string ?? "ST";
+    ViewBag.UserRoleDisplay = Session["UserRoleDisplay"] as string ?? "Enrolled Student";
+
+    var subs = Model ?? new List<CampusVault.Models.Student.StudentDocumentItem>();
+
+    // ---- Case-insensitive status helpers ----
+    Func<string, bool> isApproved = (s) => !string.IsNullOrEmpty(s) && (
+        s.Equals("Approved", StringComparison.OrdinalIgnoreCase) ||
+        s.Equals("Reviewed", StringComparison.OrdinalIgnoreCase) ||
+        s.Equals("Graded",   StringComparison.OrdinalIgnoreCase));
+
+    Func<string, bool> isReview = (s) => !string.IsNullOrEmpty(s) && (
+        s.Equals("Submitted",     StringComparison.OrdinalIgnoreCase) ||
+        s.Equals("PendingReview", StringComparison.OrdinalIgnoreCase) ||
+        s.Equals("Under Review",  StringComparison.OrdinalIgnoreCase));
+
+    Func<string, bool> isRevision = (s) => !string.IsNullOrEmpty(s) &&
+        s.IndexOf("Revision", StringComparison.OrdinalIgnoreCase) >= 0;
+
+    int totalSubs    = subs.Count;
+    int approvedSubs = subs.Count(d => isApproved(d.Status));
+    int reviewSubs   = subs.Count(d => isReview(d.Status));
+    int revisionSubs = subs.Count(d => isRevision(d.Status));
+
+    // Average score across graded submissions
+    var graded = subs.Where(d => isApproved(d.Status) && d.Score.HasValue).ToList();
+    double avgScore = graded.Count > 0
+        ? graded.Average(d => d.MaxScore > 0 ? (double)d.Score.Value / d.MaxScore * 100 : 0)
+        : 0;
+
+    var subjects = subs.Select(d => new { d.CourseCode, d.CourseName })
+                       .Distinct()
+                       .OrderBy(c => c.CourseCode)
+                       .ToList();
+}
+
+@* ==================== 1. PAGE HEADER ==================== *@
+<div class="animate-slide-up" style="display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-4);flex-wrap:wrap;margin-bottom:var(--space-5);">
+    <div>
+        <div style="display:flex;align-items:center;gap:var(--space-3);margin-bottom:4px;">
+            <div style="width:36px;height:36px;border-radius:var(--radius-md);background:var(--cv-indigo-pale);color:var(--cv-indigo);display:flex;align-items:center;justify-content:center;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+            </div>
+            <h1 style="font-family:var(--font-heading);font-size:var(--fs-2xl);font-weight:var(--fw-bold);color:var(--cv-navy);letter-spacing:-0.015em;margin:0;">
+                Submission History
+            </h1>
+        </div>
+        <p style="color:var(--cv-slate);font-size:var(--fs-sm);margin:0;">
+            Comprehensive audit log of your academic work, submitted files, and faculty evaluations.
+        </p>
+    </div>
+
+    <!-- Quick Stats Badges -->
+    <div style="display:flex;align-items:center;gap:var(--space-2);flex-wrap:wrap;">
+        <span style="font-size:12px;color:var(--cv-slate);background:var(--cv-white);padding:6px 14px;border-radius:var(--radius-full);border:1px solid var(--cv-border);">
+            Total: <strong style="color:var(--cv-navy);" id="totalSubCount">@totalSubs</strong> Submissions
+        </span>
+        <span style="font-size:12px;color:var(--cv-slate);background:var(--cv-white);padding:6px 14px;border-radius:var(--radius-full);border:1px solid var(--cv-border);">
+            <strong style="color:var(--cv-success);">@approvedSubs</strong> Approved
+        </span>
+        <span style="font-size:12px;color:var(--cv-slate);background:var(--cv-white);padding:6px 14px;border-radius:var(--radius-full);border:1px solid var(--cv-border);">
+            <strong style="color:var(--cv-indigo);">@reviewSubs</strong> Under Review
+        </span>
+        @if (revisionSubs > 0)
+        {
+            <span style="font-size:12px;color:var(--cv-slate);background:#FEF3C7;padding:6px 14px;border-radius:var(--radius-full);border:1px solid #FDE68A;">
+                <strong style="color:#92400E;">@revisionSubs</strong> Needs Revision
+            </span>
+        }
+    </div>
+</div>
+
+@* ==================== 2. FILTERS TOOLBAR ==================== *@
+<div class="animate-slide-up stagger-1" style="background:var(--cv-white);border:1px solid var(--cv-border);border-radius:var(--radius-xl);padding:var(--space-4) var(--space-5);margin-bottom:var(--space-5);box-shadow:var(--shadow-sm);">
+    <div style="display:flex;align-items:center;flex-wrap:wrap;gap:var(--space-3);">
+
+        <!-- Search -->
+        <div style="position:relative;flex:1;min-width:220px;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--cv-slate);pointer-events:none;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="subSearchInput" class="cv-input" placeholder="Search by task title or subject..." oninput="filterSubmissions()" style="padding-left:36px;width:100%;font-size:var(--fs-xs);border-radius:var(--radius-md);" />
+        </div>
+
+        <!-- Subject filter -->
+        <div style="display:flex;align-items:center;gap:6px;">
+            <span style="font-size:11px;color:var(--cv-slate);font-weight:600;white-space:nowrap;">Subject:</span>
+            <select class="cv-filter-select" id="filterSubject" onchange="filterSubmissions()">
+                <option value="all">All Subjects</option>
+                @foreach (var c in subjects)
+                {
+                    <option value="@c.CourseName">@c.CourseCode — @c.CourseName</option>
+                }
+            </select>
+        </div>
+
+        <!-- Status filter -->
+        <div style="display:flex;align-items:center;gap:6px;">
+            <span style="font-size:11px;color:var(--cv-slate);font-weight:600;white-space:nowrap;">Status:</span>
+            <select class="cv-filter-select" id="filterStatus" onchange="filterSubmissions()">
+                <option value="all">All Statuses</option>
+                <option value="Approved">✓ Approved</option>
+                <option value="Under Review">⏳ Under Review</option>
+                <option value="Revision Required">↩ Revision Required</option>
+            </select>
+        </div>
+
+        <button type="button" class="cv-btn cv-btn-secondary cv-btn-sm" onclick="resetSubFilters()" style="font-size:11px;white-space:nowrap;">
+            Reset
+        </button>
+    </div>
+</div>
+
+@* ==================== 3. SUBMISSION TABLE ==================== *@
+<div class="cv-sub-history-card animate-slide-up stagger-2">
+
+    <!-- Table Header Strip -->
+    <div style="padding:12px var(--space-5);border-bottom:1px solid var(--cv-border);display:flex;align-items:center;justify-content:space-between;background:var(--cv-bg-alt);flex-wrap:wrap;gap:var(--space-2);">
+        <span style="font-size:12px;color:var(--cv-slate);">Showing verified institutional submissions</span>
+        <span style="font-size:12px;color:var(--cv-slate);">
+            Showing <strong style="color:var(--cv-navy);" id="visibleRowCount">@totalSubs</strong> records
+        </span>
+    </div>
+
+    <!-- Table -->
+    <div style="overflow-x:auto;">
+        <table class="cv-sub-table" id="subHistoryTable" style="@(totalSubs == 0 ? "display:none;" : "")">
+            <thead>
+                <tr>
+                    <th style="min-width:240px;">Task</th>
+                    <th>Subject</th>
+                    <th style="min-width:160px;">Submitted</th>
+                    <th>Faculty</th>
+                    <th>Punctuality</th>
+                    <th>Status</th>
+                    <th>Marks</th>
+                    <th style="text-align:right;">Action</th>
+                </tr>
+            </thead>
+            <tbody id="subTableBody">
+                @foreach (var doc in subs)
+                {
+                    // ---- Classify status ----
+                    bool docApproved  = isApproved(doc.Status);
+                    bool docReview    = isReview(doc.Status);
+                    bool docRevision  = isRevision(doc.Status);
+
+                    string statusLabel = docApproved  ? "Approved"
+                                       : docReview    ? "Under Review"
+                                       : docRevision  ? "Revision Required"
+                                       : doc.Status ?? "Pending";
+
+                    string badgeClass  = docApproved  ? "cv-badge-approved"
+                                       : docReview    ? "cv-badge-review"
+                                       : docRevision  ? "cv-badge-revision"
+                                       : "cv-badge-review";
+
+                    // ---- Punctuality: compare SubmittedAt vs task DueDate (not available here, so check if submitted ----
+                    // We show "Delivered" if submitted, "Pending" if no submission
+                    string punctLabel = "Delivered";
+                    string punctColor = "#059669";
+                    string punctBg    = "#D1FAE5";
+
+                    // ---- File extension ----
+                    string fExt = System.IO.Path.GetExtension(doc.FileName ?? "")?.TrimStart('.')?.ToUpper() ?? "FILE";
+                    if (string.IsNullOrEmpty(fExt)) { fExt = "FILE"; }
+
+                    // ---- Score display ----
+                    string marksHtml = doc.Score.HasValue
+                        ? "<strong style=\"color:#059669;font-size:13px;font-weight:700;\">" + doc.Score.Value + " / " + doc.MaxScore + "</strong>"
+                        : "<span style=\"color:var(--cv-slate);font-size:12px;\">— / " + doc.MaxScore + "</span>";
+
+                    <tr class="sub-row"
+                        data-subject="@doc.CourseName"
+                        data-status="@statusLabel"
+                        data-date="@doc.SubmittedAt.ToString("yyyy-MM-ddTHH:mm:ss")"
+                        data-search="@((doc.TaskTitle + " " + doc.CourseCode + " " + doc.CourseName + " " + doc.FacultyName + " " + doc.FileName).ToLower())">
+
+                        <td>
+                            <div style="font-family:var(--font-heading);font-weight:var(--fw-bold);color:var(--cv-navy);font-size:var(--fs-sm);margin-bottom:2px;">
+                                @doc.TaskTitle
+                            </div>
+                            <div style="font-size:11px;color:var(--cv-slate-light);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px;" title="@doc.FileName">
+                                @(doc.FileName ?? "—") @(!string.IsNullOrEmpty(doc.FileSize) ? "(" + doc.FileSize + ")" : "")
+                            </div>
+                        </td>
+
+                        <td>
+                            <span class="cv-badge" style="background:var(--cv-indigo-pale);color:var(--cv-indigo);font-weight:700;font-size:11px;">
+                                @doc.CourseCode
+                            </span>
+                        </td>
+
+                        <td style="white-space:nowrap;">
+                            <div style="font-size:12px;font-weight:600;color:var(--cv-navy);">
+                                @doc.SubmittedAt.ToString("dd MMM yyyy")
+                            </div>
+                            <div style="font-size:11px;color:var(--cv-slate-light);">
+                                @doc.SubmittedAt.ToString("hh:mm tt")
+                            </div>
+                        </td>
+
+                        <td style="font-size:12px;color:var(--cv-slate);white-space:nowrap;">
+                            @(string.IsNullOrEmpty(doc.FacultyName) ? "—" : doc.FacultyName)
+                        </td>
+
+                        <td>
+                            <span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:@punctColor;background:@punctBg;padding:3px 10px;border-radius:999px;">
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                                @punctLabel
+                            </span>
+                        </td>
+
+                        <td>
+                            <span class="cv-badge cv-badge-dot @badgeClass">@statusLabel</span>
+                        </td>
+
+                        <td>
+                            @Html.Raw(marksHtml)
+                        </td>
+
+                        <td style="text-align:right;white-space:nowrap;">
+                            <div style="display:inline-flex;align-items:center;gap:6px;">
+                                <a href="@Url.Action("DocumentDetails", "Student", new { id = doc.SubmissionId })"
+                                   style="display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;color:var(--cv-indigo);padding:5px 12px;border:1px solid var(--cv-border);border-radius:var(--radius-md);background:var(--cv-white);text-decoration:none;">
+                                    View Details
+                                </a>
+                                @if (docRevision)
+                                {
+                                    <a href="@Url.Action("SubmitDocument", "Student", new { id = doc.TaskId })"
+                                       style="display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;color:#fff;padding:5px 12px;border-radius:var(--radius-md);background:#d97706;text-decoration:none;">
+                                        Re-Submit
+                                    </a>
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Empty State -->
+    <div id="subHistoryEmptyState" style="@(totalSubs == 0 ? "display:block;" : "display:none;")padding:var(--space-10) var(--space-4);text-align:center;">
+        <div style="width:56px;height:56px;border-radius:50%;background:var(--cv-bg-alt);color:var(--cv-slate);display:inline-flex;align-items:center;justify-content:center;margin-bottom:var(--space-3);">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        </div>
+        <h4 style="font-family:var(--font-heading);font-size:var(--fs-base);font-weight:var(--fw-bold);color:var(--cv-navy);margin:0 0 4px 0;">
+            No submissions found
+        </h4>
+        <p style="font-size:var(--fs-xs);color:var(--cv-slate);margin:0 0 var(--space-4) 0;">
+            You have not submitted any coursework yet, or no records match your current filters.
+        </p>
+        <div style="display:flex;align-items:center;justify-content:center;gap:var(--space-3);">
+            <button type="button" class="cv-btn cv-btn-secondary cv-btn-sm" onclick="resetSubFilters()">Clear Filters</button>
+            <a href="@Url.Action("Tasks", "Student")" class="cv-btn cv-btn-primary cv-btn-sm">View Active Tasks</a>
+        </div>
+    </div>
+</div>
+
+@* ==================== 4. JAVASCRIPT FILTERING ==================== *@
+<script>
+    function filterSubmissions() {
+        var search  = (document.getElementById('subSearchInput').value || '').trim().toLowerCase();
+        var subject = document.getElementById('filterSubject').value;
+        var status  = document.getElementById('filterStatus').value;
+
+        var rows = Array.from(document.querySelectorAll('.sub-row'));
+        var visible = 0;
+
+        rows.forEach(function (row) {
+            var rSubject = row.getAttribute('data-subject') || '';
+            var rStatus  = row.getAttribute('data-status')  || '';
+            var rSearch  = row.getAttribute('data-search')  || '';
+
+            var ok = true;
+            if (search  && rSearch.indexOf(search)  === -1) { ok = false; }
+            if (subject !== 'all' && rSubject !== subject)   { ok = false; }
+            if (status  !== 'all' && rStatus  !== status)    { ok = false; }
+
+            row.style.display = ok ? '' : 'none';
+            if (ok) { visible++; }
+        });
+
+        document.getElementById('visibleRowCount').textContent = visible;
+
+        var table = document.getElementById('subHistoryTable');
+        var empty = document.getElementById('subHistoryEmptyState');
+
+        if (visible === 0) {
+            if (table) { table.style.display = 'none'; }
+            if (empty) { empty.style.display = 'block'; }
+        } else {
+            if (table) { table.style.display = ''; }
+            if (empty) { empty.style.display = 'none'; }
+        }
+    }
+
+    function resetSubFilters() {
+        document.getElementById('subSearchInput').value = '';
+        document.getElementById('filterSubject').value = 'all';
+        document.getElementById('filterStatus').value  = 'all';
+        filterSubmissions();
+    }
+
+    document.addEventListener('DOMContentLoaded', function () { filterSubmissions(); });
+</script>

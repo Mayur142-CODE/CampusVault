@@ -1,0 +1,297 @@
+@model CampusVault.Models.Student.StudentDocumentItem
+@{
+    ViewBag.Role            = "Student";
+    ViewBag.UserName        = Session["UserName"]        as string ?? "Student";
+    ViewBag.UserInitials    = Session["UserInitials"]    as string ?? "ST";
+    ViewBag.UserRoleDisplay = Session["UserRoleDisplay"] as string ?? "Enrolled Student";
+
+    var doc         = Model;
+    var fileName    = doc?.FileName    ?? "Document.pdf";
+    var taskTitle   = doc?.TaskTitle   ?? "Task";
+    var courseCode  = doc?.CourseCode  ?? "—";
+    var courseName  = doc?.CourseName  ?? "—";
+    var faculty     = doc?.FacultyName ?? "Faculty";
+    var fileSize    = doc?.FileSize    ?? "—";
+    var cloudUrl    = doc?.FilePath    ?? "";
+    var status      = doc?.Status      ?? "PendingReview";
+    var ext         = System.IO.Path.GetExtension(fileName).TrimStart('.').ToUpper();
+    if (string.IsNullOrEmpty(ext))
+    {
+        ext = "FILE";
+    }
+
+    bool isApproved = status.Equals("Approved",  StringComparison.OrdinalIgnoreCase)
+                   || status.Equals("Reviewed",  StringComparison.OrdinalIgnoreCase)
+                   || status.Equals("Graded",    StringComparison.OrdinalIgnoreCase);
+    bool isRevision = status.IndexOf("Revision", StringComparison.OrdinalIgnoreCase) >= 0;
+    bool isPending  = !isApproved && !isRevision;
+
+    string statusLabel = isApproved ? "Approved" : isRevision ? "Needs Revision" : "Under Review";
+
+    ViewBag.Title = "Document Details";
+    ViewBag.BrowserTitle = fileName + " — Document Details";
+}
+
+@* ====== BREADCRUMBS ====== *@
+<div style="display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);flex-wrap:wrap;margin-bottom:var(--space-5);" class="animate-slide-up">
+    <div style="display:flex;align-items:center;gap:var(--space-2);font-size:var(--fs-xs);color:var(--cv-slate);min-width:0;flex:1 1 240px;overflow:hidden;">
+        <a href="@Url.Action("Dashboard","Student")" style="color:var(--cv-slate);text-decoration:none;display:inline-flex;align-items:center;gap:4px;flex-shrink:0;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+            Dashboard
+        </a>
+        <span style="flex-shrink:0;">/</span>
+        <a href="@Url.Action("Documents","Student")" style="color:var(--cv-slate);text-decoration:none;flex-shrink:0;">My Documents</a>
+        <span style="flex-shrink:0;">/</span>
+        <span style="color:var(--cv-navy);font-weight:var(--fw-semibold);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;" title="@fileName">@fileName</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:var(--space-2);flex-shrink:0;">
+        <a href="@Url.Action("Documents","Student")" class="cv-btn cv-btn-secondary cv-btn-sm" style="text-decoration:none;display:inline-flex;align-items:center;gap:5px;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;flex-shrink:0;"><polyline points="15 18 9 12 15 6"/></svg>
+            Back to Vault
+        </a>
+        @if (!string.IsNullOrEmpty(cloudUrl))
+        {
+            <a href="@cloudUrl" target="_blank" class="cv-btn cv-btn-primary cv-btn-sm" style="text-decoration:none;display:inline-flex;align-items:center;gap:5px;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;flex-shrink:0;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Download
+            </a>
+        }
+    </div>
+</div>
+
+@* ====== HEADER CARD ====== *@
+<div style="background:var(--cv-white);border:1px solid var(--cv-border);border-radius:var(--radius-xl);padding:var(--space-5);margin-bottom:var(--space-5);box-shadow:var(--shadow-sm);" class="animate-slide-up stagger-1">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-4);flex-wrap:wrap;">
+        <div style="flex:1 1 300px;min-width:0;max-width:100%;">
+            <div style="display:flex;align-items:center;gap:var(--space-2);flex-wrap:wrap;margin-bottom:var(--space-2);">
+                <span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:var(--radius-full);
+                    @(isApproved ? "background:#ecfdf5;color:#059669;border:1px solid #a7f3d0;" :
+                      isRevision ? "background:#faf5ff;color:#7e22ce;border:1px solid #e9d5ff;" :
+                                   "background:#fef3c7;color:#b45309;border:1px solid #fde68a;")">
+                    @(isApproved ? "✓" : isRevision ? "↩" : "⏳") @statusLabel
+                </span>
+                <span style="font-size:11px;padding:3px 10px;border-radius:var(--radius-full);background:var(--cv-indigo-pale);color:var(--cv-indigo);font-weight:600;">
+                    Submission #@(doc?.SubmissionId)
+                </span>
+                <span style="font-size:11px;padding:3px 10px;border-radius:var(--radius-full);background:#fef3c7;color:#92400e;font-weight:600;">
+                    @courseCode
+                </span>
+                <span style="font-size:11px;padding:3px 10px;border-radius:var(--radius-full);background:var(--cv-bg-alt);color:var(--cv-slate);border:1px solid var(--cv-border);">
+                    @taskTitle
+                </span>
+            </div>
+
+            <h1 style="font-size:var(--fs-xl);font-weight:var(--fw-bold);color:var(--cv-navy);margin:0 0 6px 0;display:flex;align-items:center;gap:var(--space-2);flex-wrap:wrap;min-width:0;">
+                <span style="word-break:break-all;overflow-wrap:anywhere;line-height:1.3;">@fileName</span>
+                <span style="font-size:10px;padding:2px 7px;border-radius:var(--radius-sm);background:#fee2e2;color:#dc2626;font-weight:700;flex-shrink:0;">@ext</span>
+            </h1>
+            <p style="color:var(--cv-slate);font-size:var(--fs-sm);margin:0;line-height:1.5;overflow-wrap:anywhere;">
+                Submitted for <strong>@courseName</strong> under <strong>@faculty</strong> &bull;
+                @(doc?.SubmittedAt.ToString("dd MMM yyyy, hh:mm tt"))
+            </p>
+        </div>
+
+        @* Marks Card *@
+        <div style="background:@(isApproved ? "#ecfdf5" : "#f8fafc");border:1px solid @(isApproved ? "#a7f3d0" : "var(--cv-border)");border-radius:var(--radius-lg);padding:var(--space-4) var(--space-5);text-align:center;min-width:130px;flex-shrink:0;">
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.05em;color:@(isApproved ? "#047857" : "var(--cv-slate)");font-weight:700;margin-bottom:4px;">
+                Marks Awarded
+            </div>
+            <div style="display:flex;align-items:baseline;justify-content:center;gap:3px;">
+                <span style="font-size:32px;font-weight:800;color:@(isApproved ? "#065f46" : "var(--cv-slate)");">
+                    @(doc?.Score.HasValue == true ? doc.Score.Value.ToString() : "—")
+                </span>
+                <span style="font-size:14px;font-weight:700;color:@(isApproved ? "#047857" : "var(--cv-slate)");">
+                    / @(doc?.MaxScore ?? 20)
+                </span>
+            </div>
+            <div style="font-size:10px;font-weight:600;color:@(isApproved ? "#059669" : "var(--cv-slate)");">
+                @(doc?.Score.HasValue == true ? "Evaluated" : "Pending")
+            </div>
+        </div>
+    </div>
+</div>
+
+@* ====== TWO-COLUMN LAYOUT ====== *@
+<div class="cv-doc-details-grid animate-slide-up stagger-2" style="display:grid;grid-template-columns:minmax(0, 1fr) 320px;gap:var(--space-5);align-items:start;">
+
+    @* ===== LEFT: PDF VIEWER ===== *@
+    <div style="background:var(--cv-navy-deep);border-radius:var(--radius-xl);overflow:hidden;box-shadow:var(--shadow-lg);min-width:0;">
+        @* Top bar *@
+        <div style="padding:var(--space-3) var(--space-4);display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,0.08);gap:var(--space-3);flex-wrap:nowrap;">
+            <div style="display:flex;align-items:center;gap:var(--space-3);min-width:0;flex:1;">
+                <div style="width:26px;height:26px;border-radius:4px;background:#dc2626;color:white;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;flex-shrink:0;">@ext</div>
+                <div style="min-width:0;flex:1;">
+                    <div style="font-size:12px;font-weight:600;color:var(--cv-white);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;" title="@fileName">@fileName</div>
+                    <div style="font-size:10px;color:var(--cv-slate-400);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">@fileSize &bull; @taskTitle</div>
+                </div>
+            </div>
+            @if (!string.IsNullOrEmpty(cloudUrl))
+            {
+                <a href="@cloudUrl" target="_blank"
+                   style="display:inline-flex;align-items:center;gap:5px;background:#2563eb;color:white;border-radius:var(--radius-md);padding:5px 12px;font-size:11px;font-weight:600;text-decoration:none;flex-shrink:0;">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;flex-shrink:0;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    Download
+                </a>
+            }
+        </div>
+
+        @* PDF Embed *@
+        @if (!string.IsNullOrEmpty(cloudUrl))
+        {
+            <iframe src="@cloudUrl"
+                    style="width:100%;height:680px;border:none;display:block;background:#1e293b;"
+                    title="@fileName"
+                    loading="lazy">
+                <div style="padding:40px;text-align:center;color:white;">
+                    <p>Unable to display inline.</p>
+                    <a href="@cloudUrl" target="_blank" style="color:#60a5fa;">Open document →</a>
+                </div>
+            </iframe>
+        }
+        else
+        {
+            <div style="height:400px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:rgba(255,255,255,0.4);">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:48px;height:48px;opacity:0.4;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                <div style="font-size:13px;">No document file available.</div>
+            </div>
+        }
+    </div>
+
+    @* ===== RIGHT: INFO + FEEDBACK + TIMELINE ===== *@
+    <div style="display:flex;flex-direction:column;gap:var(--space-4);">
+
+        @* Document Info *@
+        <div style="background:var(--cv-white);border:1px solid var(--cv-border);border-radius:var(--radius-xl);padding:var(--space-4);box-shadow:var(--shadow-sm);">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-3);padding-bottom:var(--space-3);border-bottom:1px solid var(--cv-border-light);">
+                <span style="font-weight:var(--fw-bold);color:var(--cv-navy);font-size:var(--fs-sm);">Document Information</span>
+                <span style="font-size:10px;padding:2px 8px;border-radius:var(--radius-full);background:@(isApproved ? "#ecfdf5" : "#f1f5f9");color:@(isApproved ? "#059669" : "var(--cv-slate)");font-weight:600;">
+                    @(isApproved ? "Sealed in Vault" : "In Review")
+                </span>
+            </div>
+            <div style="display:grid;grid-template-columns:auto 1fr;gap:6px 12px;font-size:12px;">
+                <span style="color:var(--cv-slate);">Submitted by:</span>
+                <strong style="color:var(--cv-navy);">@(Session["UserName"] ?? "Student")</strong>
+
+                <span style="color:var(--cv-slate);">Reviewed by:</span>
+                <strong style="color:var(--cv-indigo);">@faculty</strong>
+
+                <span style="color:var(--cv-slate);">Submitted:</span>
+                <strong style="color:var(--cv-navy);">@(doc?.SubmittedAt.ToString("dd MMM yyyy"))</strong>
+
+                @if (doc?.ReviewedAt.HasValue == true)
+                {
+                    <span style="color:var(--cv-slate);">Reviewed:</span>
+                    <strong style="color:var(--cv-navy);">@doc.ReviewedAt.Value.ToString("dd MMM yyyy")</strong>
+                }
+
+                <span style="color:var(--cv-slate);">File Size:</span>
+                <strong style="color:var(--cv-navy);">@fileSize</strong>
+
+                <span style="color:var(--cv-slate);">Format:</span>
+                <strong style="color:var(--cv-navy);">@ext Document</strong>
+
+                <span style="color:var(--cv-slate);">Course:</span>
+                <strong style="color:var(--cv-navy);">@courseCode</strong>
+
+                <span style="color:var(--cv-slate);">Task:</span>
+                <strong style="color:var(--cv-navy);">@taskTitle</strong>
+            </div>
+        </div>
+
+        @* Feedback Card — show if faculty left feedback *@
+        @if (!string.IsNullOrEmpty(doc?.Feedback))
+        {
+            <div style="background:@(isApproved ? "#f0fdf4" : "#faf5ff");border:1px solid @(isApproved ? "#bbf7d0" : "#e9d5ff");border-radius:var(--radius-xl);padding:var(--space-4);box-shadow:var(--shadow-sm);">
+                <div style="font-weight:700;font-size:var(--fs-sm);color:var(--cv-navy);margin-bottom:var(--space-2);display:flex;align-items:center;gap:6px;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;flex-shrink:0;@(isApproved ? "color:#059669;" : "color:#7e22ce;")"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    Faculty Feedback
+                </div>
+                <p style="font-size:12px;color:@(isApproved ? "#065f46" : "#581c87");margin:0;line-height:1.5;font-style:italic;">
+                    "@doc.Feedback"
+                </p>
+                @if (doc?.Score.HasValue == true)
+                {
+                    <div style="margin-top:var(--space-2);font-size:12px;font-weight:700;color:@(isApproved ? "#059669" : "#7e22ce");">
+                        Score: @doc.Score / @doc.MaxScore
+                    </div>
+                }
+            </div>
+        }
+
+        @* Revision Action — show if needs revision *@
+        @if (isRevision)
+        {
+            <a href="@Url.Action("SubmitDocument","Student", new { id = doc?.TaskId })"
+               style="display:flex;align-items:center;justify-content:center;gap:6px;background:#7e22ce;color:white;border-radius:var(--radius-xl);padding:12px;font-size:13px;font-weight:700;text-decoration:none;box-shadow:var(--shadow-sm);">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:15px;height:15px;flex-shrink:0;"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                Submit Revision
+            </a>
+        }
+
+        @* Version / Status Timeline *@
+        <div style="background:var(--cv-white);border:1px solid var(--cv-border);border-radius:var(--radius-xl);padding:var(--space-4);box-shadow:var(--shadow-sm);">
+            <div style="font-weight:var(--fw-bold);color:var(--cv-navy);font-size:var(--fs-sm);margin-bottom:var(--space-3);padding-bottom:var(--space-2);border-bottom:1px solid var(--cv-border-light);">
+                Submission Timeline
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:var(--space-3);">
+                @* Submitted event *@
+                <div style="display:flex;align-items:flex-start;gap:var(--space-3);">
+                    <div style="width:28px;height:28px;border-radius:50%;background:#eff6ff;border:2px solid #bfdbfe;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.5" style="width:12px;height:12px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    </div>
+                    <div>
+                        <div style="font-size:12px;font-weight:700;color:var(--cv-navy);">Submitted</div>
+                        <div style="font-size:11px;color:var(--cv-slate);">@(doc?.SubmittedAt.ToString("dd MMM yyyy, hh:mm tt"))</div>
+                        <div style="font-size:11px;color:var(--cv-slate);">@fileName @if (!string.IsNullOrEmpty(fileSize)) { <text>(@fileSize)</text> }</div>
+                    </div>
+                </div>
+
+                @* Review event *@
+                @if (doc?.ReviewedAt.HasValue == true)
+                {
+                    <div style="display:flex;align-items:flex-start;gap:var(--space-3);">
+                        <div style="width:28px;height:28px;border-radius:50%;background:@(isApproved ? "#ecfdf5" : "#faf5ff");border:2px solid @(isApproved ? "#a7f3d0" : "#e9d5ff");display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                            @if (isApproved)
+                            {
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.5" style="width:12px;height:12px;"><polyline points="20 6 9 17 4 12"/></svg>
+                            }
+                            else
+                            {
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#7e22ce" stroke-width="2.5" style="width:12px;height:12px;"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                            }
+                        </div>
+                        <div>
+                            <div style="font-size:12px;font-weight:700;color:var(--cv-navy);">@statusLabel</div>
+                            <div style="font-size:11px;color:var(--cv-slate);">@doc.ReviewedAt.Value.ToString("dd MMM yyyy, hh:mm tt")</div>
+                            <div style="font-size:11px;color:var(--cv-slate);">By @faculty</div>
+                            @if (doc?.Score.HasValue == true)
+                            {
+                                <div style="font-size:12px;font-weight:700;color:@(isApproved ? "#059669" : "#7e22ce");margin-top:2px;">Score: @doc.Score / @doc.MaxScore</div>
+                            }
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div style="display:flex;align-items:flex-start;gap:var(--space-3);">
+                        <div style="width:28px;height:28px;border-radius:50%;background:#fef3c7;border:2px solid #fde68a;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#b45309" stroke-width="2.5" style="width:12px;height:12px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/></svg>
+                        </div>
+                        <div>
+                            <div style="font-size:12px;font-weight:700;color:#b45309;">Awaiting Review</div>
+                            <div style="font-size:11px;color:var(--cv-slate);">Faculty has not reviewed yet</div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        @* Back link *@
+        <a href="@Url.Action("Documents","Student")"
+           style="display:flex;align-items:center;justify-content:center;gap:6px;background:var(--cv-white);border:1px solid var(--cv-border);border-radius:var(--radius-xl);padding:10px;font-size:12px;font-weight:600;color:var(--cv-navy);text-decoration:none;box-shadow:var(--shadow-sm);">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;flex-shrink:0;"><polyline points="15 18 9 12 15 6"/></svg>
+            Back to My Documents
+        </a>
+    </div>
+</div>

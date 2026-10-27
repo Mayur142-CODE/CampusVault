@@ -1,0 +1,462 @@
+@model List<CampusVault.Models.Faculty.FacultySubmissionItem>
+@{
+    ViewBag.Title = "Revision Requests";
+    ViewBag.Role = "Faculty";
+    ViewBag.UserName = Session["UserName"] as string ?? "Faculty";
+    ViewBag.UserInitials = Session["UserInitials"] as string ?? "FA";
+    ViewBag.UserRoleDisplay = Session["UserRoleDisplay"] as string ?? "Faculty Mentor";
+
+    var allItems      = Model ?? new List<CampusVault.Models.Faculty.FacultySubmissionItem>();
+    int totalCount    = allItems.Count;
+    int resubmitted   = allItems.Count(x => (x.Status ?? "").IndexOf("Resubmitted", StringComparison.OrdinalIgnoreCase) >= 0);
+    int waiting       = allItems.Count(x => (x.Status ?? "").IndexOf("Waiting", StringComparison.OrdinalIgnoreCase) >= 0
+                                         || (x.Status ?? "").IndexOf("Needs Revision", StringComparison.OrdinalIgnoreCase) >= 0
+                                         || (x.Status ?? "").IndexOf("Revision Requested", StringComparison.OrdinalIgnoreCase) >= 0);
+    int underReview   = allItems.Count(x => (x.Status ?? "").IndexOf("Under Review", StringComparison.OrdinalIgnoreCase) >= 0
+                                         || (x.Status ?? "").IndexOf("PendingReview", StringComparison.OrdinalIgnoreCase) >= 0
+                                         || (x.Status ?? "").IndexOf("Pending", StringComparison.OrdinalIgnoreCase) >= 0);
+    var classrooms    = allItems.Select(x => x.ClassroomName).Where(x => !string.IsNullOrEmpty(x)).Distinct().OrderBy(x => x).ToList();
+}
+
+@* ==================== 1. PAGE HEADER ==================== *@
+<div class="cv-page-header animate-slide-up" style="display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-4);flex-wrap:wrap;margin-bottom:var(--space-5);">
+    <div>
+        <div style="display:flex;align-items:center;gap:var(--space-3);margin-bottom:4px;">
+            <div style="width:38px;height:38px;border-radius:var(--radius-md);background:#581c87;color:#f3e8ff;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow-sm);">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px;flex-shrink:0;">
+                    <polyline points="23 4 23 10 17 10"/>
+                    <polyline points="1 20 1 14 7 14"/>
+                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                </svg>
+            </div>
+            <div>
+                <h1 style="font-family:var(--font-heading);font-size:var(--fs-2xl);font-weight:var(--fw-bold);color:var(--cv-navy);letter-spacing:-0.015em;margin:0;display:flex;align-items:center;gap:var(--space-2);">
+                    Revision Requests
+                    <span class="cv-professor-badge" style="background:#f3e8ff;color:#6b21a8;border-color:#e9d5ff;font-size:11px;padding:2px 8px;">Lifecycle Hub</span>
+                </h1>
+            </div>
+        </div>
+        <p style="color:var(--cv-slate);font-size:var(--fs-sm);margin:0;">
+            Track student coursework revisions, review newly resubmitted drafts, and monitor feedback resolution cycles.
+        </p>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:var(--space-3);flex-wrap:wrap;">
+        <div class="cv-live-indicator-pill" style="background:#e0e7ff;border-color:#c7d2fe;color:#3730a3;">
+            <span class="cv-dot-pulse-indigo"></span>
+            <span>@resubmitted Resubmission@(resubmitted == 1 ? "" : "s") Awaiting Review</span>
+        </div>
+        <a href="@Url.Action("Submissions", "Faculty")" class="cv-btn cv-btn-secondary cv-btn-sm" style="font-size:11px;gap:5px;text-decoration:none;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;flex-shrink:0;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            All Submissions
+        </a>
+    </div>
+</div>
+
+
+@* ==================== 3. METRICS OVERVIEW STRIP ==================== *@
+<div class="cv-revisions-metrics-grid animate-slide-up stagger-2">
+    
+    @* Card 1: Total Revisions Tracked *@
+    <div class="cv-rev-metric-card active" id="metricCardAll" onclick="filterByMetricStatus('all')">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-2);">
+            <span style="font-size:var(--fs-xs);font-weight:var(--fw-semibold);color:var(--cv-slate);">Total Active Cycles</span>
+            <span class="cv-badge" style="font-size:10px;background:var(--cv-slate-100);color:var(--cv-slate-700);">@totalCount Active</span>
+        </div>
+        <div style="font-family:var(--font-heading);font-size:var(--fs-3xl);font-weight:var(--fw-extrabold);color:var(--cv-navy);line-height:1.1;">
+            @totalCount
+        </div>
+        <div style="font-size:11px;color:var(--cv-slate);margin-top:4px;">
+            Across @classrooms.Count classroom@(classrooms.Count == 1 ? "" : "s")
+        </div>
+    </div>
+
+    @* Card 2: Resubmitted (HIGHLIGHTED - NEEDS FACULTY ATTENTION) *@
+    <div class="cv-rev-metric-card card-resubmitted" id="metricCardResubmitted" onclick="filterByMetricStatus('Resubmitted')">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-2);">
+            <span style="font-size:var(--fs-xs);font-weight:var(--fw-bold);color:#4338ca;display:flex;align-items:center;gap:5px;">
+                <span class="cv-dot-pulse-indigo"></span>
+                Resubmitted
+            </span>
+            <span class="cv-badge" style="font-size:10px;background:#e0e7ff;color:#3730a3;font-weight:var(--fw-bold);border:1px solid #c7d2fe;">
+                ACTION NEEDED
+            </span>
+        </div>
+        <div style="font-family:var(--font-heading);font-size:var(--fs-3xl);font-weight:var(--fw-extrabold);color:#4338ca;line-height:1.1;">
+            @resubmitted
+        </div>
+        <div style="font-size:11px;color:#3730a3;margin-top:4px;font-weight:500;">
+            Turned in revised files awaiting grading
+        </div>
+    </div>
+
+    @* Card 3: Waiting for Student *@
+    <div class="cv-rev-metric-card card-waiting" id="metricCardWaiting" onclick="filterByMetricStatus('Waiting for Student')">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-2);">
+            <span style="font-size:var(--fs-xs);font-weight:var(--fw-semibold);color:#b45309;">Waiting for Student</span>
+            <span class="cv-badge" style="font-size:10px;background:#fffbeb;color:#b45309;">In Progress</span>
+        </div>
+        <div style="font-family:var(--font-heading);font-size:var(--fs-3xl);font-weight:var(--fw-extrabold);color:#d97706;line-height:1.1;">
+            @waiting
+        </div>
+        <div style="font-size:11px;color:var(--cv-slate);margin-top:4px;">
+            Students currently rewriting coursework
+        </div>
+    </div>
+
+    @* Card 4: Under Review *@
+    <div class="cv-rev-metric-card card-under-review" id="metricCardUnderReview" onclick="filterByMetricStatus('Under Review')">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-2);">
+            <span style="font-size:var(--fs-xs);font-weight:var(--fw-semibold);color:#1d4ed8;">Under Review</span>
+            <span class="cv-badge" style="font-size:10px;background:#eff6ff;color:#1d4ed8;">Grading</span>
+        </div>
+        <div style="font-family:var(--font-heading);font-size:var(--fs-3xl);font-weight:var(--fw-extrabold);color:#2563eb;line-height:1.1;">
+            @underReview
+        </div>
+        <div style="font-size:11px;color:var(--cv-slate);margin-top:4px;">
+            In split-screen evaluation queue
+        </div>
+    </div>
+
+</div>
+
+@* ==================== 4. FILTERS & SEARCH TOOLBAR ==================== *@
+<div class="cv-submissions-filter-card animate-slide-up stagger-2" style="margin-bottom:var(--space-5);">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);flex-wrap:wrap;">
+        
+        @* Search Input *@
+        <div style="position:relative;flex:1;min-width:260px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--cv-slate-400);pointer-events:none;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="revSearchInput" class="cv-filter-input" placeholder="Search student name, roll no, task, or feedback..." oninput="filterRevisionsTable()" style="padding-left:34px;width:100%;" />
+        </div>
+
+        @* Filter: Status *@
+        <div style="display:flex;align-items:center;gap:6px;">
+            <span style="font-size:11px;color:var(--cv-slate);font-weight:var(--fw-bold);text-transform:uppercase;">Status:</span>
+            <select id="revFilterStatus" class="cv-filter-select" onchange="filterRevisionsTable()" style="width:auto;min-width:180px;">
+                <option value="all">All Statuses (@totalCount)</option>
+                <option value="Resubmitted">Resubmitted (Needs Attention)</option>
+                <option value="Waiting for Student">Waiting for Student</option>
+                <option value="Under Review">Under Review</option>
+            </select>
+        </div>
+
+        @* Filter: Classroom *@
+        <div style="display:flex;align-items:center;gap:6px;">
+            <span style="font-size:11px;color:var(--cv-slate);font-weight:var(--fw-bold);text-transform:uppercase;">Classroom:</span>
+            <select id="revFilterClassroom" class="cv-filter-select" onchange="filterRevisionsTable()" style="width:auto;">
+                <option value="all">All Classrooms</option>
+                @foreach (var cn in classrooms)
+                {
+                    <option value="@cn">@cn</option>
+                }
+            </select>
+        </div>
+
+        @* Reset Button *@
+        <button type="button" class="cv-btn cv-btn-secondary cv-btn-sm" onclick="resetRevisionFilters()" style="font-size:11px;">
+            Reset
+        </button>
+    </div>
+</div>
+
+@* ==================== 5. REVISIONS MANAGEMENT TABLE ==================== *@
+<div class="cv-revisions-table-card animate-slide-up stagger-3">
+    
+    @* Table Topbar *@
+    <div style="padding:var(--space-3) var(--space-5);background:var(--cv-slate-50);border-bottom:1px solid var(--cv-border);display:flex;align-items:center;justify-content:space-between;font-size:var(--fs-xs);color:var(--cv-slate);flex-wrap:wrap;gap:var(--space-3);">
+        <div style="display:flex;align-items:center;gap:var(--space-2);">
+            <strong style="color:var(--cv-navy);">Active Revision Pipeline:</strong>
+            <span id="revCountNotice">Showing <strong style="color:var(--cv-navy);" id="visibleRevCount">@totalCount</strong> of <strong style="color:var(--cv-navy);">@totalCount</strong> revision records</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:var(--space-2);font-size:11px;">
+            <span class="cv-dot-pulse-indigo"></span>
+            <span style="color:#4338ca;font-weight:600;">Highlighted rows represent resubmitted documents requiring faculty review</span>
+        </div>
+    </div>
+
+    @* Responsive Table *@
+    <div style="overflow-x:auto;">
+        <table class="cv-revisions-table" id="revisionsTable">
+            <thead>
+                <tr>
+                    <th style="min-width:200px;">Student</th>
+                    <th style="min-width:200px;">Task</th>
+                    <th style="min-width:110px;">Current Version</th>
+                    <th style="min-width:130px;">Requested On</th>
+                    <th style="min-width:260px;">Feedback</th>
+                    <th style="min-width:170px;">Resubmission Status</th>
+                    <th style="min-width:140px;text-align:right;">Action</th>
+                </tr>
+            </thead>
+            <tbody id="revTableBody">
+                @if (Model != null && Model.Any())
+                {
+                    foreach (var item in Model)
+                    {
+                        var status = item.Status ?? "Under Review";
+                        var isResub = status.IndexOf("Resubmitted", System.StringComparison.OrdinalIgnoreCase) >= 0;
+                        var avatarLetters = !string.IsNullOrEmpty(item.StudentName) && item.StudentName.Trim().Length > 0
+                            ? (item.StudentName.Trim().Split(' ').Length > 1 
+                                ? (item.StudentName.Trim().Split(' ')[0][0].ToString() + item.StudentName.Trim().Split(' ')[1][0].ToString()) 
+                                : item.StudentName.Substring(0, 1))
+                            : "ST";
+                        <tr class="rev-row" data-student="@(item.StudentName) @(item.RollNo)" data-task="@item.TaskTitle" data-classroom="@item.ClassroomName" data-status="@status">
+                            <td data-label="Student">
+                                <div class="cv-sub-student-cell">
+                                    <div class="cv-sub-avatar" style="background: linear-gradient(135deg, #4f46e5, #818cf8);">
+                                        @avatarLetters
+                                    </div>
+                                    <div>
+                                        <div class="cv-sub-student-name">@item.StudentName</div>
+                                        <div class="cv-sub-student-roll">@(item.RollNo ?? "24CE014") &bull; @(item.ClassroomName ?? "Classroom")</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td data-label="Task">
+                                <div style="font-weight:var(--fw-bold);color:var(--cv-navy);font-size:var(--fs-xs);">
+                                    @item.TaskTitle
+                                </div>
+                                <div style="margin-top:2px;">
+                                    <span class="cv-classroom-pill" style="background:#fef3c7;color:#92400e;">@(item.ClassroomName ?? "Classroom")</span>
+                                </div>
+                            </td>
+                            <td data-label="Current Version">
+                                <span class="cv-sub-version-pill v-v2">
+                                    @(item.Version ?? "v1") &bull; @(item.FileName ?? "Document.pdf")
+                                </span>
+                            </td>
+                            <td data-label="Requested On">
+                                <div style="font-size:var(--fs-xs);color:var(--cv-navy);font-weight:500;">@(item.SubmittedDate ?? "Recent")</div>
+                            </td>
+                            <td data-label="Feedback">
+                                <div class="cv-feedback-quote-box">
+                                    <strong>Directive:</strong>
+                                    "@(string.IsNullOrEmpty(item.Feedback) ? "Check submission and update as requested." : item.Feedback)"
+                                </div>
+                            </td>
+                            <td data-label="Resubmission Status">
+                                <div style="display:flex;flex-direction:column;gap:3px;align-items:flex-start;">
+                                    <span class="cv-rev-status-pill @(isResub ? "status-resubmitted" : "status-waiting")">
+                                        @status
+                                    </span>
+                                </div>
+                            </td>
+                            <td data-label="Action" style="text-align:right;">
+                                <a href="@Url.Action("ReviewSubmission", "Faculty", new { id = item.SubmissionId })" class="cv-rev-action-btn cv-btn-primary" style="text-decoration:none;display:inline-block;" title="Review submission">
+                                    Review &rarr;
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="7" style="text-align:center;padding:var(--space-8);color:var(--cv-slate);">
+                            <div style="font-weight:600;font-size:14px;color:var(--cv-navy);margin-bottom:4px;">No Revision Submissions Pending</div>
+                            <div style="font-size:12px;">All student revisions have been cleared or reviewed!</div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @* Empty State (if filter yields 0 matches) *@
+    <div id="emptyRevState" class="cv-sub-empty-state" style="display:none;">
+        <div class="cv-sub-empty-icon">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:26px;height:26px;flex-shrink:0;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </div>
+        <h3 style="font-size:var(--fs-base);font-weight:var(--fw-bold);color:var(--cv-navy);margin-bottom:4px;">
+            No Revision Records Found
+        </h3>
+        <p style="font-size:var(--fs-xs);color:var(--cv-slate);max-width:340px;margin:0 auto var(--space-4);">
+            No records match the selected status or classroom filter. Try clearing your search parameters.
+        </p>
+        <button type="button" class="cv-btn cv-btn-secondary cv-btn-sm" onclick="resetRevisionFilters()">
+            Clear Filters
+        </button>
+    </div>
+
+    @* Table Footer *@
+    <div style="padding:var(--space-3) var(--space-5);background:var(--cv-slate-50);border-top:1px solid var(--cv-border);display:flex;align-items:center;justify-content:space-between;font-size:var(--fs-xs);color:var(--cv-slate);flex-wrap:wrap;gap:var(--space-2);">
+        <div>
+            Continuous Academic Audit: Every revision cycle preserves immutable version timestamps and diff audit trails.
+        </div>
+        <div style="font-weight:600;color:var(--cv-navy);">
+            Academic Year @DateTime.Now.Year&ndash;@(DateTime.Now.Year + 1)
+        </div>
+    </div>
+</div>
+
+@* ==================== 6. MODAL: REVISION THREAD DIALOGUE ==================== *@
+<div class="cv-thread-modal-backdrop" id="threadModalBackdrop">
+    <div class="cv-thread-modal">
+        <div style="padding:var(--space-4) var(--space-6);background:linear-gradient(135deg, #4c1d95 0%, #312e81 100%);color:white;display:flex;align-items:center;justify-content:space-between;">
+            <div style="display:flex;align-items:center;gap:var(--space-2);">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;flex-shrink:0;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                <strong style="font-size:var(--fs-base);" id="threadModalTitle">Revision Thread</strong>
+            </div>
+            <button type="button" onclick="closeThreadModal()" style="background:none;border:none;color:white;font-size:18px;cursor:pointer;line-height:1;">&times;</button>
+        </div>
+
+        <div style="padding:var(--space-6);">
+            <div style="margin-bottom:var(--space-4);">
+                <span style="font-size:11px;font-weight:bold;text-transform:uppercase;color:var(--cv-slate);letter-spacing:0.04em;">Task Context:</span>
+                <div style="font-weight:bold;color:var(--cv-navy);font-size:var(--fs-sm);" id="threadModalTask">DBMS Practical 3</div>
+            </div>
+
+            @* Conversation Thread *@
+            <div style="display:flex;flex-direction:column;gap:var(--space-3);margin-bottom:var(--space-4);">
+                @* Faculty Message *@
+                <div style="background:#faf5ff;border:1px solid #e9d5ff;border-radius:var(--radius-md);padding:var(--space-3);border-left:3px solid #9333ea;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                        <strong style="font-size:11px;color:#7e22ce;">Prof. Patel (Faculty Feedback)</strong>
+                        <span style="font-size:10px;color:var(--cv-slate);">Sent with Revision Directive</span>
+                    </div>
+                    <p style="font-size:12px;color:#581c87;margin:0;line-height:1.45;" id="threadModalDirective">
+                        "Correct relationship notation and clarify multi-table join criteria."
+                    </p>
+                </div>
+
+                @* Student Status *@
+                <div style="background:var(--cv-slate-50);border:1px dashed var(--cv-border);border-radius:var(--radius-md);padding:var(--space-3);font-size:11px;color:var(--cv-slate-600);">
+                    <div style="display:flex;align-items:center;gap:6px;">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;color:#d97706;flex-shrink:0;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/></svg>
+                        <span>Student has opened and acknowledged feedback. Resubmission in progress.</span>
+                    </div>
+                </div>
+            </div>
+
+            @* Quick Action Buttons *@
+            <div style="display:flex;gap:var(--space-2);justify-content:flex-end;">
+                <button type="button" class="cv-btn cv-btn-secondary cv-btn-sm" onclick="closeThreadModal()">
+                    Close
+                </button>
+                <button type="button" class="cv-btn cv-btn-primary cv-btn-sm" onclick="sendFollowUpReminder()" style="background:#4f46e5;border-color:#4338ca;">
+                    Send Nudge Reminder
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* ==================== 7. JAVASCRIPT LOGIC ==================== *@
+<script>
+    function filterByMetricStatus(status) {
+        // Update metric card active state
+        document.querySelectorAll('.cv-rev-metric-card').forEach(function(card) {
+            card.classList.remove('active');
+        });
+
+        var select = document.getElementById("revFilterStatus");
+        if (status === 'all') {
+            select.value = "all";
+            document.getElementById("metricCardAll").classList.add("active");
+        } else if (status === 'Resubmitted') {
+            select.value = "Resubmitted";
+            document.getElementById("metricCardResubmitted").classList.add("active");
+        } else if (status === 'Waiting for Student') {
+            select.value = "Waiting for Student";
+            document.getElementById("metricCardWaiting").classList.add("active");
+        } else if (status === 'Under Review') {
+            select.value = "Under Review";
+            document.getElementById("metricCardUnderReview").classList.add("active");
+        }
+
+        filterRevisionsTable();
+    }
+
+    function filterRevisionsTable() {
+        var query = (document.getElementById("revSearchInput").value || "").toLowerCase().trim();
+        var selectedStatus = document.getElementById("revFilterStatus").value;
+        var selectedClassroom = document.getElementById("revFilterClassroom").value;
+
+        var rows = document.querySelectorAll("#revTableBody .rev-row");
+        var visible = 0;
+
+        rows.forEach(function(row) {
+            var student = (row.getAttribute("data-student") || "").toLowerCase();
+            var task = (row.getAttribute("data-task") || "").toLowerCase();
+            var classroom = row.getAttribute("data-classroom") || "";
+            var status = row.getAttribute("data-status") || "";
+            var textContent = row.textContent.toLowerCase();
+
+            var matchesQuery = true;
+            if (query.length > 0) {
+                matchesQuery = (student.indexOf(query) > -1 || task.indexOf(query) > -1 || textContent.indexOf(query) > -1);
+            }
+
+            var matchesStatus = true;
+            if (selectedStatus !== "all") {
+                matchesStatus = (status === selectedStatus);
+            }
+
+            var matchesClassroom = true;
+            if (selectedClassroom !== "all") {
+                matchesClassroom = (classroom.indexOf(selectedClassroom) > -1);
+            }
+
+            if (matchesQuery && matchesStatus && matchesClassroom) {
+                row.style.display = "";
+                visible++;
+            } else {
+                row.style.display = "none";
+            }
+        });
+
+        // Update counts
+        var countEl = document.getElementById("visibleRevCount");
+        if (countEl) countEl.textContent = visible;
+
+        // Empty state toggle
+        var emptyEl = document.getElementById("emptyRevState");
+        var tableEl = document.getElementById("revisionsTable");
+        if (emptyEl && tableEl) {
+            if (visible === 0) {
+                emptyEl.style.display = "block";
+                tableEl.style.display = "none";
+            } else {
+                emptyEl.style.display = "none";
+                tableEl.style.display = "table";
+            }
+        }
+    }
+
+    function resetRevisionFilters() {
+        document.getElementById("revSearchInput").value = "";
+        document.getElementById("revFilterStatus").value = "all";
+        document.getElementById("revFilterClassroom").value = "all";
+
+        document.querySelectorAll('.cv-rev-metric-card').forEach(function(card) {
+            card.classList.remove('active');
+        });
+        document.getElementById("metricCardAll").classList.add("active");
+
+        filterRevisionsTable();
+    }
+
+    // Modal Interaction
+    var activeStudentInModal = "";
+    function openThreadModal(student, task, directive) {
+        activeStudentInModal = student;
+        document.getElementById("threadModalTitle").textContent = "Revision Thread — " + student;
+        document.getElementById("threadModalTask").textContent = task;
+        document.getElementById("threadModalDirective").textContent = '"' + directive + '"';
+        document.getElementById("threadModalBackdrop").classList.add("open");
+    }
+
+    function closeThreadModal() {
+        document.getElementById("threadModalBackdrop").classList.remove("open");
+    }
+
+    function sendFollowUpReminder() {
+        closeThreadModal();
+        alert("Automated resubmission reminder dispatched to " + activeStudentInModal + ".");
+    }
+
+    function sendStudentReminder(student) {
+        alert("Urgent deadline reminder dispatched to " + student + ".");
+    }
+</script>

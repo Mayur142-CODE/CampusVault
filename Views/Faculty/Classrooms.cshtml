@@ -1,0 +1,451 @@
+@model List<CampusVault.Models.Faculty.FacultyClassroomItem>
+@{
+    ViewBag.Title = "My Classrooms";
+    ViewBag.Role = "Faculty";
+    ViewBag.UserName = Session["UserName"] as string ?? "Prof. Patel";
+    ViewBag.UserInitials = Session["UserInitials"] as string ?? "PP";
+    ViewBag.UserRoleDisplay = Session["UserRoleDisplay"] as string ?? "Computer Engineering";
+    int totalStudents = Model != null ? Model.Sum(c => c.StudentCount) : 0;
+    int totalCount = Model != null ? Model.Count : 0;
+}
+
+@* ==================== 1. PAGE HEADER ==================== *@
+<div class="cv-faculty-classrooms-header animate-slide-up">
+    <div>
+        <div class="cv-faculty-classrooms-title-group">
+            <div class="cv-faculty-classrooms-icon">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:22px;height:22px;flex-shrink:0;"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+            </div>
+            <h1 style="font-family:var(--font-heading);font-size:var(--fs-2xl);font-weight:var(--fw-bold);color:var(--cv-navy);letter-spacing:-0.015em;margin:0;">
+                My Classrooms
+            </h1>
+        </div>
+        <p style="color:var(--cv-slate);font-size:var(--fs-base);margin:0;">
+            Academic course workspaces, student rosters, and task grading under your instruction.
+        </p>
+    </div>
+
+    @* Top Actions *@
+    <div style="display:flex;align-items:center;gap:var(--space-3);flex-wrap:wrap;">
+        <span class="cv-faculty-hero-pill" style="background:var(--cv-slate-100);border-color:var(--cv-border);color:var(--cv-slate-700);padding:6px 12px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;color:var(--cv-gold);flex-shrink:0;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            @totalCount Active Workspaces &bull; @totalStudents Students
+        </span>
+
+        <a href="@Url.Action("CreateClassroom", "Faculty")" class="cv-btn cv-btn-primary" style="gap:6px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex-shrink:0;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <span>Create Classroom</span>
+        </a>
+    </div>
+</div>
+
+@* ==================== 2. SEARCH & FILTER CONTROLS ==================== *@
+<div class="cv-filter-card animate-slide-up stagger-1 mb-6">
+    <div class="cv-filter-bar">
+        <div class="cv-filter-controls">
+            @* Search input *@
+            <div class="cv-search-input-group">
+                <svg class="input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex-shrink:0;">
+                    <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+                <input type="text"
+                       id="facultyClassroomSearch"
+                       placeholder="Search by subject, code, or division..."
+                       oninput="filterFacultyClassrooms()" />
+            </div>
+
+            @* Filter: Semester *@
+            <div style="display:flex;align-items:center;gap:6px;">
+                <label for="filterSemester" style="font-size:var(--fs-xs);font-weight:600;color:var(--cv-slate);text-transform:uppercase;letter-spacing:0.04em;">Semester:</label>
+                <select id="filterSemester" class="cv-filter-select" onchange="filterFacultyClassrooms()">
+                    <option value="all" selected>All Semesters</option>
+                    <option value="1">Semester 1</option>
+                    <option value="2">Semester 2</option>
+                    <option value="3">Semester 3</option>
+                    <option value="4">Semester 4</option>
+                    <option value="5">Semester 5</option>
+                    <option value="6">Semester 6</option>
+                    <option value="7">Semester 7</option>
+                    <option value="8">Semester 8</option>
+                </select>
+            </div>
+
+            @* Filter: Division *@
+            <div style="display:flex;align-items:center;gap:6px;">
+                <label for="filterDivision" style="font-size:var(--fs-xs);font-weight:600;color:var(--cv-slate);text-transform:uppercase;letter-spacing:0.04em;">Division:</label>
+                <select id="filterDivision" class="cv-filter-select" onchange="filterFacultyClassrooms()">
+                    <option value="all">All Divisions</option>
+                    <option value="EC6">EC6</option>
+                    <option value="EC7">EC7</option>
+                    <option value="CE-A">CE-A</option>
+                    <option value="IT-A">IT-A</option>
+                </select>
+            </div>
+
+            @* Filter: Review Status *@
+            <div style="display:flex;align-items:center;gap:6px;">
+                <label for="filterReviewStatus" style="font-size:var(--fs-xs);font-weight:600;color:var(--cv-slate);text-transform:uppercase;letter-spacing:0.04em;">Reviews:</label>
+                <select id="filterReviewStatus" class="cv-filter-select" onchange="filterFacultyClassrooms()">
+                    <option value="all">All Statuses</option>
+                    <option value="pending">Has Pending Reviews</option>
+                    <option value="clear">All Caught Up</option>
+                </select>
+            </div>
+        </div>
+
+        @* Counter & Reset *@
+        <div style="display:flex;align-items:center;gap:var(--space-3);">
+            <span id="facultyClassroomCount" style="font-size:var(--fs-xs);color:var(--cv-slate);font-weight:500;">
+                Showing <strong>@(Model != null ? Model.Count : 0)</strong> classrooms
+            </span>
+            <button type="button" class="cv-btn cv-btn-ghost cv-btn-sm" onclick="resetFacultyClassroomFilters()" style="padding:4px 8px;font-size:12px;">
+                Reset
+            </button>
+        </div>
+    </div>
+</div>
+
+@* ==================== 3. CLASSROOM CARDS GRID ==================== *@
+<div class="cv-classrooms-grid animate-slide-up stagger-2" id="facultyClassroomsGrid">
+@if (Model != null && Model.Count > 0)
+{
+    foreach (var c in Model)
+    {
+        var hasPending = c.PendingReviewCount > 0;
+        var keywords = (c.CourseName + " " + c.CourseCode + " " + c.Semester + " " + c.Division + " " + c.Department).ToLower();
+        var gradient = !string.IsNullOrWhiteSpace(c.ThemeGradient) ? c.ThemeGradient : "linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)";
+        var scheduleDisplay = !string.IsNullOrWhiteSpace(c.Schedule) ? c.Schedule : (!string.IsNullOrWhiteSpace(c.Room) ? c.Room : "Regular Schedule");
+
+        <div class="cv-classroom-card-lms"
+             data-id="@c.ClassroomId"
+             data-subject="@c.CourseName"
+             data-code="@c.CourseCode"
+             data-semester="@c.Semester"
+             data-division="@c.Division"
+             data-has-pending="@(hasPending ? "true" : "false")"
+             data-keywords="@keywords">
+            
+            <div class="cv-classroom-banner" style="background: @gradient; position:relative; overflow:hidden;">
+                <svg class="cv-classroom-motif-bg" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="2.5" style="width:130px;height:130px;flex-shrink:0;opacity:0.18;">
+                    <circle cx="50" cy="20" r="10"/>
+                    <circle cx="25" cy="65" r="8"/>
+                    <circle cx="75" cy="65" r="8"/>
+                    <line x1="43" y1="28" x2="31" y2="58"/>
+                    <line x1="57" y1="28" x2="69" y2="58"/>
+                </svg>
+
+                <div class="cv-classroom-badge-row">
+                    <span class="cv-course-code-pill">@c.CourseCode</span>
+                    <span class="cv-cohort-pill">@c.Division &bull; @c.Semester</span>
+                </div>
+                <div class="cv-classroom-name">@c.CourseName</div>
+            </div>
+
+            <div class="cv-classroom-body">
+                <div class="d-flex items-center justify-between" style="font-size:11px;color:var(--cv-slate);">
+                    <span class="d-flex items-center gap-1">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;flex-shrink:0;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        @scheduleDisplay
+                    </span>
+                    <button type="button" class="cv-join-code-badge" onclick="copyJoinCode('@c.JoinCode')" title="Click to copy student join code">
+                        <span>Code: <strong>@c.JoinCode</strong></span>
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:11px;height:11px;flex-shrink:0;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                    </button>
+                </div>
+
+                <div class="cv-faculty-classroom-stats">
+                    <div class="cv-faculty-stat-box">
+                        <div class="cv-faculty-stat-box-val">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;color:var(--cv-slate-500);flex-shrink:0;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                            @c.StudentCount
+                        </div>
+                        <div class="cv-faculty-stat-box-lbl">Students</div>
+                    </div>
+
+                    <div class="cv-faculty-stat-box tasks-active-box">
+                        <div class="cv-faculty-stat-box-val">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;color:var(--cv-indigo);flex-shrink:0;"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
+                            @c.TaskCount
+                        </div>
+                        <div class="cv-faculty-stat-box-lbl">Active Tasks</div>
+                    </div>
+
+                    <div class="cv-faculty-stat-box @(hasPending ? "pending-urgent" : "")">
+                        <div class="cv-faculty-stat-box-val">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;color:@(hasPending ? "#d97706" : "var(--cv-slate-400)");flex-shrink:0;"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                            @c.PendingReviewCount
+                        </div>
+                        <div class="cv-faculty-stat-box-lbl">Pending Reviews</div>
+                    </div>
+                </div>
+
+                <div class="cv-classroom-actions-row">
+                    <a href="@Url.Action("ClassroomDetails", "Faculty", new { id = c.ClassroomId })" class="cv-btn cv-btn-primary flex-1" style="justify-content:center;gap:6px;">
+                        <span>Open</span>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;flex-shrink:0;"><polyline points="9 18 15 12 9 6"/></svg>
+                    </a>
+                    <button type="button" class="cv-btn cv-btn-secondary" onclick="openEditModal('@c.CourseName', '@c.CourseCode', '@c.Semester', '@c.Division', @c.StudentCount, '@c.Room')" title="Edit Classroom">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;flex-shrink:0;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        <span>Edit</span>
+                    </button>
+                    <button type="button" class="cv-btn cv-btn-archive" onclick="openArchiveModal(@c.ClassroomId, '@HttpUtility.JavaScriptStringEncode(c.CourseName)')" title="Archive / Delete Classroom">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;flex-shrink:0;"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
+                        <span>Archive</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+}
+
+@* ==================== 4. EMPTY STATE (FILTER RESULTS ZERO) ==================== *@
+<div id="facultyEmptyState" class="cv-empty-state animate-slide-up" style="display:none;padding:var(--space-10) var(--space-6);margin-top:var(--space-6);text-align:center;">
+    <div style="width:64px;height:64px;border-radius:50%;background:var(--cv-slate-100);display:flex;align-items:center;justify-content:center;margin:0 auto var(--space-4);color:var(--cv-slate);">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:32px;height:32px;flex-shrink:0;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    </div>
+    <h3 style="font-size:var(--fs-lg);font-weight:var(--fw-bold);color:var(--cv-navy);margin-bottom:var(--space-2);">No Classrooms Found</h3>
+    <p style="color:var(--cv-slate);max-width:420px;margin:0 auto var(--space-5);font-size:var(--fs-sm);">
+        No course workspaces match your current search and filter criteria. Try adjusting your query or resetting filters.
+    </p>
+    <button type="button" class="cv-btn cv-btn-secondary" onclick="resetFacultyClassroomFilters()">
+        <span>Reset Filters</span>
+    </button>
+</div>
+
+@* ==================== 5. MODAL: EDIT CLASSROOM ==================== *@
+<div class="cv-modal-backdrop" id="editClassroomModal">
+    <div class="cv-modal-dialog">
+        <div class="cv-modal-header">
+            <h3 class="cv-modal-title">Edit Classroom Workspace</h3>
+            <button type="button" class="cv-btn cv-btn-ghost cv-btn-icon" onclick="closeEditModal()" title="Close dialog">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;flex-shrink:0;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+        <div class="cv-modal-body">
+            <form id="editClassroomForm" onsubmit="saveClassroomChanges(event)">
+                <div class="cv-form-group mb-4">
+                    <label class="cv-label" for="editSubjectName">Subject Title</label>
+                    <input type="text" id="editSubjectName" class="cv-input" required />
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4);" class="mb-4">
+                    <div class="cv-form-group">
+                        <label class="cv-label" for="editSubjectCode">Course Code</label>
+                        <input type="text" id="editSubjectCode" class="cv-input" required />
+                    </div>
+                    <div class="cv-form-group">
+                        <label class="cv-label" for="editDivision">Division</label>
+                        <input type="text" id="editDivision" class="cv-input" required />
+                    </div>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4);" class="mb-4">
+                    <div class="cv-form-group">
+                        <label class="cv-label" for="editSemester">Semester</label>
+                        <select id="editSemester" class="cv-input">
+                            <option value="Semester 3">Semester 3</option>
+                            <option value="Semester 4">Semester 4</option>
+                            <option value="Semester 5">Semester 5</option>
+                            <option value="Semester 6">Semester 6</option>
+                        </select>
+                    </div>
+                    <div class="cv-form-group">
+                        <label class="cv-label" for="editMaxStudents">Student Capacity</label>
+                        <input type="number" id="editMaxStudents" class="cv-input" min="1" max="120" value="60" />
+                    </div>
+                </div>
+                <div class="cv-form-group">
+                    <label class="cv-label" for="editRoomSchedule">Schedule & Lab Location</label>
+                    <input type="text" id="editRoomSchedule" class="cv-input" placeholder="e.g. Mon, Wed 10:30 AM • Lab 304" />
+                </div>
+            </form>
+        </div>
+        <div class="cv-modal-footer">
+            <button type="button" class="cv-btn cv-btn-secondary" onclick="closeEditModal()">Cancel</button>
+            <button type="button" class="cv-btn cv-btn-primary" onclick="submitEditForm()">Save Changes</button>
+        </div>
+    </div>
+</div>
+
+@* ==================== 6. MODAL: ARCHIVE CLASSROOM ==================== *@
+<div class="cv-modal-backdrop" id="archiveClassroomModal">
+    <div class="cv-modal-dialog" style="max-width:460px;">
+        <div class="cv-modal-header" style="border-bottom-color:#fecaca;">
+            <div class="d-flex items-center gap-2">
+                <div style="width:32px;height:32px;border-radius:50%;background:#fee2e2;color:#dc2626;display:flex;align-items:center;justify-content:center;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex-shrink:0;"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
+                </div>
+                <h3 class="cv-modal-title" style="color:#b91c1c;">Archive Classroom</h3>
+            </div>
+            <button type="button" class="cv-btn cv-btn-ghost cv-btn-icon" onclick="closeArchiveModal()" title="Close dialog">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;flex-shrink:0;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+        <div class="cv-modal-body">
+            <p style="font-size:var(--fs-sm);color:var(--cv-navy);line-height:1.5;margin-bottom:var(--space-3);">
+                Are you sure you want to archive <strong id="archiveClassroomTargetName">this classroom</strong>?
+            </p>
+            <p style="font-size:var(--fs-xs);color:var(--cv-slate);line-height:1.5;margin:0;background:var(--cv-slate-50);padding:var(--space-3);border-radius:var(--radius-md);border:1px solid var(--cv-border-light);">
+                Archived classrooms are stored in the department repository. Students will no longer be able to submit new tasks, but all approved documents and evaluation registers will be preserved in the Vault.
+            </p>
+        </div>
+        <div class="cv-modal-footer">
+            <button type="button" class="cv-btn cv-btn-secondary" onclick="closeArchiveModal()">Cancel</button>
+            <button type="button" class="cv-btn cv-btn-danger" onclick="confirmArchiveClassroom()">Confirm Archive</button>
+        </div>
+    </div>
+</div>
+
+@* ==================== 7. TOAST NOTIFICATION ==================== *@
+<div class="cv-toast" id="classroomToast">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;color:var(--cv-emerald);flex-shrink:0;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+    <span id="classroomToastMsg">Notification message</span>
+</div>
+
+@* ==================== 8. CLIENT INTERACTIVE SCRIPTS ==================== *@
+<script>
+    // Toast notification utility
+    function showToast(msg) {
+        var toast = document.getElementById('classroomToast');
+        var msgEl = document.getElementById('classroomToastMsg');
+        msgEl.innerText = msg;
+        toast.classList.add('show');
+        setTimeout(function () {
+            toast.classList.remove('show');
+        }, 3200);
+    }
+
+    // 1-Click Copy Classroom Join Code
+    function copyJoinCode(code) {
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(code).then(function () {
+                showToast('Enrollment code "' + code + '" copied to clipboard!');
+            });
+        } else {
+            showToast('Enrollment code: ' + code);
+        }
+    }
+
+    // Search and Filter logic
+    function filterFacultyClassrooms() {
+        var query = (document.getElementById('facultyClassroomSearch').value || '').toLowerCase().trim();
+        var semester = document.getElementById('filterSemester').value;
+        var division = document.getElementById('filterDivision').value;
+        var reviewStatus = document.getElementById('filterReviewStatus').value;
+
+        var grid = document.getElementById('facultyClassroomsGrid');
+        var cards = grid.querySelectorAll('.cv-classroom-card-lms');
+        var visibleCount = 0;
+
+        cards.forEach(function (card) {
+            var cardSem = card.getAttribute('data-semester') || '';
+            var cardDiv = card.getAttribute('data-division') || '';
+            var cardHasPending = card.getAttribute('data-has-pending') === 'true';
+            var keywords = (card.getAttribute('data-keywords') || '').toLowerCase();
+
+            var matchesQuery = !query || keywords.indexOf(query) > -1;
+            var matchesSem = semester === 'all' || cardSem == semester || cardSem === ('Semester ' + semester) || ('Semester ' + cardSem) === semester;
+            var matchesDiv = division === 'all' || cardDiv === division;
+            var matchesReview = reviewStatus === 'all' ||
+                (reviewStatus === 'pending' && cardHasPending) ||
+                (reviewStatus === 'clear' && !cardHasPending);
+
+            if (matchesQuery && matchesSem && matchesDiv && matchesReview) {
+                card.style.display = '';
+                visibleCount++;
+            } else {
+                card.style.display = 'none';
+            }
+        });
+
+        // Update count badge
+        document.getElementById('facultyClassroomCount').innerHTML = 'Showing <strong>' + visibleCount + '</strong> classrooms';
+
+        // Toggle Empty state
+        var emptyState = document.getElementById('facultyEmptyState');
+        if (visibleCount === 0) {
+            emptyState.style.display = 'block';
+        } else {
+            emptyState.style.display = 'none';
+        }
+    }
+
+    // Reset filters
+    function resetFacultyClassroomFilters() {
+        document.getElementById('facultyClassroomSearch').value = '';
+        document.getElementById('filterSemester').value = 'all';
+        document.getElementById('filterDivision').value = 'all';
+        document.getElementById('filterReviewStatus').value = 'all';
+        filterFacultyClassrooms();
+    }
+
+    // Modal Edit logic
+    function openEditModal(name, code, sem, div, maxStudents, schedule) {
+        document.getElementById('editSubjectName').value = name;
+        document.getElementById('editSubjectCode').value = code;
+        document.getElementById('editSemester').value = sem;
+        document.getElementById('editDivision').value = div;
+        document.getElementById('editMaxStudents').value = maxStudents;
+        document.getElementById('editRoomSchedule').value = schedule || '';
+
+        document.getElementById('editClassroomModal').classList.add('active');
+    }
+
+    function closeEditModal() {
+        document.getElementById('editClassroomModal').classList.remove('active');
+    }
+
+    function submitEditForm() {
+        var form = document.getElementById('editClassroomForm');
+        if (form.checkValidity()) {
+            closeEditModal();
+            showToast('Classroom details updated successfully!');
+        } else {
+            form.reportValidity();
+        }
+    }
+
+    function saveClassroomChanges(e) {
+        e.preventDefault();
+        submitEditForm();
+    }
+
+    // Modal Archive logic
+    // Modal Archive / Delete logic
+    var currentArchiveTargetId = 0;
+    var currentArchiveTargetName = '';
+    function openArchiveModal(classroomId, title) {
+        currentArchiveTargetId = classroomId;
+        currentArchiveTargetName = title;
+        document.getElementById('archiveClassroomTargetName').innerText = title;
+        document.getElementById('archiveClassroomModal').classList.add('active');
+    }
+
+    function closeArchiveModal() {
+        document.getElementById('archiveClassroomModal').classList.remove('active');
+    }
+
+    function confirmArchiveClassroom() {
+        if (!currentArchiveTargetId) return;
+
+        var fd = new FormData();
+        fd.append('classroomId', currentArchiveTargetId);
+
+        fetch('@Url.Action("DeleteClassroom", "Faculty")', {
+            method: 'POST',
+            body: new URLSearchParams(fd)
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(res) {
+            closeArchiveModal();
+            if (res.success) {
+                alert('Classroom deleted successfully.');
+                window.location.reload();
+            } else {
+                alert(res.message || 'Failed to delete classroom.');
+            }
+        })
+        .catch(function(err) {
+            closeArchiveModal();
+            alert('An error occurred. Please try again.');
+        });
+    }
+</script>

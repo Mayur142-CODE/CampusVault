@@ -1,0 +1,303 @@
+@model CampusVault.Models.Faculty.ReviewSubmissionViewModel
+@{
+    ViewBag.Role           = "Faculty";
+    ViewBag.UserName       = Session["UserName"]       as string ?? "Faculty";
+    ViewBag.UserInitials   = Session["UserInitials"]   as string ?? "FA";
+    ViewBag.UserRoleDisplay= Session["UserRoleDisplay"]as string ?? "Faculty Mentor";
+    ViewBag.Title          = "Review Submission";
+    ViewBag.BrowserTitle   = (Model?.FileName ?? "Submission") + " — Review";
+
+    var sub         = Model;
+    var studentName = sub?.StudentName ?? "Student";
+    var taskTitle   = sub?.TaskTitle   ?? "Task";
+    var maxScore    = sub?.MaxScore    ?? 20;
+    var cloudUrl    = sub?.CloudUrl    ?? "";
+    var isPdf       = !string.IsNullOrEmpty(cloudUrl) && cloudUrl.Contains(".pdf");
+    var status      = sub?.Status      ?? "PendingReview";
+    var isApproved  = status.Equals("Approved", StringComparison.OrdinalIgnoreCase);
+    var isRevision  = status.IndexOf("Revision", StringComparison.OrdinalIgnoreCase) >= 0;
+    var initials    = studentName.Length >= 2 ? studentName.Substring(0, 2).ToUpper() : "ST";
+    var onTime      = sub != null && sub.SubmittedAt <= sub.DueDate;
+}
+
+@* ==================== BREADCRUMBS ==================== *@
+<div style="display:flex;align-items:center;justify-content:space-between;gap:var(--space-4);flex-wrap:wrap;margin-bottom:var(--space-5);" class="animate-slide-up">
+    <div style="display:flex;align-items:center;gap:var(--space-2);font-size:var(--fs-xs);color:var(--cv-slate);min-width:0;flex:1 1 240px;overflow:hidden;">
+        <a href="@Url.Action("Submissions","Faculty")" style="color:var(--cv-indigo);text-decoration:none;display:inline-flex;align-items:center;gap:4px;font-weight:var(--fw-medium);flex-shrink:0;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;"><polyline points="15 18 9 12 15 6"/></svg>
+            Submissions
+        </a>
+        <span style="flex-shrink:0;">/</span>
+        <span style="color:var(--cv-navy);font-weight:var(--fw-semibold);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;" title="@taskTitle &bull; @studentName">@taskTitle &bull; @studentName</span>
+    </div>
+    <span style="font-size:11px;padding:4px 12px;border-radius:var(--radius-full);font-weight:600;flex-shrink:0;
+        @(isApproved ? "background:#ecfdf5;color:#059669;border:1px solid #a7f3d0;" :
+          isRevision ? "background:#faf5ff;color:#7e22ce;border:1px solid #e9d5ff;" :
+                       "background:#fef3c7;color:#b45309;border:1px solid #fde68a;")">
+        @(isApproved ? "✓ Approved" : isRevision ? "↩ Needs Revision" : "⏳ Pending Review")
+    </span>
+</div>
+
+@* ==================== SPLIT WORKSPACE ==================== *@
+<div style="display:grid;grid-template-columns:minmax(0, 1fr) 380px;gap:var(--space-5);align-items:start;" class="animate-slide-up stagger-1">
+
+    @* ===== LEFT: PDF VIEWER ===== *@
+    <div style="background:var(--cv-navy-deep);border-radius:var(--radius-xl);overflow:hidden;box-shadow:var(--shadow-lg);min-width:0;">
+
+        @* Viewer Top Bar *@
+        <div style="padding:var(--space-3) var(--space-4);display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);flex-wrap:nowrap;border-bottom:1px solid rgba(255,255,255,0.08);">
+            <div style="display:flex;align-items:center;gap:var(--space-3);min-width:0;flex:1;">
+                <div style="width:28px;height:28px;border-radius:var(--radius-sm);background:#dc2626;color:white;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;flex-shrink:0;">PDF</div>
+                <div style="min-width:0;flex:1;">
+                    <div style="font-size:12px;font-weight:600;color:var(--cv-white);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;" title="@(sub?.FileName)">@(sub?.FileName ?? "document.pdf")</div>
+                    <div style="font-size:10px;color:var(--cv-slate-400);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">@(sub?.FileSize ?? "") &bull; @studentName</div>
+                </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:var(--space-2);">
+                @if (!string.IsNullOrEmpty(cloudUrl))
+                {
+                    <a href="@cloudUrl" target="_blank" style="display:inline-flex;align-items:center;gap:5px;background:#2563eb;color:white;border:none;border-radius:var(--radius-md);padding:6px 12px;font-size:11px;font-weight:600;text-decoration:none;">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;flex-shrink:0;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        Download
+                    </a>
+                    <a href="@cloudUrl" target="_blank" style="display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,0.1);color:white;border:1px solid rgba(255,255,255,0.15);border-radius:var(--radius-md);padding:6px 12px;font-size:11px;font-weight:600;text-decoration:none;">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;flex-shrink:0;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                        Open in Tab
+                    </a>
+                }
+            </div>
+        </div>
+
+        @* PDF Embed *@
+        @if (!string.IsNullOrEmpty(cloudUrl))
+        {
+            <iframe src="@cloudUrl"
+                    style="width:100%;height:720px;border:none;display:block;background:#1e293b;"
+                    title="@(sub?.FileName)"
+                    loading="lazy">
+                <div style="padding:40px;text-align:center;color:white;">
+                    <p>Unable to display PDF inline.</p>
+                    <a href="@cloudUrl" target="_blank" style="color:#60a5fa;">Open document directly →</a>
+                </div>
+            </iframe>
+        }
+        else
+        {
+            <div style="height:400px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:var(--space-3);color:var(--cv-slate-400);">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:48px;height:48px;opacity:0.4;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                <div style="font-size:13px;">No document URL available.</div>
+            </div>
+        }
+    </div>
+
+    @* ===== RIGHT: REVIEW PANEL ===== *@
+    <div style="display:flex;flex-direction:column;gap:var(--space-4);">
+
+        @* Card 1: Student Info *@
+        <div style="background:var(--cv-white);border:1px solid var(--cv-border);border-radius:var(--radius-xl);padding:var(--space-4);box-shadow:var(--shadow-sm);">
+            <div style="display:flex;align-items:center;gap:var(--space-3);margin-bottom:var(--space-3);">
+                <div style="width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#1e3a8a,#3b82f6);color:white;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0;">@initials</div>
+                <div style="flex:1;">
+                    <div style="font-weight:var(--fw-bold);color:var(--cv-navy);font-size:var(--fs-sm);">@studentName</div>
+                    <div style="font-size:11px;color:var(--cv-slate);">@(sub?.RollNo ?? "—") &bull; @(sub?.CourseName ?? "")</div>
+                </div>
+                <span style="font-size:10px;padding:3px 8px;border-radius:var(--radius-full);font-weight:600;
+                    @(isApproved ? "background:#ecfdf5;color:#059669;" :
+                      isRevision ? "background:#faf5ff;color:#7e22ce;" :
+                                   "background:#fef3c7;color:#b45309;")">
+                    @status
+                </span>
+            </div>
+
+            <div style="display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:12px;">
+                <span style="color:var(--cv-slate);">Task</span>
+                <span style="color:var(--cv-indigo);font-weight:600;">@taskTitle</span>
+
+                <span style="color:var(--cv-slate);">Course</span>
+                <span style="color:var(--cv-navy);font-weight:500;">@(sub?.CourseCode) — @(sub?.CourseName)</span>
+
+                <span style="color:var(--cv-slate);">Submitted</span>
+                <span style="color:var(--cv-navy);">@(sub?.SubmittedAt.ToString("dd MMM yyyy, hh:mm tt") ?? "—")</span>
+
+                <span style="color:var(--cv-slate);">Deadline</span>
+                <span style="display:flex;align-items:center;gap:6px;">
+                    @(sub?.DueDate.ToString("dd MMM yyyy") ?? "—")
+                    <span style="font-size:10px;padding:1px 6px;border-radius:var(--radius-full);font-weight:600;@(onTime ? "background:#ecfdf5;color:#059669;" : "background:#fef2f2;color:#dc2626;")">
+                        @(onTime ? "On Time" : "Late")
+                    </span>
+                </span>
+
+                <span style="color:var(--cv-slate);">File</span>
+                <span style="color:var(--cv-navy);">@(sub?.FileName ?? "—") @if (!string.IsNullOrEmpty(sub?.FileSize)) { <text>(@sub.FileSize)</text> }</span>
+
+                @if (isApproved && sub?.Score != null)
+                {
+                    <span style="color:var(--cv-slate);">Score</span>
+                    <span style="color:#059669;font-weight:700;">@sub.Score / @maxScore</span>
+                }
+                @if (!string.IsNullOrEmpty(sub?.Feedback))
+                {
+                    <span style="color:var(--cv-slate);">Feedback</span>
+                    <span style="color:var(--cv-navy);">@sub.Feedback</span>
+                }
+            </div>
+        </div>
+
+        @* Card 2: Evaluation Form *@
+        @if (!isApproved)
+        {
+        <div style="background:var(--cv-white);border:1px solid var(--cv-border);border-radius:var(--radius-xl);padding:var(--space-4);box-shadow:var(--shadow-sm);" id="evalCard">
+            <h3 style="font-size:var(--fs-sm);font-weight:var(--fw-bold);color:var(--cv-navy);margin:0 0 var(--space-3) 0;display:flex;align-items:center;gap:6px;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;color:var(--cv-gold);flex-shrink:0;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                Evaluation &amp; Grading
+                <span style="font-size:11px;background:#eff6ff;color:#1d4ed8;padding:2px 8px;border-radius:var(--radius-full);font-weight:600;" id="gradeBadge">—</span>
+            </h3>
+
+            @* Score Input *@
+            <div style="margin-bottom:var(--space-3);">
+                <label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:var(--cv-slate-600);margin-bottom:6px;">Award Marks:</label>
+                <div style="display:flex;align-items:center;gap:var(--space-3);">
+                    <div style="display:flex;align-items:center;gap:8px;background:var(--cv-slate-50);border:2px solid var(--cv-border);border-radius:var(--radius-lg);padding:6px 12px;">
+                        <input type="number" id="scoreInput" min="0" max="@maxScore" value="@(sub?.Score ?? maxScore)"
+                               style="width:60px;border:none;background:transparent;font-size:22px;font-weight:800;color:var(--cv-navy);text-align:center;outline:none;"
+                               oninput="updateGrade()" />
+                        <span style="font-size:16px;color:var(--cv-slate);font-weight:600;">/ @maxScore</span>
+                    </div>
+                    <div style="display:flex;gap:4px;flex-wrap:wrap;">
+                        @{ int half = maxScore / 2; int full = maxScore; int threeq = (int)(maxScore * 0.75); }
+                        <button type="button" onclick="setScore(@half)"  style="font-size:10px;padding:3px 8px;border:1px solid var(--cv-border);border-radius:var(--radius-md);background:var(--cv-white);cursor:pointer;">@half</button>
+                        <button type="button" onclick="setScore(@threeq)" style="font-size:10px;padding:3px 8px;border:1px solid var(--cv-border);border-radius:var(--radius-md);background:var(--cv-white);cursor:pointer;">@threeq</button>
+                        <button type="button" onclick="setScore(@full)"  style="font-size:10px;padding:3px 8px;border:1px solid var(--cv-border);border-radius:var(--radius-md);background:#eff6ff;color:#1d4ed8;font-weight:700;cursor:pointer;">@full</button>
+                    </div>
+                </div>
+            </div>
+
+            @* Feedback *@
+            <div style="margin-bottom:var(--space-3);">
+                <label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:var(--cv-slate-600);margin-bottom:6px;">Remarks:</label>
+                <textarea id="feedbackInput" rows="3"
+                    style="width:100%;border:1px solid var(--cv-border);border-radius:var(--radius-md);padding:8px 12px;font-size:12px;resize:vertical;font-family:inherit;color:var(--cv-navy);"
+                    placeholder="Enter evaluation remarks for the student...">@(sub?.Feedback ?? "")</textarea>
+            </div>
+
+            @* Action Buttons *@
+            <div style="display:flex;gap:var(--space-2);">
+                <button type="button" id="btnApprove" onclick="submitReview('Approve')"
+                    style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;background:#059669;color:white;border:none;border-radius:var(--radius-md);padding:10px;font-size:12px;font-weight:700;cursor:pointer;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;flex-shrink:0;"><polyline points="20 6 9 17 4 12"/></svg>
+                    Approve
+                </button>
+                <button type="button" id="btnRevision" onclick="submitReview('Revision')"
+                    style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;background:#b45309;color:white;border:none;border-radius:var(--radius-md);padding:10px;font-size:12px;font-weight:700;cursor:pointer;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;flex-shrink:0;"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                    Request Revision
+                </button>
+            </div>
+
+            @* Result Banner *@
+            <div id="reviewResult" style="display:none;margin-top:var(--space-3);padding:10px 14px;border-radius:var(--radius-md);font-size:12px;font-weight:600;"></div>
+        </div>
+        }
+        else
+        {
+        <div style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:var(--radius-xl);padding:var(--space-4);text-align:center;">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2" style="width:32px;height:32px;margin-bottom:8px;"><polyline points="20 6 9 17 4 12"/></svg>
+            <div style="font-weight:700;color:#065f46;font-size:14px;">Submission Approved</div>
+            <div style="font-size:12px;color:#047857;margin-top:4px;">Score: <strong>@(sub?.Score) / @maxScore</strong></div>
+            @if (!string.IsNullOrEmpty(sub?.Feedback))
+            {
+                <div style="font-size:11px;color:#065f46;margin-top:6px;font-style:italic;">"@sub.Feedback"</div>
+            }
+        </div>
+        }
+
+        @* Card 3: Back Button *@
+        <a href="@Url.Action("Submissions","Faculty")"
+           style="display:flex;align-items:center;justify-content:center;gap:6px;background:var(--cv-white);border:1px solid var(--cv-border);border-radius:var(--radius-xl);padding:10px;font-size:12px;font-weight:600;color:var(--cv-navy);text-decoration:none;box-shadow:var(--shadow-sm);">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;flex-shrink:0;"><polyline points="15 18 9 12 15 6"/></svg>
+            Back to Submissions Queue
+        </a>
+    </div>
+</div>
+
+@* ==================== JAVASCRIPT ==================== *@
+<script>
+    var maxScore = @maxScore;
+    var submissionId = @(sub?.SubmissionId ?? 0);
+
+    function updateGrade() {
+        var val = parseInt(document.getElementById('scoreInput').value) || 0;
+        if (val < 0) { val = 0; document.getElementById('scoreInput').value = 0; }
+        if (val > maxScore) { val = maxScore; document.getElementById('scoreInput').value = maxScore; }
+        var pct = Math.round(val / maxScore * 100);
+        var grade = pct >= 90 ? 'A+ (Outstanding)' : pct >= 80 ? 'A (Excellent)' : pct >= 70 ? 'B+ (Very Good)' : pct >= 60 ? 'B (Good)' : pct >= 50 ? 'C (Pass)' : 'F (Fail)';
+        var badge = document.getElementById('gradeBadge');
+        if (badge) badge.textContent = 'Grade: ' + grade + ' (' + pct + '%)';
+    }
+
+    function setScore(val) {
+        document.getElementById('scoreInput').value = val;
+        updateGrade();
+    }
+
+    function submitReview(action) {
+        var score    = parseInt(document.getElementById('scoreInput').value) || 0;
+        var feedback = document.getElementById('feedbackInput').value.trim();
+
+        if (action === 'Approve' && score < 0) { showResult('Please enter a valid score.', false); return; }
+        if (action === 'Revision' && !feedback) { showResult('Please enter revision feedback for the student.', false); return; }
+
+        var btnApprove  = document.getElementById('btnApprove');
+        var btnRevision = document.getElementById('btnRevision');
+        btnApprove.disabled  = true;
+        btnRevision.disabled = true;
+        btnApprove.textContent  = action === 'Approve'   ? 'Saving...' : 'Approve';
+        btnRevision.textContent = action === 'Revision'  ? 'Sending...' : 'Request Revision';
+
+        var token = document.querySelector('input[name="__RequestVerificationToken"]');
+
+        fetch('@Url.Action("ReviewSubmission","Faculty")', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: 'submissionId=' + submissionId +
+                  '&action=' + encodeURIComponent(action) +
+                  '&score=' + score +
+                  '&feedback=' + encodeURIComponent(feedback) +
+                  (token ? '&__RequestVerificationToken=' + encodeURIComponent(token.value) : '')
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                showResult(data.message, true);
+                // Reload after 1.5s so student side reflects change
+                setTimeout(function() { window.location.reload(); }, 1500);
+            } else {
+                showResult(data.message || 'An error occurred.', false);
+                btnApprove.disabled  = false;
+                btnRevision.disabled = false;
+                btnApprove.textContent  = 'Approve';
+                btnRevision.textContent = 'Request Revision';
+            }
+        })
+        .catch(function() {
+            showResult('Network error. Please try again.', false);
+            btnApprove.disabled  = false;
+            btnRevision.disabled = false;
+        });
+    }
+
+    function showResult(msg, success) {
+        var el = document.getElementById('reviewResult');
+        el.style.display = 'block';
+        el.style.background  = success ? '#ecfdf5' : '#fef2f2';
+        el.style.color       = success ? '#065f46' : '#991b1b';
+        el.style.border      = '1px solid ' + (success ? '#a7f3d0' : '#fecaca');
+        el.textContent = msg;
+    }
+
+    // Init grade badge on load
+    updateGrade();
+</script>

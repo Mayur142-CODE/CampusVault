@@ -1,0 +1,632 @@
+@model List<CampusVault.Models.Faculty.CourseMaterialItem>
+@{
+    ViewBag.Role            = "Faculty";
+    ViewBag.UserName        = Session["UserName"]        as string ?? "Faculty";
+    ViewBag.UserInitials    = Session["UserInitials"]    as string ?? "FA";
+    ViewBag.UserRoleDisplay = Session["UserRoleDisplay"] as string ?? "Faculty Mentor";
+
+    var materials  = Model ?? new List<CampusVault.Models.Faculty.CourseMaterialItem>();
+    var classrooms = ViewBag.FacultyClassrooms as List<CampusVault.Models.Faculty.FacultyClassroomItem>
+                     ?? new List<CampusVault.Models.Faculty.FacultyClassroomItem>();
+
+    int totalCount        = materials.Count;
+    int countNotes        = materials.Count(m => (m.Category ?? "").IndexOf("Note", StringComparison.OrdinalIgnoreCase) >= 0);
+    int countPDF          = materials.Count(m => (m.Category ?? "").IndexOf("PDF", StringComparison.OrdinalIgnoreCase) >= 0 || (m.FileType ?? "").Equals("PDF", StringComparison.OrdinalIgnoreCase));
+    int countPresentation = materials.Count(m => (m.Category ?? "").IndexOf("Presentation", StringComparison.OrdinalIgnoreCase) >= 0 || (m.FileType ?? "").IndexOf("PPT", StringComparison.OrdinalIgnoreCase) >= 0);
+    int countReference    = materials.Count(m => (m.Category ?? "").IndexOf("Reference", StringComparison.OrdinalIgnoreCase) >= 0 || (m.Category ?? "").IndexOf("Reading", StringComparison.OrdinalIgnoreCase) >= 0);
+    int countEContent     = materials.Count(m => (m.Category ?? "").IndexOf("E-content", StringComparison.OrdinalIgnoreCase) >= 0 || (m.Category ?? "").IndexOf("Video", StringComparison.OrdinalIgnoreCase) >= 0 || !string.IsNullOrEmpty(m.ExternalUrl));
+    int countLabManual    = materials.Count(m => (m.Category ?? "").IndexOf("Lab", StringComparison.OrdinalIgnoreCase) >= 0);
+
+    string uploaderName = Session["UserName"] as string ?? "Faculty";
+}
+
+@* ==================== 1. PAGE HEADER ==================== *@
+<div class="animate-slide-up" style="display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-4);flex-wrap:wrap;margin-bottom:var(--space-5);">
+    <div>
+        <div style="display:flex;align-items:center;gap:var(--space-3);margin-bottom:4px;">
+            <div style="width:38px;height:38px;border-radius:var(--radius-md);background:var(--cv-navy);color:var(--cv-gold);display:flex;align-items:center;justify-content:center;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+            </div>
+            <h1 style="font-family:var(--font-heading);font-size:var(--fs-2xl);font-weight:var(--fw-bold);color:var(--cv-navy);margin:0;display:flex;align-items:center;gap:var(--space-2);">
+                Learning Materials
+                <span class="cv-professor-badge" style="font-size:11px;padding:2px 8px;">Faculty Portal</span>
+            </h1>
+        </div>
+        <p style="color:var(--cv-slate);font-size:var(--fs-sm);margin:0;">
+            Upload educational content, lecture notes, lab manuals, slides, and video links for your classrooms.
+        </p>
+    </div>
+    <button type="button" onclick="openUploadModal()"
+            style="display:inline-flex;align-items:center;gap:6px;background:var(--cv-indigo);color:#fff;border:none;border-radius:var(--radius-md);padding:10px 18px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:var(--shadow-sm);">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Upload Material
+    </button>
+</div>
+
+@* Success / Error banners *@
+@if (TempData["SuccessMessage"] != null)
+{
+    <div style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:var(--radius-md);padding:10px 16px;font-size:13px;color:#065f46;margin-bottom:var(--space-4);display:flex;align-items:center;gap:8px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        @TempData["SuccessMessage"]
+    </div>
+}
+@if (TempData["ErrorMessage"] != null)
+{
+    <div style="background:#fee2e2;border:1px solid #fca5a5;border-radius:var(--radius-md);padding:10px 16px;font-size:13px;color:#991b1b;margin-bottom:var(--space-4);display:flex;align-items:center;gap:8px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        @TempData["ErrorMessage"]
+    </div>
+}
+
+@* ==================== 2. CATEGORY TABS ==================== *@
+<div class="cv-mat-category-bar animate-slide-up stagger-1" style="overflow-x:auto;white-space:nowrap;padding-bottom:4px;">
+    @{
+        var tabs = new[] {
+            new { Id="all",          Label="All Materials",   Count=totalCount },
+            new { Id="Notes",        Label="Lecture Notes",   Count=countNotes },
+            new { Id="PDF",          Label="PDF Notes",       Count=countPDF },
+            new { Id="Presentation", Label="Presentations",   Count=countPresentation },
+            new { Id="Reference",    Label="References",      Count=countReference },
+            new { Id="E-content",    Label="E-Content/Links", Count=countEContent },
+            new { Id="Lab",          Label="Lab Manuals",     Count=countLabManual }
+        };
+    }
+    @foreach (var tab in tabs)
+    {
+        <button type="button" class="cv-mat-category-tab @(tab.Id == "all" ? "active" : "")"
+                id="tabCat@(tab.Id)" onclick="filterByCategory('@tab.Id')">
+            <span>@tab.Label</span>
+            <span class="cv-mat-tab-count" id="countCat@(tab.Id)">@tab.Count</span>
+        </button>
+    }
+</div>
+
+@* ==================== 3. FILTERS ==================== *@
+<div class="cv-submissions-filter-card animate-slide-up stagger-1" style="margin-bottom:var(--space-5);">
+    <div style="display:flex;align-items:center;flex-wrap:wrap;gap:var(--space-3);">
+        <div style="position:relative;flex:1;min-width:240px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--cv-slate);pointer-events:none;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="matSearchInput" class="cv-filter-input" placeholder="Search by title, topic, or description..." oninput="filterMaterialsTable()" style="padding-left:34px;width:100%;" />
+        </div>
+
+        <div style="display:flex;align-items:center;gap:6px;">
+            <span style="font-size:11px;color:var(--cv-slate);font-weight:700;text-transform:uppercase;">Classroom:</span>
+            <select id="matFilterClassroom" class="cv-filter-select" onchange="filterMaterialsTable()" style="width:auto;min-width:180px;">
+                <option value="all">All Classrooms (@classrooms.Count)</option>
+                @foreach (var cls in classrooms)
+                {
+                    <option value="@cls.CourseCode">@cls.CourseName (@cls.CourseCode)</option>
+                }
+            </select>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:6px;">
+            <span style="font-size:11px;color:var(--cv-slate);font-weight:700;text-transform:uppercase;">Format:</span>
+            <select id="matFilterType" class="cv-filter-select" onchange="filterMaterialsTable()" style="width:auto;">
+                <option value="all">All Formats</option>
+                <option value="PDF">PDF</option>
+                <option value="PPT">PowerPoint</option>
+                <option value="DOC">Word</option>
+                <option value="LINK">External Link</option>
+                <option value="ZIP">Archive</option>
+            </select>
+        </div>
+
+        <button type="button" class="cv-btn cv-btn-secondary cv-btn-sm" onclick="resetMatFilters()" style="font-size:11px;">Reset</button>
+    </div>
+</div>
+
+@* ==================== 4. TABLE ==================== *@
+<div class="cv-mat-table-card animate-slide-up stagger-2">
+    <div style="padding:var(--space-3) var(--space-5);background:var(--cv-bg-alt);border-bottom:1px solid var(--cv-border);display:flex;align-items:center;justify-content:space-between;font-size:var(--fs-xs);color:var(--cv-slate);flex-wrap:wrap;gap:var(--space-2);">
+        <div style="display:flex;align-items:center;gap:var(--space-2);">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--cv-navy);"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+            <strong style="color:var(--cv-navy);">Materials Inventory:</strong>
+            Showing <strong style="color:var(--cv-navy);" id="visibleMatCount">@totalCount</strong> course resources
+        </div>
+        <span>Accessible exclusively to enrolled students in each specified classroom.</span>
+    </div>
+
+    <div style="overflow-x:auto;">
+        <table class="cv-mat-table" id="materialsMasterTable" style="@(totalCount == 0 ? "display:none;" : "")">
+            <thead>
+                <tr>
+                    <th style="min-width:280px;">Material &amp; Category</th>
+                    <th style="min-width:150px;">Classroom</th>
+                    <th style="min-width:130px;">Uploaded</th>
+                    <th style="min-width:120px;">Format</th>
+                    <th style="min-width:90px;">Size</th>
+                    <th style="min-width:190px;text-align:right;">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="materialsTableBody">
+                @foreach (var m in materials)
+                {
+                    bool isLink = !string.IsNullOrEmpty(m.ExternalUrl);
+                    string typeUpper = (m.FileType ?? "FILE").ToUpper();
+
+                    string typePillClass = isLink ? "type-zip"
+                                         : (typeUpper.Contains("PPT") ? "type-pptx"
+                                         : (typeUpper.Contains("DOC") ? "type-docx"
+                                         : (typeUpper.Contains("ZIP") ? "type-zip" : "type-pdf")));
+
+                    string displayFormat = isLink ? "External Link" : m.DisplayType;
+
+                    <tr class="mat-row"
+                        data-id="@m.MaterialId"
+                        data-title="@(m.Title ?? "")"
+                        data-description="@(m.Description ?? "")"
+                        data-classroom="@m.CourseCode"
+                        data-classroom-id="@m.ClassroomId"
+                        data-category="@(m.Category ?? "Other")"
+                        data-type="@(isLink ? "LINK" : typeUpper)"
+                        data-external-url="@(m.ExternalUrl ?? "")"
+                        data-search="@((m.Title + " " + (m.FileName ?? "") + " " + m.CourseName + " " + m.CourseCode + " " + m.Category + " " + (m.Description ?? "")).ToLower())">
+
+                        <td>
+                            <div class="cv-fac-file-cell">
+                                <div class="cv-mat-type-pill @typePillClass">
+                                    @(isLink ? "LINK" : (typeUpper.Length > 4 ? typeUpper.Substring(0, 4) : typeUpper))
+                                </div>
+                                <div style="min-width:0;">
+                                    <div class="cv-file-name-text" style="font-weight:700;color:var(--cv-navy);">
+                                        @(m.Title ?? m.FileName)
+                                    </div>
+                                    <div class="cv-file-meta-text" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:2px;">
+                                        <span class="cv-category-badge" style="background:#f1f5f9;color:#334155;font-size:10.5px;padding:1px 6px;border-radius:4px;font-weight:600;">
+                                            @(m.Category ?? "Other")
+                                        </span>
+                                        @if (!string.IsNullOrEmpty(m.Description))
+                                        {
+                                            <span>&bull;</span>
+                                            <span style="color:var(--cv-slate);font-size:11px;">@m.Description</span>
+                                        }
+                                    </div>
+                                    @if (isLink)
+                                    {
+                                        <div style="font-size:11px;color:#2563eb;margin-top:3px;word-break:break-all;">
+                                            🔗 @m.ExternalUrl
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </td>
+
+                        <td>
+                            <span class="cv-classroom-pill" style="background:#eff6ff;color:#1d4ed8;font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px;">
+                                @m.CourseCode
+                            </span>
+                            <div style="font-size:11px;color:var(--cv-slate);margin-top:2px;">@m.CourseName</div>
+                        </td>
+
+                        <td>
+                            <div style="font-weight:600;color:var(--cv-navy);font-size:12px;">@m.UploadedAt.ToString("dd MMM yyyy")</div>
+                            <div style="font-size:10.5px;color:var(--cv-slate-500);">@(m.UploaderName ?? uploaderName)</div>
+                        </td>
+
+                        <td>
+                            <span class="cv-badge" style="font-weight:700;font-size:10px;padding:2px 6px;border-radius:4px;background:#f8fafc;border:1px solid #e2e8f0;color:#334155;">
+                                @displayFormat
+                            </span>
+                        </td>
+
+                        <td>
+                            <strong style="color:var(--cv-navy);font-size:12px;">
+                                @(isLink ? "URL" : (string.IsNullOrEmpty(m.FileSize) ? "—" : m.FileSize))
+                            </strong>
+                        </td>
+
+                        <td style="text-align:right;">
+                            <div class="cv-mat-actions" style="display:inline-flex;align-items:center;gap:6px;">
+                                @if (isLink)
+                                {
+                                    <a href="@Url.Action("DownloadMaterial", "Faculty", new { id = m.MaterialId })" target="_blank" rel="noopener noreferrer" class="cv-mat-action-btn btn-view" title="Open Link">
+                                        Open
+                                    </a>
+                                }
+                                else if (!string.IsNullOrEmpty(m.FileUrl))
+                                {
+                                    <a href="@Url.Action("DownloadMaterial", "Faculty", new { id = m.MaterialId })" target="_blank" class="cv-mat-action-btn btn-view" title="View in browser">
+                                        View
+                                    </a>
+                                    <a href="@Url.Action("DownloadMaterial", "Faculty", new { id = m.MaterialId })" class="cv-mat-action-btn btn-download" title="Download file">
+                                        Download
+                                    </a>
+                                }
+
+                                <button type="button" class="cv-mat-action-btn" style="background:#f1f5f9;color:#334155;"
+                                        onclick="openEditModal(@m.MaterialId, '@Html.Raw(HttpUtility.JavaScriptStringEncode(m.Title ?? ""))', '@Html.Raw(HttpUtility.JavaScriptStringEncode(m.Description ?? ""))', '@Html.Raw(HttpUtility.JavaScriptStringEncode(m.Category ?? "Other"))', '@Html.Raw(HttpUtility.JavaScriptStringEncode(m.ExternalUrl ?? ""))')">
+                                    Edit
+                                </button>
+
+                                <button type="button" class="cv-mat-action-btn btn-delete"
+                                        onclick="deleteMaterial(@m.MaterialId, this)">
+                                    Delete
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @* Empty state *@
+    <div id="matEmptyState" style="@(totalCount == 0 ? "display:block;" : "display:none;")padding:var(--space-10) var(--space-4);text-align:center;">
+        <div style="width:56px;height:56px;border-radius:50%;background:var(--cv-bg-alt);color:var(--cv-slate);display:inline-flex;align-items:center;justify-content:center;margin-bottom:var(--space-3);">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+        </div>
+        <h4 style="font-family:var(--font-heading);font-size:var(--fs-base);font-weight:var(--fw-bold);color:var(--cv-navy);margin:0 0 4px 0;">No learning materials found</h4>
+        <p style="font-size:var(--fs-xs);color:var(--cv-slate);margin:0 0 var(--space-4) 0;">
+            No resources match your filter criteria, or no materials have been shared yet.
+        </p>
+        <div style="display:flex;align-items:center;justify-content:center;gap:var(--space-3);">
+            <button type="button" class="cv-btn cv-btn-secondary cv-btn-sm" onclick="resetMatFilters()">Clear Filters</button>
+            <button type="button" class="cv-btn cv-btn-primary cv-btn-sm" onclick="openUploadModal()">Upload First Material</button>
+        </div>
+    </div>
+</div>
+
+@* ==================== 5. UPLOAD MODAL ==================== *@
+<div id="uploadMaterialModal" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,0.7);z-index:99999;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);">
+    <div style="background:#fff;border-radius:16px;max-width:560px;width:100%;box-shadow:0 25px 50px rgba(0,0,0,0.4);overflow:hidden;">
+        <div style="padding:18px 24px;background:linear-gradient(135deg,#0b192c,#1e293b);color:#fff;display:flex;align-items:center;justify-content:space-between;">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <div style="width:32px;height:32px;border-radius:8px;background:rgba(217,119,6,0.25);color:#f59e0b;display:flex;align-items:center;justify-content:center;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                </div>
+                <h3 style="margin:0;font-size:15px;font-weight:700;">Upload Learning Material</h3>
+            </div>
+            <button type="button" onclick="closeUploadModal()" style="background:none;border:none;color:rgba(255,255,255,0.7);cursor:pointer;display:flex;align-items:center;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+
+        <form action="@Url.Action("UploadMaterial","Faculty")" method="post" enctype="multipart/form-data" style="padding:22px;" onsubmit="return validateUploadForm()">
+            @Html.AntiForgeryToken()
+            <div id="uploadAlert" style="display:none;padding:10px 14px;border-radius:8px;margin-bottom:14px;font-size:12px;"></div>
+
+            <div style="margin-bottom:14px;">
+                <label style="display:block;font-size:11px;font-weight:700;color:#334155;margin-bottom:6px;text-transform:uppercase;">Material Title *</label>
+                <input type="text" name="title" id="uploadTitle" required placeholder="e.g. Unit 3: Normalization &amp; Relational Algebra"
+                       style="width:100%;padding:10px 14px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;box-sizing:border-box;" />
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+                <div>
+                    <label style="display:block;font-size:11px;font-weight:700;color:#334155;margin-bottom:6px;text-transform:uppercase;">Classroom *</label>
+                    <select name="classroomId" required style="width:100%;padding:10px 14px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;box-sizing:border-box;">
+                        <option value="">Select classroom...</option>
+                        @foreach (var cls in classrooms)
+                        {
+                            <option value="@cls.ClassroomId">@cls.CourseCode — @cls.CourseName</option>
+                        }
+                    </select>
+                </div>
+                <div>
+                    <label style="display:block;font-size:11px;font-weight:700;color:#334155;margin-bottom:6px;text-transform:uppercase;">Category *</label>
+                    <select name="category" id="uploadCategory" required style="width:100%;padding:10px 14px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;box-sizing:border-box;">
+                        <option value="Lecture Notes">Lecture Notes</option>
+                        <option value="PDF Notes">PDF Notes</option>
+                        <option value="Presentation">Presentation</option>
+                        <option value="Lab Manual">Lab Manual</option>
+                        <option value="Reading Material">Reading Material</option>
+                        <option value="Reference Document">Reference Document</option>
+                        <option value="E-content">E-Content</option>
+                        <option value="Video Link">Video Link</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+            </div>
+
+            <div style="margin-bottom:14px;">
+                <label style="display:block;font-size:11px;font-weight:700;color:#334155;margin-bottom:6px;text-transform:uppercase;">Description (Optional)</label>
+                <input type="text" name="description" placeholder="Brief summary of topics covered"
+                       style="width:100%;padding:10px 14px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;box-sizing:border-box;" />
+            </div>
+
+            @* Resource Type Mode Toggle *@
+            <div style="margin-bottom:14px;background:#f8fafc;padding:12px;border-radius:8px;border:1px solid #e2e8f0;">
+                <label style="display:block;font-size:11px;font-weight:700;color:#334155;margin-bottom:8px;text-transform:uppercase;">Resource Delivery Type</label>
+                <div style="display:flex;gap:20px;">
+                    <label style="display:inline-flex;align-items:center;gap:6px;font-size:13px;color:#0f172a;cursor:pointer;">
+                        <input type="radio" name="resourceType" value="file" checked onchange="toggleUploadType('file')" />
+                        <span>Document / File Upload</span>
+                    </label>
+                    <label style="display:inline-flex;align-items:center;gap:6px;font-size:13px;color:#0f172a;cursor:pointer;">
+                        <input type="radio" name="resourceType" value="link" onchange="toggleUploadType('link')" />
+                        <span>External Link / Video URL</span>
+                    </label>
+                </div>
+            </div>
+
+            @* File Upload Section *@
+            <div id="fileUploadSection" style="margin-bottom:18px;">
+                <label style="display:block;font-size:11px;font-weight:700;color:#334155;margin-bottom:6px;text-transform:uppercase;">Attach File *</label>
+                <input type="file" name="materialFile" id="uploadFileInput" accept=".pdf,.pptx,.ppt,.docx,.doc,.xls,.xlsx,.txt,.png,.jpg,.jpeg,.zip,.rar"
+                       style="width:100%;padding:8px;border:1px solid #cbd5e1;border-radius:8px;font-size:12px;box-sizing:border-box;" />
+                <div style="font-size:11px;color:#64748b;margin-top:4px;">Supported: PDF, PPTX, DOCX, XLSX, TXT, Images, ZIP — Max 25MB</div>
+            </div>
+
+            @* External Link Section *@
+            <div id="linkUploadSection" style="margin-bottom:18px;display:none;">
+                <label style="display:block;font-size:11px;font-weight:700;color:#334155;margin-bottom:6px;text-transform:uppercase;">External Resource URL *</label>
+                <input type="url" name="externalUrl" id="uploadExternalUrl" placeholder="https://www.youtube.com/watch?v=... or https://drive.google.com/..."
+                       style="width:100%;padding:10px 14px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;box-sizing:border-box;" />
+                <div style="font-size:11px;color:#64748b;margin-top:4px;">Educational video lectures, documentation portals, or hosted slides</div>
+            </div>
+
+            <div style="display:flex;justify-content:flex-end;gap:10px;border-top:1px solid #e2e8f0;padding-top:16px;">
+                <button type="button" onclick="closeUploadModal()" style="background:#f1f5f9;color:#334155;border:1px solid #cbd5e1;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer;">Cancel</button>
+                <button type="submit" id="btnSubmitUpload" style="background:#2563eb;color:#fff;border:none;border-radius:8px;padding:9px 20px;font-size:13px;font-weight:700;cursor:pointer;">Upload Material</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@* ==================== 6. EDIT MODAL ==================== *@
+<div id="editMaterialModal" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,0.7);z-index:99999;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);">
+    <div style="background:#fff;border-radius:16px;max-width:540px;width:100%;box-shadow:0 25px 50px rgba(0,0,0,0.4);overflow:hidden;">
+        <div style="padding:18px 24px;background:linear-gradient(135deg,#0b192c,#1e293b);color:#fff;display:flex;align-items:center;justify-content:space-between;">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <div style="width:32px;height:32px;border-radius:8px;background:rgba(37,99,235,0.25);color:#60a5fa;display:flex;align-items:center;justify-content:center;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                </div>
+                <h3 style="margin:0;font-size:15px;font-weight:700;">Edit Learning Material</h3>
+            </div>
+            <button type="button" onclick="closeEditModal()" style="background:none;border:none;color:rgba(255,255,255,0.7);cursor:pointer;display:flex;align-items:center;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+
+        <form id="editMaterialForm" onsubmit="submitEditMaterial(event)" style="padding:22px;">
+            @Html.AntiForgeryToken()
+            <input type="hidden" id="editMaterialId" name="materialId" />
+
+            <div style="margin-bottom:14px;">
+                <label style="display:block;font-size:11px;font-weight:700;color:#334155;margin-bottom:6px;text-transform:uppercase;">Material Title *</label>
+                <input type="text" id="editTitle" name="title" required
+                       style="width:100%;padding:10px 14px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;box-sizing:border-box;" />
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+                <div>
+                    <label style="display:block;font-size:11px;font-weight:700;color:#334155;margin-bottom:6px;text-transform:uppercase;">Category *</label>
+                    <select id="editCategory" name="category" required style="width:100%;padding:10px 14px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;box-sizing:border-box;">
+                        <option value="Lecture Notes">Lecture Notes</option>
+                        <option value="PDF Notes">PDF Notes</option>
+                        <option value="Presentation">Presentation</option>
+                        <option value="Lab Manual">Lab Manual</option>
+                        <option value="Reading Material">Reading Material</option>
+                        <option value="Reference Document">Reference Document</option>
+                        <option value="E-content">E-Content</option>
+                        <option value="Video Link">Video Link</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="display:block;font-size:11px;font-weight:700;color:#334155;margin-bottom:6px;text-transform:uppercase;">External Link (Optional)</label>
+                    <input type="url" id="editExternalUrl" name="externalUrl" placeholder="https://..."
+                           style="width:100%;padding:10px 14px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;box-sizing:border-box;" />
+                </div>
+            </div>
+
+            <div style="margin-bottom:14px;">
+                <label style="display:block;font-size:11px;font-weight:700;color:#334155;margin-bottom:6px;text-transform:uppercase;">Description</label>
+                <input type="text" id="editDescription" name="description" placeholder="Brief summary"
+                       style="width:100%;padding:10px 14px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;box-sizing:border-box;" />
+            </div>
+
+            <div style="margin-bottom:18px;">
+                <label style="display:block;font-size:11px;font-weight:700;color:#334155;margin-bottom:6px;text-transform:uppercase;">Replace File (Optional)</label>
+                <input type="file" id="editReplaceFile" name="replaceFile" accept=".pdf,.pptx,.ppt,.docx,.doc,.xls,.xlsx,.txt,.png,.jpg,.jpeg,.zip,.rar"
+                       style="width:100%;padding:8px;border:1px solid #cbd5e1;border-radius:8px;font-size:12px;box-sizing:border-box;" />
+                <div style="font-size:11px;color:#64748b;margin-top:4px;">Upload a new version to replace the existing file</div>
+            </div>
+
+            <div style="display:flex;justify-content:flex-end;gap:10px;border-top:1px solid #e2e8f0;padding-top:16px;">
+                <button type="button" onclick="closeEditModal()" style="background:#f1f5f9;color:#334155;border:1px solid #cbd5e1;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer;">Cancel</button>
+                <button type="submit" id="btnSaveEdit" style="background:#2563eb;color:#fff;border:none;border-radius:8px;padding:9px 20px;font-size:13px;font-weight:700;cursor:pointer;">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@* ==================== 7. JAVASCRIPT ==================== *@
+<script>
+    var currentMatCategory = 'all';
+
+    function toggleUploadType(type) {
+        var fileSec = document.getElementById('fileUploadSection');
+        var linkSec = document.getElementById('linkUploadSection');
+        var fileIn = document.getElementById('uploadFileInput');
+        var linkIn = document.getElementById('uploadExternalUrl');
+
+        if (type === 'file') {
+            fileSec.style.display = 'block';
+            linkSec.style.display = 'none';
+            if (fileIn) fileIn.required = true;
+            if (linkIn) linkIn.required = false;
+        } else {
+            fileSec.style.display = 'none';
+            linkSec.style.display = 'block';
+            if (fileIn) fileIn.required = false;
+            if (linkIn) linkIn.required = true;
+        }
+    }
+
+    function validateUploadForm() {
+        var isLink = document.querySelector('input[name="resourceType"]:checked').value === 'link';
+        if (isLink) {
+            var url = (document.getElementById('uploadExternalUrl').value || '').trim();
+            if (!url) {
+                alert('Please enter a valid external resource URL.');
+                return false;
+            }
+        } else {
+            var file = document.getElementById('uploadFileInput').files;
+            if (!file || file.length === 0) {
+                alert('Please choose a file to upload.');
+                return false;
+            }
+        }
+        document.getElementById('btnSubmitUpload').disabled = true;
+        document.getElementById('btnSubmitUpload').textContent = 'Uploading...';
+        return true;
+    }
+
+    function filterByCategory(cat) {
+        currentMatCategory = cat;
+        document.querySelectorAll('.cv-mat-category-tab').forEach(function (btn) {
+            btn.classList.toggle('active', btn.id === 'tabCat' + cat);
+        });
+        filterMaterialsTable();
+    }
+
+    function filterMaterialsTable() {
+        var search    = (document.getElementById('matSearchInput').value || '').trim().toLowerCase();
+        var classroom = document.getElementById('matFilterClassroom').value;
+        var fileType  = document.getElementById('matFilterType').value;
+        var rows      = document.querySelectorAll('.mat-row');
+        var visible   = 0;
+
+        rows.forEach(function (row) {
+            var rCat   = row.getAttribute('data-category') || '';
+            var rClass = row.getAttribute('data-classroom') || '';
+            var rType  = (row.getAttribute('data-type') || '').toUpperCase();
+            var rSrch  = row.getAttribute('data-search') || '';
+
+            var okCat = currentMatCategory === 'all';
+            if (!okCat) {
+                if (currentMatCategory === 'Notes') okCat = rCat.toLowerCase().indexOf('note') !== -1;
+                else if (currentMatCategory === 'PDF') okCat = rCat.toLowerCase().indexOf('pdf') !== -1 || rType.indexOf('PDF') !== -1;
+                else if (currentMatCategory === 'Presentation') okCat = rCat.toLowerCase().indexOf('presentation') !== -1 || rType.indexOf('PPT') !== -1;
+                else if (currentMatCategory === 'Reference') okCat = rCat.toLowerCase().indexOf('reference') !== -1 || rCat.toLowerCase().indexOf('reading') !== -1;
+                else if (currentMatCategory === 'E-content') okCat = rCat.toLowerCase().indexOf('e-content') !== -1 || rCat.toLowerCase().indexOf('video') !== -1 || rType === 'LINK';
+                else if (currentMatCategory === 'Lab') okCat = rCat.toLowerCase().indexOf('lab') !== -1;
+                else okCat = rCat === currentMatCategory;
+            }
+
+            var okClass = classroom === 'all' || rClass === classroom;
+            var okType  = fileType  === 'all' || rType.indexOf(fileType) !== -1;
+            var okSrch  = !search || rSrch.indexOf(search) !== -1;
+
+            var show = okCat && okClass && okType && okSrch;
+            row.style.display = show ? '' : 'none';
+            if (show) { visible++; }
+        });
+
+        document.getElementById('visibleMatCount').textContent = visible;
+
+        var table = document.getElementById('materialsMasterTable');
+        var empty = document.getElementById('matEmptyState');
+        if (visible === 0) {
+            if (table) { table.style.display = 'none'; }
+            if (empty) { empty.style.display = 'block'; }
+        } else {
+            if (table) { table.style.display = ''; }
+            if (empty) { empty.style.display = 'none'; }
+        }
+    }
+
+    function resetMatFilters() {
+        document.getElementById('matSearchInput').value = '';
+        document.getElementById('matFilterClassroom').value = 'all';
+        document.getElementById('matFilterType').value = 'all';
+        currentMatCategory = 'all';
+        document.querySelectorAll('.cv-mat-category-tab').forEach(function (btn) {
+            btn.classList.toggle('active', btn.id === 'tabCatall');
+        });
+        filterMaterialsTable();
+    }
+
+    function openUploadModal() {
+        var modal = document.getElementById('uploadMaterialModal');
+        modal.style.display = 'flex';
+        toggleUploadType('file');
+    }
+
+    function closeUploadModal() {
+        document.getElementById('uploadMaterialModal').style.display = 'none';
+    }
+
+    function openEditModal(id, title, description, category, externalUrl) {
+        document.getElementById('editMaterialId').value = id;
+        document.getElementById('editTitle').value = title;
+        document.getElementById('editDescription').value = description;
+        document.getElementById('editCategory').value = category;
+        document.getElementById('editExternalUrl').value = externalUrl;
+        document.getElementById('editReplaceFile').value = '';
+        document.getElementById('editMaterialModal').style.display = 'flex';
+    }
+
+    function closeEditModal() {
+        document.getElementById('editMaterialModal').style.display = 'none';
+    }
+
+    function submitEditMaterial(e) {
+        e.preventDefault();
+        var btn = document.getElementById('btnSaveEdit');
+        btn.disabled = true;
+        btn.textContent = 'Saving...';
+
+        var form = document.getElementById('editMaterialForm');
+        var formData = new FormData(form);
+
+        fetch('@Url.Action("UpdateMaterial","Faculty")', {
+            method: 'POST',
+            body: formData
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(res) {
+            btn.disabled = false;
+            btn.textContent = 'Save Changes';
+            if (res.success) {
+                closeEditModal();
+                window.location.reload();
+            } else {
+                alert(res.message || 'Failed to update material.');
+            }
+        })
+        .catch(function() {
+            btn.disabled = false;
+            btn.textContent = 'Save Changes';
+            alert('An error occurred while updating.');
+        });
+    }
+
+    function deleteMaterial(materialId, btn) {
+        if (!confirm('Are you sure you want to delete this learning material? Enrolled students will no longer have access to it.')) { return; }
+        btn.disabled = true;
+        btn.textContent = '...';
+
+        var token = document.querySelector('input[name="__RequestVerificationToken"]');
+        var formData = new FormData();
+        formData.append('materialId', materialId);
+        if (token) { formData.append('__RequestVerificationToken', token.value); }
+
+        fetch('@Url.Action("DeleteMaterial","Faculty")', {
+            method: 'POST',
+            body: formData
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            if (data.success) {
+                var row = btn.closest('tr');
+                if (row) { row.style.opacity = '0'; setTimeout(function () { row.remove(); filterMaterialsTable(); }, 300); }
+            } else {
+                btn.disabled = false;
+                btn.textContent = 'Delete';
+                alert(data.message || 'Could not delete material.');
+            }
+        })
+        .catch(function() {
+            btn.disabled = false;
+            btn.textContent = 'Delete';
+            alert('A network error occurred while deleting.');
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', function () { filterMaterialsTable(); });
+</script>

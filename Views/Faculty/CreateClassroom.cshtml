@@ -1,0 +1,725 @@
+@{
+    ViewBag.Title = "Create Classroom";
+    ViewBag.Role = "Faculty";
+    ViewBag.UserName = "Prof. Patel";
+    ViewBag.UserInitials = "PP";
+    ViewBag.UserRoleDisplay = "Computer Engineering";
+}
+
+@* ==================== 1. BREADCRUMB & HEADER ==================== *@
+<div class="cv-page-header animate-slide-up" style="margin-bottom: var(--space-6);">
+    <div style="display:flex;align-items:center;gap:var(--space-2);font-size:var(--fs-xs);color:var(--cv-slate);margin-bottom:var(--space-2);">
+        <a href="@Url.Action("Classrooms", "Faculty")" style="color:var(--cv-indigo);text-decoration:none;display:inline-flex;align-items:center;gap:4px;font-weight:var(--fw-medium);">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;flex-shrink:0;"><polyline points="15 18 9 12 15 6"/></svg>
+            My Classrooms
+        </a>
+        <span>/</span>
+        <span style="color:var(--cv-navy);font-weight:var(--fw-semibold);">Create Classroom</span>
+    </div>
+
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-4);flex-wrap:wrap;">
+        <div>
+            <div style="display:flex;align-items:center;gap:var(--space-3);margin-bottom:4px;">
+                <div class="cv-faculty-classrooms-icon" style="background: rgba(99, 102, 241, 0.12); color: var(--cv-indigo);">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:22px;height:22px;flex-shrink:0;">
+                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                        <line x1="12" y1="8" x2="12" y2="14"/>
+                        <line x1="9" y1="11" x2="15" y2="11"/>
+                    </svg>
+                </div>
+                <h1 style="font-family:var(--font-heading);font-size:var(--fs-2xl);font-weight:var(--fw-bold);color:var(--cv-navy);letter-spacing:-0.015em;margin:0;">
+                    Create Classroom
+                </h1>
+            </div>
+            <p style="color:var(--cv-slate);font-size:var(--fs-base);margin:0;">
+                Set up a new academic course workspace, configure cohort metadata, and generate a student enrollment code.
+            </p>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:var(--space-3);">
+            <a href="@Url.Action("Classrooms", "Faculty")" class="cv-btn cv-btn-secondary">
+                Cancel
+            </a>
+            <button type="button" class="cv-btn cv-btn-primary" onclick="submitCreateClassroom()" id="btnSubmitTop" style="gap:6px;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex-shrink:0;"><polyline points="20 6 9 17 4 12"/></svg>
+                <span>Create Classroom</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+@* ==================== 2. MAIN 2-COLUMN WORKSPACE ==================== *@
+<div class="cv-create-grid animate-slide-up stagger-1">
+
+    @* ==================== LEFT COLUMN: CREATION FORM ==================== *@
+    <form id="createClassroomForm" method="post" action="@Url.Action("CreateClassroom", "Faculty")" onsubmit="event.preventDefault(); submitCreateClassroom();" novalidate>
+        @Html.AntiForgeryToken()
+        <input type="hidden" id="joinCodeInput" name="JoinCode" value="DS-EC6-2026" />
+        <input type="hidden" id="themeGradientInput" name="ThemeGradient" value="linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)" />
+        
+        @* Section 1: Course Identity & Subject *@
+        <div class="cv-form-section-card">
+            <div class="cv-form-section-header">
+                <div class="cv-form-section-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;flex-shrink:0;"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                </div>
+                <div>
+                    <h2 class="cv-form-section-title">Course Identity</h2>
+                    <p class="cv-form-section-desc">Classroom display name, catalog subject, and course syllabus identity.</p>
+                </div>
+            </div>
+
+            @* Field 1: Classroom Name *@
+            <div class="cv-form-group mb-4">
+                <label class="cv-label" for="classroomName">
+                    Classroom Name <span style="color:#ef4444;">*</span>
+                </label>
+                <input type="text"
+                       id="classroomName"
+                       name="CourseName"
+                       class="cv-input"
+                       placeholder="e.g. Data Structures Laboratory"
+                       value="Data Structures"
+                       oninput="updatePreview(); validateField('classroomName');"
+                       required />
+                <div class="cv-error-msg" id="errClassroomName">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;flex-shrink:0;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    Classroom name is required (minimum 3 characters).
+                </div>
+                <div style="font-size:11px;color:var(--cv-slate);margin-top:4px;">
+                    This title is displayed on the student dashboard and LMS classroom directory.
+                </div>
+            </div>
+
+            @* Field 2: Subject & Course Code Grid *@
+            <div style="display:grid;grid-template-columns:1.5fr 1fr;gap:var(--space-4);" class="mb-4">
+                @* Subject Dropdown *@
+                <div class="cv-form-group">
+                    <label class="cv-label" for="classroomSubject">
+                        Subject <span style="color:#ef4444;">*</span>
+                    </label>
+                    <select id="classroomSubject"
+                            name="Subject"
+                            class="cv-input"
+                            onchange="handleSubjectChange(); updatePreview(); validateField('classroomSubject');"
+                            required>
+                        <option value="Data Structures" data-code="CS301" data-prefix="DS" data-motif="motif-ds" selected>Data Structures</option>
+                        <option value="Database Management Systems" data-code="CS302" data-prefix="DBMS" data-motif="motif-dbms">Database Management Systems</option>
+                        <option value="Web Technology" data-code="CS303" data-prefix="WT" data-motif="motif-web">Web Technology</option>
+                        <option value="Object Oriented Programming" data-code="CS304" data-prefix="OOP" data-motif="motif-oop">Object Oriented Programming</option>
+                        <option value="Computer Networks" data-code="CS305" data-prefix="CN" data-motif="motif-os">Computer Networks</option>
+                        <option value="Design & Analysis of Algorithms" data-code="CS306" data-prefix="DAA" data-motif="motif-math">Design & Analysis of Algorithms</option>
+                        <option value="Other Course" data-code="CUSTOM" data-prefix="CRS" data-motif="motif-ds">+ Other / Custom Subject</option>
+                    </select>
+                    <div class="cv-error-msg" id="errClassroomSubject">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;flex-shrink:0;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                        Please select an approved university subject.
+                    </div>
+                </div>
+
+                @* Course Code *@
+                <div class="cv-form-group">
+                    <label class="cv-label" for="courseCode">
+                        Course Code
+                    </label>
+                    <input type="text"
+                           id="courseCode"
+                           name="CourseCode"
+                           class="cv-input"
+                           value="CS301"
+                           style="font-family:var(--font-mono, monospace);font-weight:600;"
+                           oninput="updatePreview(); updateGeneratedCode();" />
+                    <div style="font-size:11px;color:var(--cv-slate);margin-top:4px;">
+                        Curriculum catalog identifier.
+                    </div>
+                </div>
+            </div>
+
+            @* Field 3: Classroom Description *@
+            <div class="cv-form-group">
+                <label class="cv-label" for="classroomDescription">
+                    Syllabus Scope & Objectives
+                </label>
+                <textarea id="classroomDescription"
+                          name="Description"
+                          class="cv-input"
+                          rows="3"
+                          placeholder="Provide syllabus topics, practical laboratory objectives, or coursework guidelines for students..."></textarea>
+            </div>
+        </div>
+
+        @* Section 2: Academic Cohort Mapping *@
+        <div class="cv-form-section-card">
+            <div class="cv-form-section-header">
+                <div class="cv-form-section-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;flex-shrink:0;"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+                </div>
+                <div>
+                    <h2 class="cv-form-section-title">Academic Cohort Mapping</h2>
+                    <p class="cv-form-section-desc">Department affiliation, semester sequence, division batch, and academic term.</p>
+                </div>
+            </div>
+
+            @* Field 4: Department *@
+            <div class="cv-form-group mb-4">
+                <label class="cv-label" for="department">
+                    Department <span style="color:#ef4444;">*</span>
+                </label>
+                <select id="department"
+                        name="Department"
+                        class="cv-input"
+                        onchange="updatePreview(); validateField('department');"
+                        required>
+                    <option value="">-- Select Department --</option>
+                    @if (ViewBag.Departments != null)
+                    {
+                        foreach (var dept in ViewBag.Departments as List<CampusVault.Services.LookupItem>)
+                        {
+                            <option value="@dept.Name">@dept.Name</option>
+                        }
+                    }
+                </select>
+                <div class="cv-error-msg" id="errDepartment">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;flex-shrink:0;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    Please choose an academic department.
+                </div>
+            </div>
+
+            @* 3-Column Grid: Semester, Division, Academic Year *@
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:var(--space-4);">
+                @* Field 5: Semester *@
+                <div class="cv-form-group">
+                    <label class="cv-label" for="semester">
+                        Semester <span style="color:#ef4444;">*</span>
+                    </label>
+                    <select id="semester"
+                            name="Semester"
+                            class="cv-input"
+                            onchange="updatePreview(); validateField('semester');"
+                            required>
+                        <option value="">-- Select Semester --</option>
+                        @if (ViewBag.Semesters != null)
+                        {
+                            foreach (var sem in ViewBag.Semesters as List<CampusVault.Services.LookupItem>)
+                            {
+                                <option value="@sem.Id">@sem.Name</option>
+                            }
+                        }
+                    </select>
+                    <div class="cv-error-msg" id="errSemester">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;flex-shrink:0;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                        Required.
+                    </div>
+                </div>
+
+                @* Field 6: Division *@
+                <div class="cv-form-group">
+                    <label class="cv-label" for="division">
+                        Division <span style="color:#ef4444;">*</span>
+                    </label>
+                    <select id="division"
+                            name="Division"
+                            class="cv-input"
+                            onchange="updateGeneratedCode(); updatePreview(); validateField('division');"
+                            required>
+                        <option value="">-- Select Division --</option>
+                        @if (ViewBag.Divisions != null)
+                        {
+                            foreach (var div in ViewBag.Divisions as List<CampusVault.Services.LookupItem>)
+                            {
+                                <option value="@div.Name">@div.Name</option>
+                            }
+                        }
+                    </select>
+                    <div class="cv-error-msg" id="errDivision">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;flex-shrink:0;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                        Required.
+                    </div>
+                </div>
+
+                @* Field 7: Academic Year *@
+                <div class="cv-form-group">
+                    <label class="cv-label" for="academicYear">
+                        Academic Year <span style="color:#ef4444;">*</span>
+                    </label>
+                    <select id="academicYear"
+                            name="AcademicYear"
+                            class="cv-input"
+                            onchange="updateGeneratedCode(); updatePreview(); validateField('academicYear');"
+                            required>
+                        <option value="">-- Select Year --</option>
+                        @if (ViewBag.AcademicYears != null)
+                        {
+                            foreach (var yr in ViewBag.AcademicYears as List<CampusVault.Services.LookupItem>)
+                            {
+                                <option value="@yr.Name" data-short="@yr.Name.Substring(0, 4)">@yr.Name</option>
+                            }
+                        }
+                    </select>
+                    <div class="cv-error-msg" id="errAcademicYear">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;flex-shrink:0;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                        Required.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @* Section 3: Laboratory Location & Enrollment Capacity *@
+        <div class="cv-form-section-card">
+            <div class="cv-form-section-header">
+                <div class="cv-form-section-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;flex-shrink:0;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                </div>
+                <div>
+                    <h2 class="cv-form-section-title">Schedule & Capacity</h2>
+                    <p class="cv-form-section-desc">Practical laboratory slot and maximum student batch registration capacity.</p>
+                </div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1.5fr 1fr;gap:var(--space-4);">
+                @* Schedule / Lab Location *@
+                <div class="cv-form-group">
+                    <label class="cv-label" for="roomSchedule">
+                        Schedule & Lab Location
+                    </label>
+                    <input type="text"
+                           id="roomSchedule"
+                           name="RoomSchedule"
+                           class="cv-input"
+                           placeholder="e.g. Mon, Wed 10:30 AM &bull; Lab 304"
+                           value="Mon, Wed 10:30 AM &bull; Lab 304"
+                           oninput="updatePreview();" />
+                    <div style="font-size:11px;color:var(--cv-slate);margin-top:4px;">
+                        Assigned timetable slot and laboratory facility.
+                    </div>
+                </div>
+
+                @* Max Capacity *@
+                <div class="cv-form-group">
+                    <label class="cv-label" for="studentCapacity">
+                        Maximum Capacity
+                    </label>
+                    <input type="number"
+                           id="studentCapacity"
+                           name="StudentCapacity"
+                           class="cv-input"
+                           min="10"
+                           max="150"
+                           value="48"
+                           oninput="updatePreview();" />
+                    <div style="font-size:11px;color:var(--cv-slate);margin-top:4px;">
+                        Max students permitted to enroll.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @* Bottom Action Bar *@
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:var(--space-4);padding-top:var(--space-2);">
+            <div style="font-size:var(--fs-xs);color:var(--cv-slate);">
+                <span style="color:#ef4444;">*</span> Required fields for university catalog registration.
+            </div>
+            <div style="display:flex;align-items:center;gap:var(--space-3);">
+                <a href="@Url.Action("Classrooms", "Faculty")" class="cv-btn cv-btn-secondary">
+                    Cancel
+                </a>
+                <button type="submit" class="cv-btn cv-btn-primary" style="gap:6px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex-shrink:0;"><polyline points="20 6 9 17 4 12"/></svg>
+                    <span>Create Classroom</span>
+                </button>
+            </div>
+        </div>
+
+    </form>
+
+    @* ==================== RIGHT COLUMN: CODE & LIVE PREVIEW ==================== *@
+    <div class="cv-preview-sticky">
+
+        @* 1. Generated Classroom Code Box *@
+        <div class="cv-code-display-box">
+            <div class="cv-code-display-header">
+                <span class="d-flex items-center gap-2">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;color:var(--cv-gold);flex-shrink:0;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                    Generated Classroom Code
+                </span>
+                <span style="font-size:10px;background:rgba(217,119,6,0.2);color:var(--cv-gold);padding:2px 6px;border-radius:var(--radius-full);border:1px solid rgba(217,119,6,0.3);">Enrollment Key</span>
+            </div>
+            
+            <div class="cv-code-display-value-row">
+                <div class="cv-code-display-value" id="generatedCodeDisplay">
+                    DS-EC6-2026
+                </div>
+                <div class="cv-code-display-actions">
+                    <button type="button" class="cv-code-btn" onclick="copyGeneratedCode()" title="Copy enrollment code">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;flex-shrink:0;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                        <span>Copy</span>
+                    </button>
+                    <button type="button" class="cv-code-btn" onclick="regenerateCodeSuffix()" title="Regenerate random suffix">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;flex-shrink:0;"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                    </button>
+                </div>
+            </div>
+
+            <div style="font-size:11px;color:rgba(255,255,255,0.72);margin-top:var(--space-3);line-height:1.4;">
+                Share this unique key with enrolled students to grant automatic admission to this workspace.
+            </div>
+        </div>
+
+        @* 2. Live Classroom Card Preview *@
+        <div style="margin-bottom:var(--space-5);">
+            <div class="cv-preview-badge-header">
+                <div class="d-flex items-center gap-2">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;color:var(--cv-navy);flex-shrink:0;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    <h3 style="font-size:var(--fs-sm);font-weight:var(--fw-bold);color:var(--cv-navy);margin:0;">Classroom Card Preview</h3>
+                </div>
+                <div class="cv-live-badge">
+                    <span class="cv-live-badge-dot"></span>
+                    Live Sync
+                </div>
+            </div>
+
+            @* The Simulated Classroom Card *@
+            <div class="cv-classroom-card-lms" id="previewClassroomCard" style="box-shadow:var(--shadow-md);">
+                @* Banner *@
+                <div class="cv-classroom-banner motif-ds" id="previewBanner">
+                    <div id="previewMotifContainer">
+                        @* Default: Tree Motif for Data Structures *@
+                        <svg class="cv-classroom-motif-bg" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="3" style="width:130px;height:130px;flex-shrink:0;">
+                            <circle cx="50" cy="20" r="10"/><circle cx="25" cy="65" r="8"/><circle cx="75" cy="65" r="8"/><line x1="43" y1="28" x2="31" y2="58"/><line x1="57" y1="28" x2="69" y2="58"/><circle cx="15" cy="90" r="5"/><circle cx="35" cy="90" r="5"/><line x1="22" y1="72" x2="17" y2="85"/><line x1="28" y1="72" x2="33" y2="85"/>
+                        </svg>
+                    </div>
+
+                    <div class="cv-classroom-badge-row">
+                        <span class="cv-course-code-pill" id="previewCodePill">CS301</span>
+                        <span class="cv-cohort-pill" id="previewCohortPill">EC6 &bull; Semester 3</span>
+                    </div>
+                    <div class="cv-classroom-name" id="previewTitle">Data Structures</div>
+                </div>
+
+                @* Body *@
+                <div class="cv-classroom-body">
+                    <div class="d-flex items-center justify-between" style="font-size:11px;color:var(--cv-slate);">
+                        <span class="d-flex items-center gap-1" id="previewSchedule">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;flex-shrink:0;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                            Mon, Wed 10:30 AM &bull; Lab 304
+                        </span>
+                        <div class="cv-join-code-badge" id="previewCodeBadge" title="Classroom Code">
+                            <span>Code: <strong id="previewCodeBadgeText">DS-EC6-2026</strong></span>
+                        </div>
+                    </div>
+
+                    @* 3 Key Metrics Placeholder *@
+                    <div class="cv-faculty-classroom-stats">
+                        <div class="cv-faculty-stat-box">
+                            <div class="cv-faculty-stat-box-val">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;color:var(--cv-slate-500);flex-shrink:0;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                                0
+                            </div>
+                            <div class="cv-faculty-stat-box-lbl">Students</div>
+                        </div>
+
+                        <div class="cv-faculty-stat-box tasks-active-box">
+                            <div class="cv-faculty-stat-box-val">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;color:var(--cv-indigo);flex-shrink:0;"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
+                                0
+                            </div>
+                            <div class="cv-faculty-stat-box-lbl">Active Tasks</div>
+                        </div>
+
+                        <div class="cv-faculty-stat-box">
+                            <div class="cv-faculty-stat-box-val" style="color:var(--cv-emerald);">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;flex-shrink:0;"><polyline points="20 6 9 17 4 12"/></svg>
+                                0
+                            </div>
+                            <div class="cv-faculty-stat-box-lbl">All Graded</div>
+                        </div>
+                    </div>
+
+                    @* Action Buttons Preview *@
+                    <div class="cv-classroom-actions-row" style="pointer-events:none;opacity:0.85;">
+                        <button class="cv-btn cv-btn-primary flex-1" style="justify-content:center;gap:6px;">
+                            <span>Open</span>
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;flex-shrink:0;"><polyline points="9 18 15 12 9 6"/></svg>
+                        </button>
+                        <button class="cv-btn cv-btn-secondary">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;flex-shrink:0;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                            <span>Edit</span>
+                        </button>
+                        <button class="cv-btn cv-btn-archive">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;flex-shrink:0;"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @* 3. Faculty Institutional Tips *@
+        <div class="cv-card" style="padding:var(--space-4) var(--space-5);">
+            <div class="d-flex items-center gap-2 mb-2" style="color:var(--cv-navy);font-weight:var(--fw-bold);font-size:var(--fs-xs);">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;color:var(--cv-gold);flex-shrink:0;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                University Classroom Setup Rules
+            </div>
+            <ul style="font-size:11px;color:var(--cv-slate);margin:0;padding-left:var(--space-4);line-height:1.6;">
+                <li>Classrooms represent unique laboratory practical batches or lecture cohorts.</li>
+                <li>All students using the generated join code will automatically be assigned to division <strong><span id="tipDivision">EC6</span></strong>.</li>
+                <li>Coursework rubrics and practical tasks can be published immediately after creation.</li>
+            </ul>
+        </div>
+
+    </div>
+</div>
+
+@* ==================== 3. SUCCESS CELEBRATION MODAL ==================== *@
+<div class="cv-modal-backdrop" id="creationSuccessModal">
+    <div class="cv-modal-dialog" style="max-width:480px;">
+        <div class="cv-success-dialog">
+            <div class="cv-success-icon-wrap">
+                <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:34px;height:34px;flex-shrink:0;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            </div>
+
+            <h3 style="font-size:var(--fs-xl);font-weight:var(--fw-bold);color:var(--cv-navy);margin-bottom:var(--space-1);">
+                Classroom Created Successfully!
+            </h3>
+            <p style="font-size:var(--fs-sm);color:var(--cv-slate);margin-bottom:var(--space-5);">
+                The academic workspace has been registered in the university catalog and is ready for student enrollment.
+            </p>
+
+            @* Code Box in Modal *@
+            <div style="background:var(--cv-slate-50);border:1px solid var(--cv-border);border-radius:var(--radius-lg);padding:var(--space-4);margin-bottom:var(--space-5);text-align:center;">
+                <div style="font-size:11px;color:var(--cv-slate);text-transform:uppercase;letter-spacing:0.05em;font-weight:var(--fw-semibold);margin-bottom:4px;">
+                    Student Join Code
+                </div>
+                <div style="font-family:var(--font-mono, monospace);font-size:var(--fs-2xl);font-weight:var(--fw-bold);color:var(--cv-navy);letter-spacing:0.08em;margin-bottom:var(--space-2);" id="modalCodeDisplay">
+                    DS-EC6-2026
+                </div>
+                <button type="button" class="cv-btn cv-btn-secondary cv-btn-sm" onclick="copyModalCode()" style="gap:4px;">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;flex-shrink:0;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                    <span>Copy Code</span>
+                </button>
+            </div>
+
+            @* Quick Summary *@
+            <div style="text-align:left;background:#f8fafc;border:1px solid var(--cv-border-light);border-radius:var(--radius-md);padding:var(--space-3) var(--space-4);font-size:12px;color:var(--cv-slate-700);margin-bottom:var(--space-6);line-height:1.6;">
+                <div><strong>Classroom:</strong> <span id="modalClassroomName">Data Structures</span></div>
+                <div><strong>Cohort:</strong> <span id="modalCohort">EC6 &bull; Semester 3</span></div>
+                <div><strong>Department:</strong> <span id="modalDept">Computer Engineering</span></div>
+            </div>
+
+            @* Action Buttons *@
+            <div style="display:flex;align-items:center;gap:var(--space-3);justify-content:center;">
+                <a href="@Url.Action("Classrooms", "Faculty")" class="cv-btn cv-btn-secondary flex-1" style="justify-content:center;">
+                    View All Classrooms
+                </a>
+                <a href="@Url.Action("ClassroomDetails", "Faculty", new { id = 1 })" class="cv-btn cv-btn-primary flex-1" style="justify-content:center;gap:6px;">
+                    <span>Open Workspace</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;flex-shrink:0;"><polyline points="9 18 15 12 9 6"/></svg>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* ==================== 4. TOAST NOTIFICATION ==================== *@
+<div class="cv-toast" id="createToast">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;color:var(--cv-emerald);flex-shrink:0;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+    <span id="createToastMsg">Notice message</span>
+</div>
+
+@* ==================== 5. CLIENT LOGIC & VALIDATION SCRIPTS ==================== *@
+<script>
+    // Motifs definitions for subjects
+    var subjectMotifs = {
+        "motif-ds": '<svg class="cv-classroom-motif-bg" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="3" style="width:130px;height:130px;flex-shrink:0;"><circle cx="50" cy="20" r="10"/><circle cx="25" cy="65" r="8"/><circle cx="75" cy="65" r="8"/><line x1="43" y1="28" x2="31" y2="58"/><line x1="57" y1="28" x2="69" y2="58"/><circle cx="15" cy="90" r="5"/><circle cx="35" cy="90" r="5"/><line x1="22" y1="72" x2="17" y2="85"/><line x1="28" y1="72" x2="33" y2="85"/></svg>',
+        "motif-dbms": '<svg class="cv-classroom-motif-bg" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="3" style="width:130px;height:130px;flex-shrink:0;"><ellipse cx="50" cy="25" rx="35" ry="12"/><path d="M15 25v22c0 6.6 15.7 12 35 12s35-5.4 35-12V25"/><path d="M15 47v22c0 6.6 15.7 12 35 12s35-5.4 35-12V47"/><path d="M15 69v22c0 6.6 15.7 12 35 12s35-5.4 35-12V69"/></svg>',
+        "motif-web": '<svg class="cv-classroom-motif-bg" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="3" style="width:130px;height:130px;flex-shrink:0;"><rect x="10" y="20" width="80" height="60" rx="6"/><line x1="10" y1="36" x2="90" y2="36"/><circle cx="22" cy="28" r="3"/><circle cx="32" cy="28" r="3"/><circle cx="42" cy="28" r="3"/><path d="M30 55l10 10-10 10M50 75h20"/></svg>',
+        "motif-oop": '<svg class="cv-classroom-motif-bg" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="3" style="width:130px;height:130px;flex-shrink:0;"><rect x="25" y="15" width="50" height="35" rx="4"/><line x1="25" y1="30" x2="75" y2="30"/><rect x="10" y="60" width="35" height="30" rx="4"/><rect x="55" y="60" width="35" height="30" rx="4"/><line x1="50" y1="50" x2="50" y2="55"/><line x1="27" y1="55" x2="73" y2="55"/><line x1="27" y1="55" x2="27" y2="60"/><line x1="73" y1="55" x2="73" y2="60"/></svg>',
+        "motif-os": '<svg class="cv-classroom-motif-bg" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="3" style="width:130px;height:130px;flex-shrink:0;"><circle cx="30" cy="30" r="10"/><circle cx="70" cy="30" r="10"/><circle cx="50" cy="70" r="10"/><line x1="38" y1="35" x2="44" y2="62"/><line x1="62" y1="35" x2="56" y2="62"/><line x1="40" y1="30" x2="60" y2="30"/></svg>',
+        "motif-math": '<svg class="cv-classroom-motif-bg" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="3" style="width:130px;height:130px;flex-shrink:0;"><circle cx="25" cy="25" r="9"/><circle cx="75" cy="25" r="9"/><circle cx="75" cy="75" r="9"/><circle cx="25" cy="75" r="9"/><line x1="34" y1="25" x2="66" y2="25"/><line x1="75" y1="34" x2="75" y2="66"/><line x1="66" y1="75" x2="34" y2="75"/><line x1="25" y1="66" x2="25" y2="34"/><line x1="31" y1="31" x2="69" y2="69"/></svg>'
+    };
+
+    var currentRandomSuffix = "";
+
+    // Toast Utility
+    function showToast(msg) {
+        var toast = document.getElementById('createToast');
+        document.getElementById('createToastMsg').innerText = msg;
+        toast.classList.add('show');
+        setTimeout(function () {
+            toast.classList.remove('show');
+        }, 3200);
+    }
+
+    // Handle Subject Selection Change
+    function handleSubjectChange() {
+        var subjectSelect = document.getElementById('classroomSubject');
+        var selectedOpt = subjectSelect.options[subjectSelect.selectedIndex];
+        var code = selectedOpt.getAttribute('data-code');
+        document.getElementById('courseCode').value = code;
+
+        // Auto-update Classroom Name if default or empty
+        var nameInput = document.getElementById('classroomName');
+        if (!nameInput.value || nameInput.value === "Data Structures" || nameInput.value === "Database Management Systems" || nameInput.value === "Web Technology" || nameInput.value === "Object Oriented Programming" || nameInput.value === "Computer Networks" || nameInput.value === "Design & Analysis of Algorithms") {
+            nameInput.value = selectedOpt.value;
+        }
+
+        updateGeneratedCode();
+    }
+
+    // Generate Classroom Code (e.g. DS-EC6-2026)
+    function updateGeneratedCode() {
+        var subjectSelect = document.getElementById('classroomSubject');
+        var selectedOpt = subjectSelect.options[subjectSelect.selectedIndex];
+        var prefix = selectedOpt.getAttribute('data-prefix') || "CRS";
+        var division = document.getElementById('division').value || "EC6";
+
+        var yearSelect = document.getElementById('academicYear');
+        var selectedYearOpt = yearSelect.options[yearSelect.selectedIndex];
+        var yearShort = selectedYearOpt.getAttribute('data-short') || "2026";
+
+        var code = prefix + "-" + division + "-" + yearShort;
+        if (currentRandomSuffix) {
+            code += "-" + currentRandomSuffix;
+        }
+
+        document.getElementById('generatedCodeDisplay').innerText = code;
+        document.getElementById('previewCodeBadgeText').innerText = code;
+        document.getElementById('modalCodeDisplay').innerText = code;
+    }
+
+    function regenerateCodeSuffix() {
+        var chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+        var res = "";
+        for (var i = 0; i < 2; i++) {
+            res += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        currentRandomSuffix = res;
+        updateGeneratedCode();
+        showToast("Classroom code regenerated!");
+    }
+
+    // 1-Click Copy Generated Code
+    function copyGeneratedCode() {
+        var code = document.getElementById('generatedCodeDisplay').innerText;
+        copyText(code);
+    }
+
+    function copyModalCode() {
+        var code = document.getElementById('modalCodeDisplay').innerText;
+        copyText(code);
+    }
+
+    function copyText(text) {
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(text).then(function () {
+                showToast('Classroom code "' + text + '" copied to clipboard!');
+            });
+        } else {
+            showToast('Classroom code: ' + text);
+        }
+    }
+
+    // Real-Time Live Card Preview Synchronizer
+    function updatePreview() {
+        var name = document.getElementById('classroomName').value || "Untitled Classroom";
+        var code = document.getElementById('courseCode').value || "CS000";
+        var division = document.getElementById('division').value || "EC6";
+        var semester = document.getElementById('semester').value || "Semester 3";
+        var schedule = document.getElementById('roomSchedule').value || "Schedule pending";
+
+        // Update Title
+        document.getElementById('previewTitle').innerText = name;
+        document.getElementById('previewCodePill').innerText = code;
+        document.getElementById('previewCohortPill').innerHTML = division + " &bull; " + semester;
+        document.getElementById('previewSchedule').innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;flex-shrink:0;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> ' + schedule;
+        document.getElementById('tipDivision').innerText = division;
+
+        // Update Motif Banner Class and SVG
+        var subjectSelect = document.getElementById('classroomSubject');
+        var selectedOpt = subjectSelect.options[subjectSelect.selectedIndex];
+        var motifClass = selectedOpt.getAttribute('data-motif') || "motif-ds";
+
+        var banner = document.getElementById('previewBanner');
+        banner.className = "cv-classroom-banner " + motifClass;
+
+        var motifSvg = subjectMotifs[motifClass] || subjectMotifs["motif-ds"];
+        document.getElementById('previewMotifContainer').innerHTML = motifSvg;
+    }
+
+    // Field-level Validation
+    function validateField(fieldId) {
+        var field = document.getElementById(fieldId);
+        var errEl = null;
+
+        if (fieldId === 'classroomName') {
+            errEl = document.getElementById('errClassroomName');
+            var val = (field.value || '').trim();
+            if (val.length < 3) {
+                field.classList.add('cv-input-error');
+                errEl.classList.add('show');
+                return false;
+            } else {
+                field.classList.remove('cv-input-error');
+                errEl.classList.remove('show');
+                return true;
+            }
+        }
+
+        if (fieldId === 'classroomSubject') {
+            errEl = document.getElementById('errClassroomSubject');
+            if (!field.value) {
+                field.classList.add('cv-input-error');
+                errEl.classList.add('show');
+                return false;
+            } else {
+                field.classList.remove('cv-input-error');
+                errEl.classList.remove('show');
+                return true;
+            }
+        }
+
+        return true;
+    }
+
+    // Submit & Form Validation
+    function submitCreateClassroom() {
+        var isNameValid = validateField('classroomName');
+        var isSubjectValid = validateField('classroomSubject');
+
+        if (!isNameValid) {
+            document.getElementById('classroomName').focus();
+            showToast("Please enter a valid classroom name (min 3 characters).");
+            return;
+        }
+
+        if (!isSubjectValid) {
+            document.getElementById('classroomSubject').focus();
+            showToast("Please select a subject.");
+            return;
+        }
+
+        var code = document.getElementById('generatedCodeDisplay').innerText.trim();
+        document.getElementById('joinCodeInput').value = code;
+
+        var subjectSelect = document.getElementById('classroomSubject');
+        var selectedOpt = subjectSelect.options[subjectSelect.selectedIndex];
+        var motifClass = (selectedOpt && selectedOpt.getAttribute('data-motif')) || "motif-ds";
+        var gradientMap = {
+            "motif-ds": "linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)",
+            "motif-dbms": "linear-gradient(135deg, #065f46 0%, #10b981 100%)",
+            "motif-web": "linear-gradient(135deg, #7c2d12 0%, #f97316 100%)",
+            "motif-oop": "linear-gradient(135deg, #4c1d95 0%, #8b5cf6 100%)",
+            "motif-os": "linear-gradient(135deg, #1f2937 0%, #4b5563 100%)",
+            "motif-math": "linear-gradient(135deg, #831843 0%, #ec4899 100%)"
+        };
+        document.getElementById('themeGradientInput').value = gradientMap[motifClass] || "linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)";
+
+        document.getElementById('createClassroomForm').submit();
+    }
+
+    // Initialize on DOM load
+    document.addEventListener("DOMContentLoaded", function () {
+        updateGeneratedCode();
+        updatePreview();
+    });
+</script>

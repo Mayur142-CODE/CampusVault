@@ -1,0 +1,359 @@
+@model CampusVault.Models.Student.StudentDocumentItem
+@{
+    ViewBag.Title = "Revision Required — Coursework";
+    ViewBag.Role = "Student";
+    ViewBag.UserName = Session["UserName"] as string ?? "Student";
+    ViewBag.UserInitials = Session["UserInitials"] as string ?? "ST";
+    ViewBag.UserRoleDisplay = Session["UserRoleDisplay"] as string ?? "Enrolled Student";
+
+    var taskTitle = Model != null ? Model.TaskTitle : "Coursework Task";
+    var courseCode = Model != null ? Model.CourseCode : "Course";
+    var courseName = Model != null ? Model.CourseName : "Classroom";
+    var facultyName = Model != null && !string.IsNullOrEmpty(Model.FacultyName) ? Model.FacultyName : "Faculty Instructor";
+    var feedback = Model != null && !string.IsNullOrEmpty(Model.Feedback) ? Model.Feedback : "Please review the rubric requirements and update your submission.";
+    var origFileName = Model != null && !string.IsNullOrEmpty(Model.FileName) ? Model.FileName : "original_document.pdf";
+}
+
+@if (Model == null)
+{
+    @* ==================== EMPTY STATE ==================== *@
+    <div class="cv-page-header animate-slide-up" style="margin-bottom:var(--space-5);">
+        <h1 style="font-family:var(--font-heading);font-size:var(--fs-2xl);font-weight:var(--fw-bold);color:var(--cv-navy);letter-spacing:-0.015em;margin:0;">
+            Revision Requests
+        </h1>
+        <p style="color:var(--cv-slate);font-size:var(--fs-sm);margin:0;">
+            Track and submit revised academic coursework requested by your faculty mentors.
+        </p>
+    </div>
+
+    <div class="cv-card animate-slide-up stagger-1" style="padding:60px 20px;text-align:center;background:#fff;border-radius:var(--radius-lg);border:1px solid var(--cv-border);">
+        <div style="width:56px;height:56px;border-radius:50%;background:#ecfdf5;color:#059669;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <h3 style="font-family:var(--font-heading);font-size:var(--fs-lg);font-weight:var(--fw-bold);color:var(--cv-navy);margin:0 0 8px 0;">No Active Revision Requests</h3>
+        <p style="color:var(--cv-slate);font-size:var(--fs-sm);max-width:440px;margin:0 auto 20px;line-height:1.5;">
+            You currently have no assignments or documents requiring revision. All your submitted coursework is either approved or under initial review.
+        </p>
+        <a href="@Url.Action("Tasks", "Student")" class="cv-btn cv-btn-primary" style="display:inline-flex;align-items:center;gap:6px;">
+            View All Tasks
+        </a>
+    </div>
+}
+else
+{
+    @* ==================== 1. BREADCRUMBS ==================== *@
+    <div class="cv-breadcrumbs-bar animate-slide-up" style="display:flex;align-items:center;justify-content:space-between;gap:var(--space-4);flex-wrap:wrap;margin-bottom:var(--space-5);">
+        <div style="display:flex;align-items:center;gap:var(--space-2);font-size:var(--fs-sm);color:var(--cv-slate);">
+            <a href="@Url.Action("Dashboard", "Student")" style="color:var(--cv-slate);text-decoration:none;display:inline-flex;align-items:center;gap:4px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;flex-shrink:0;"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+                Dashboard
+            </a>
+            <span style="color:var(--cv-border-dark);">/</span>
+            <a href="@Url.Action("Tasks", "Student")" style="color:var(--cv-slate);text-decoration:none;">
+                My Tasks
+            </a>
+            <span style="color:var(--cv-border-dark);">/</span>
+            <span style="color:var(--cv-navy);font-weight:var(--fw-semibold);">@taskTitle (Revision)</span>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:var(--space-3);">
+            <a href="@Url.Action("Tasks", "Student")" class="cv-btn cv-btn-secondary cv-btn-sm" style="display:inline-flex;align-items:center;gap:6px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;flex-shrink:0;"><polyline points="15 18 9 12 15 6"/></svg>
+                Back to Tasks
+            </a>
+        </div>
+    </div>
+
+    @* ==================== 2. HEADER BANNER ==================== *@
+    <div class="cv-revision-banner animate-slide-up stagger-1">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-4);flex-wrap:wrap;">
+            <div style="flex:1;min-width:300px;">
+                <div style="display:flex;align-items:center;gap:var(--space-3);flex-wrap:wrap;margin-bottom:var(--space-2);">
+                    <span class="cv-badge" style="background:#FFE4E6;color:#BE123C;font-weight:var(--fw-bold);padding:4px 12px;border:1px solid rgba(225, 29, 72, 0.3);display:inline-flex;align-items:center;gap:6px;">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:12px;height:12px;flex-shrink:0;"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                        Revision Required
+                    </span>
+                    <span class="cv-badge" style="background:var(--cv-indigo-pale);color:var(--cv-indigo);font-weight:var(--fw-bold);">
+                        @courseCode &bull; @courseName
+                    </span>
+                </div>
+
+                <h1 style="font-family:var(--font-heading);font-size:var(--fs-2xl);font-weight:var(--fw-bold);color:var(--cv-navy);letter-spacing:-0.015em;margin:0 0 var(--space-2) 0;">
+                    @taskTitle
+                </h1>
+
+                <p style="color:var(--cv-slate);font-size:var(--fs-base);margin:0;max-width:720px;line-height:1.5;">
+                    Your instructor (@facultyName) has requested an updated revision before final grading.
+                </p>
+            </div>
+
+            <!-- Version Badges Strip -->
+            <div style="display:flex;align-items:center;gap:var(--space-3);flex-wrap:wrap;">
+                <div style="background:var(--cv-bg-alt);border:1px solid var(--cv-border);border-radius:var(--radius-lg);padding:var(--space-3) var(--space-4);text-align:center;min-width:130px;">
+                    <span style="display:block;font-size:11px;text-transform:uppercase;letter-spacing:0.05em;color:var(--cv-slate);font-weight:var(--fw-semibold);margin-bottom:2px;">
+                        Current Version
+                    </span>
+                    <span style="font-family:var(--font-heading);font-size:var(--fs-xl);font-weight:var(--fw-bold);color:var(--cv-navy);">
+                        Version 1
+                    </span>
+                </div>
+
+                <div style="background:#FFF1F2;border:1px solid #FECDD3;border-radius:var(--radius-lg);padding:var(--space-3) var(--space-4);text-align:center;min-width:130px;">
+                    <span style="display:block;font-size:11px;text-transform:uppercase;letter-spacing:0.05em;color:#9F1239;font-weight:var(--fw-bold);margin-bottom:2px;">
+                        Status
+                    </span>
+                    <span style="font-family:var(--font-heading);font-size:var(--fs-base);font-weight:var(--fw-bold);color:#BE123C;">
+                        Needs Revision
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* ==================== 3. TWO-COLUMN WORKSPACE ==================== *@
+    <div class="cv-revision-layout animate-slide-up stagger-2" style="margin-top:var(--space-5);">
+
+        <!-- LEFT COLUMN: Faculty Feedback & Current Document -->
+        <div class="cv-revision-left-col">
+
+            <!-- PROMINENT FACULTY FEEDBACK PANEL -->
+            <div class="cv-feedback-panel" id="facultyFeedbackPanel">
+                <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--space-3);margin-bottom:var(--space-3);">
+                    <div style="display:flex;align-items:center;gap:var(--space-3);">
+                        <div style="width:40px;height:40px;border-radius:var(--radius-full);background:var(--cv-gold);color:var(--cv-white);display:flex;align-items:center;justify-content:center;font-weight:var(--fw-bold);font-size:var(--fs-sm);">
+                            @(facultyName.Length >= 2 ? facultyName.Substring(0, 2).ToUpper() : "FC")
+                        </div>
+                        <div>
+                            <h3 style="font-family:var(--font-heading);font-size:var(--fs-base);font-weight:var(--fw-bold);color:var(--cv-navy);margin:0 0 2px 0;">
+                                @facultyName
+                            </h3>
+                            <p style="font-size:var(--fs-xs);color:var(--cv-slate);margin:0;">
+                                Faculty Evaluator &bull; @courseName
+                            </p>
+                        </div>
+                    </div>
+
+                    <div style="display:flex;align-items:center;gap:6px;font-size:var(--fs-xs);color:#92400E;background:rgba(245, 158, 11, 0.15);padding:4px 10px;border-radius:var(--radius-full);font-weight:500;">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        <span>Reviewed: <strong>@(Model.ReviewedAt.HasValue ? Model.ReviewedAt.Value.ToString("dd MMM yyyy, hh:mm tt") : "Pending")</strong></span>
+                    </div>
+                </div>
+
+                <!-- The Core Quote -->
+                <div class="cv-feedback-quote-box" style="font-size:14px;line-height:1.6;font-style:italic;">
+                    &ldquo;@feedback&rdquo;
+                </div>
+            </div>
+
+            <!-- Original Upload Reference Card -->
+            <div class="cv-card" style="margin-top:var(--space-4);padding:var(--space-4);background:#fff;border-radius:var(--radius-lg);border:1px solid var(--cv-border);">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-3);">
+                    <div style="font-size:12px;font-weight:var(--fw-bold);color:var(--cv-navy);text-transform:uppercase;letter-spacing:0.04em;">Original Submission</div>
+                    <span class="cv-badge" style="background:#f1f5f9;color:var(--cv-slate);font-size:11px;">Version 1</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:var(--space-3);">
+                    <div style="width:36px;height:40px;border-radius:var(--radius-md);background:#fee2e2;color:#dc2626;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:11px;">
+                        PDF
+                    </div>
+                    <div style="flex:1;min-width:0;">
+                        <div style="font-weight:var(--fw-semibold);color:var(--cv-navy);font-size:13px;word-break:break-all;">@origFileName</div>
+                        <div style="font-size:11px;color:var(--cv-slate);">Submitted @Model.SubmittedAt.ToString("MMM dd, yyyy")</div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- RIGHT COLUMN: UPLOAD REVISION -->
+        <div class="cv-revision-right-col">
+
+            <div class="cv-revision-upload-panel" id="revisionUploadPanel">
+                <!-- Panel Header -->
+                <div class="cv-revision-upload-header">
+                    <div style="display:flex;align-items:center;justify-content:space-between;">
+                        <div>
+                            <h3 style="font-family:var(--font-heading);font-size:var(--fs-lg);font-weight:var(--fw-bold);margin:0 0 2px 0;">
+                                Upload Revision
+                            </h3>
+                            <p style="font-size:var(--fs-xs);color:rgba(255,255,255,0.8);margin:0;">
+                                Upload your updated document addressing instructor remarks.
+                            </p>
+                        </div>
+
+                        <span class="cv-badge" style="background:#BE123C;color:#fff;font-weight:700;font-size:11px;">
+                            Target: Version 2
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Panel Body -->
+                <div class="cv-revision-upload-body" id="revisionUploadBody">
+
+                    <!-- DROPZONE -->
+                    <div class="cv-wizard-dropzone" id="revisionDropzone" onclick="triggerRevisionInput()" ondragover="handleRevisionDragOver(event)" ondragleave="handleRevisionDragLeave(event)" ondrop="handleRevisionDrop(event)" style="padding:var(--space-6) var(--space-4);">
+                        <div class="cv-wizard-dropzone-icon" style="width:52px;height:52px;margin-bottom:var(--space-3);">
+                            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:26px;height:26px;color:var(--cv-indigo);">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="17 8 12 3 7 8"/>
+                                <line x1="12" y1="3" x2="12" y2="15"/>
+                            </svg>
+                        </div>
+
+                        <div style="font-family:var(--font-heading);font-size:var(--fs-base);font-weight:var(--fw-bold);color:var(--cv-navy);margin-bottom:4px;">
+                            Upload your revised document
+                        </div>
+
+                        <p style="font-size:var(--fs-xs);color:var(--cv-slate);margin:0 0 var(--space-4) 0;">
+                            Drag and drop your updated file (PDF, DOCX, ZIP)
+                        </p>
+
+                        <button type="button" class="cv-btn cv-btn-primary cv-btn-sm" style="pointer-events:none;font-weight:600;">
+                            Browse Files
+                        </button>
+                    </div>
+
+                    <input type="file" id="revisionFileInput" style="display:none;" accept=".pdf,.docx,.zip" onchange="handleRevisionFileChosen(this.files)" />
+
+                    <!-- AFTER UPLOAD DISPLAY -->
+                    <div id="revisionLoadedBox" style="display:none;margin-top:var(--space-4);">
+                        <div style="background:var(--cv-white);border:2px solid var(--cv-indigo);border-radius:var(--radius-lg);padding:var(--space-4);box-shadow:var(--shadow-sm);">
+                            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-3);padding-bottom:var(--space-2);border-bottom:1px solid var(--cv-border-light);">
+                                <div style="display:flex;align-items:center;gap:6px;">
+                                    <span class="cv-badge" style="background:#059669;color:#fff;font-weight:700;font-size:11px;">Version 2</span>
+                                    <span style="font-size:11px;color:var(--cv-slate);">Ready to submit</span>
+                                </div>
+                                <button type="button" class="cv-btn cv-btn-ghost cv-btn-xs" onclick="clearRevisionFile()" style="color:var(--cv-danger);padding:2px 6px;">
+                                    Remove
+                                </button>
+                            </div>
+
+                            <div style="display:flex;align-items:center;gap:var(--space-3);">
+                                <div style="width:40px;height:44px;border-radius:var(--radius-md);background:var(--cv-indigo-pale);color:var(--cv-indigo);display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:var(--fw-bold);font-size:10px;flex-shrink:0;">
+                                    FILE
+                                </div>
+                                <div style="min-width:0;flex:1;">
+                                    <div id="revFileName" style="font-family:var(--font-heading);font-weight:var(--fw-bold);color:var(--cv-navy);font-size:var(--fs-sm);word-break:break-all;"></div>
+                                    <div style="display:flex;align-items:center;gap:var(--space-2);font-size:var(--fs-xs);color:var(--cv-slate);margin-top:2px;">
+                                        <span>Size: <strong id="revFileSize"></strong></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Remarks / Student Notes -->
+                        <div style="margin-top:var(--space-4);">
+                            <label style="display:block;font-size:var(--fs-xs);font-weight:var(--fw-bold);color:var(--cv-navy);margin-bottom:4px;">
+                                Revision Remarks / Changelog for Instructor:
+                            </label>
+                            <textarea id="txtRevisionNotes" rows="3" class="cv-input" style="width:100%;font-size:var(--fs-xs);resize:vertical;border-radius:var(--radius-md);" placeholder="Describe the corrections made in this revision..."></textarea>
+                        </div>
+                    </div>
+
+                    <!-- ACTION BUTTON -->
+                    <div style="margin-top:var(--space-5);">
+                        <button type="button" class="cv-btn cv-btn-primary" id="btnSubmitRevision" onclick="submitRevision()" style="width:100%;padding:var(--space-4);font-size:var(--fs-base);font-weight:var(--fw-bold);box-shadow:var(--shadow-md);display:flex;align-items:center;justify-content:center;gap:var(--space-2);background:linear-gradient(135deg, var(--cv-indigo) 0%, #4338CA 100%);">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                            <span>Submit Revision</span>
+                        </button>
+                    </div>
+
+                </div>
+
+                <!-- SUCCESS STATE -->
+                <div id="revisionSuccessView" style="display:none;padding:var(--space-6);text-align:center;">
+                    <div style="width:64px;height:64px;border-radius:var(--radius-full);background:#D1FAE5;color:#059669;display:inline-flex;align-items:center;justify-content:center;margin-bottom:var(--space-4);box-shadow:0 0 0 8px rgba(16, 185, 129, 0.15);">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:32px;height:32px;"><polyline points="20 6 9 17 4 12"/></svg>
+                    </div>
+
+                    <h3 style="font-family:var(--font-heading);font-size:var(--fs-xl);font-weight:var(--fw-bold);color:var(--cv-navy);margin:0 0 var(--space-2) 0;">
+                        Revision Submitted Successfully
+                    </h3>
+
+                    <p style="font-size:var(--fs-sm);color:var(--cv-slate);margin:0 0 var(--space-4) 0;line-height:1.5;">
+                        Your revision has been registered into CampusVault and routed back to @facultyName for re-evaluation.
+                    </p>
+
+                    <div style="display:flex;flex-direction:column;gap:var(--space-2);">
+                        <a href="@Url.Action("Tasks", "Student")" class="cv-btn cv-btn-primary" style="justify-content:center;">
+                            Back to My Tasks
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    @* ==================== JAVASCRIPT ==================== *@
+    <script>
+        var revisedFile = null;
+
+        function triggerRevisionInput() {
+            document.getElementById('revisionFileInput').click();
+        }
+
+        function handleRevisionDragOver(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            document.getElementById('revisionDropzone').classList.add('dragover');
+        }
+
+        function handleRevisionDragLeave(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            document.getElementById('revisionDropzone').classList.remove('dragover');
+        }
+
+        function handleRevisionDrop(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            document.getElementById('revisionDropzone').classList.remove('dragover');
+            if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                handleRevisionFileChosen(e.dataTransfer.files);
+            }
+        }
+
+        function handleRevisionFileChosen(files) {
+            if (!files || files.length === 0) return;
+            var file = files[0];
+            var sizeStr = file.size < 1024 * 1024
+                ? (file.size / 1024).toFixed(1) + ' KB'
+                : (file.size / (1024 * 1024)).toFixed(1) + ' MB';
+
+            revisedFile = { name: file.name, size: sizeStr };
+            document.getElementById('revFileName').textContent = file.name;
+            document.getElementById('revFileSize').textContent = sizeStr;
+            document.getElementById('revisionLoadedBox').style.display = 'block';
+            document.getElementById('revisionDropzone').style.display = 'none';
+        }
+
+        function clearRevisionFile() {
+            revisedFile = null;
+            document.getElementById('revisionFileInput').value = '';
+            document.getElementById('revisionLoadedBox').style.display = 'none';
+            document.getElementById('revisionDropzone').style.display = 'block';
+        }
+
+        function submitRevision() {
+            if (!revisedFile) {
+                var dropzone = document.getElementById('revisionDropzone');
+                dropzone.style.borderColor = 'var(--cv-danger)';
+                setTimeout(function () { dropzone.style.borderColor = ''; }, 1000);
+                alert('Please upload your revised document before submitting.');
+                return;
+            }
+
+            var btn = document.getElementById('btnSubmitRevision');
+            btn.disabled = true;
+            btn.innerHTML = 'Submitting Revision...';
+
+            setTimeout(function () {
+                document.getElementById('revisionUploadBody').style.display = 'none';
+                document.getElementById('revisionSuccessView').style.display = 'block';
+            }, 800);
+        }
+    </script>
+}

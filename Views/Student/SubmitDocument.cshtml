@@ -1,0 +1,478 @@
+@model CampusVault.Models.Academic.ClassroomTask
+@{
+    var taskTitle = Model?.Title ?? "Assignment Submission";
+    ViewBag.Title = "Submit Assignment — " + taskTitle;
+    ViewBag.Role = "Student";
+    ViewBag.UserName = Session["UserName"] as string ?? "Student";
+    ViewBag.UserInitials = Session["UserInitials"] as string ?? "ST";
+    ViewBag.UserRoleDisplay = Session["UserRoleDisplay"] as string ?? "Enrolled Student";
+
+    int taskId = Model?.TaskId ?? ViewBag.TaskId ?? 1;
+    bool isOverdue = Model != null && Model.DueDate < DateTime.UtcNow;
+}
+
+<div class="cv-submit-flow-container" style="max-width:880px;margin:0 auto;padding-bottom:var(--space-8);">
+
+    @* ==================== 1. BREADCRUMBS ==================== *@
+    <div class="cv-breadcrumbs-bar animate-slide-up" style="display:flex;align-items:center;justify-content:space-between;gap:var(--space-4);flex-wrap:wrap;margin-bottom:var(--space-4);">
+        <div style="display:flex;align-items:center;gap:var(--space-2);font-size:var(--fs-sm);color:var(--cv-slate);">
+            <a href="@Url.Action("Tasks", "Student")" style="color:var(--cv-slate);text-decoration:none;display:inline-flex;align-items:center;gap:5px;font-weight:500;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
+                <span>Tasks</span>
+            </a>
+            <span style="color:var(--cv-border-dark);">/</span>
+            <a href="@Url.Action("TaskDetails", "Student", new { id = taskId })" style="color:var(--cv-slate);text-decoration:none;font-weight:500;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                @taskTitle
+            </a>
+            <span style="color:var(--cv-border-dark);">/</span>
+            <span style="color:var(--cv-navy);font-weight:var(--fw-semibold);">Submit Assignment</span>
+        </div>
+
+        <a href="@Url.Action("TaskDetails", "Student", new { id = taskId })" class="cv-btn cv-btn-secondary cv-btn-sm" style="display:inline-flex;align-items:center;gap:6px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+            <span>Back to Task Details</span>
+        </a>
+    </div>
+
+    @* ==================== 2. TASK TARGET HEADER CARD ==================== *@
+    <div class="cv-card animate-slide-up stagger-1" style="margin-bottom:var(--space-5);padding:var(--space-4) var(--space-5);background:var(--cv-white);border-left:4px solid var(--cv-indigo);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--space-3);">
+        <div>
+            <div style="display:flex;align-items:center;gap:var(--space-2);margin-bottom:4px;flex-wrap:wrap;">
+                <span class="cv-badge" style="background:var(--cv-indigo-pale);color:var(--cv-indigo);font-size:11.5px;font-weight:var(--fw-bold);">
+                    @(Model?.CourseCode ?? "Course") • @(Model?.CourseName ?? "Academic Subject")
+                </span>
+                <span style="font-size:12.5px;color:var(--cv-slate);">
+                    Instructor: <strong>@(string.IsNullOrEmpty(Model?.FacultyName) ? "Faculty Mentor" : Model.FacultyName)</strong>
+                </span>
+            </div>
+            <h1 style="font-family:var(--font-heading);font-size:var(--fs-xl);font-weight:var(--fw-bold);color:var(--cv-navy);margin:0;line-height:1.3;">
+                @taskTitle
+            </h1>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:var(--space-3);flex-wrap:wrap;">
+            <span style="font-size:12.5px;color:var(--cv-slate);background:var(--cv-bg-alt);padding:6px 12px;border-radius:var(--radius-full);border:1px solid var(--cv-border);display:inline-flex;align-items:center;gap:6px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:@(isOverdue ? "var(--cv-danger)" : "var(--cv-indigo)");"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                Due: <strong>@(Model?.DueDate.ToString("dd MMM yyyy • hh:mm tt") ?? "Scheduled")</strong>
+            </span>
+            <span style="font-size:12.5px;color:var(--cv-navy);background:var(--cv-bg-alt);padding:6px 12px;border-radius:var(--radius-full);border:1px solid var(--cv-border);font-weight:var(--fw-bold);">
+                @(Model?.MaxScore ?? 20) Marks
+            </span>
+        </div>
+    </div>
+
+    @* ==================== ERROR BANNER ==================== *@
+    <div id="submitErrorAlert" class="cv-alert cv-alert-danger" style="display:none;margin-bottom:var(--space-4);align-items:flex-start;gap:var(--space-3);">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;flex-shrink:0;color:var(--cv-danger);"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <div style="flex:1;">
+            <strong style="display:block;margin-bottom:2px;" id="submitErrorTitle">Submission Error</strong>
+            <span id="submitErrorMessage" style="font-size:var(--fs-sm);">Unable to upload file.</span>
+        </div>
+        <button type="button" onclick="document.getElementById('submitErrorAlert').style.display='none'" style="background:none;border:none;cursor:pointer;color:var(--cv-slate);font-size:18px;line-height:1;">&times;</button>
+    </div>
+
+    @* ==================== SUCCESS BANNER & CONFIRMATION CARD ==================== *@
+    <div id="submitSuccessCard" class="cv-card animate-slide-up" style="display:none;padding:var(--space-6);background:var(--cv-white);border:1px solid #86efac;box-shadow:0 10px 25px -5px rgba(34,197,94,0.12);text-align:center;">
+        <div style="width:56px;height:56px;border-radius:50%;background:#dcfce7;color:#16a34a;display:inline-flex;align-items:center;justify-content:center;margin-bottom:var(--space-3);">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <h2 style="font-family:var(--font-heading);font-size:var(--fs-xl);font-weight:var(--fw-bold);color:var(--cv-navy);margin:0 0 var(--space-2) 0;">
+            Assignment Submitted Successfully!
+        </h2>
+        <p style="font-size:var(--fs-sm);color:var(--cv-slate);max-width:520px;margin:0 auto var(--space-5) auto;">
+            Your coursework file has been securely uploaded and submitted for faculty evaluation and review.
+        </p>
+
+        <!-- Submission Details Grid -->
+        <div style="background:var(--cv-bg-alt);border:1px solid var(--cv-border);border-radius:var(--radius-lg);padding:var(--space-4);max-width:540px;margin:0 auto var(--space-5) auto;text-align:left;">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-3);font-size:var(--fs-sm);">
+                <div>
+                    <span style="color:var(--cv-slate);display:block;font-size:12px;">Submitted File</span>
+                    <strong id="successFileName" style="color:var(--cv-navy);word-break:break-all;">assignment.pdf</strong>
+                </div>
+                <div>
+                    <span style="color:var(--cv-slate);display:block;font-size:12px;">File Size</span>
+                    <strong id="successFileSize" style="color:var(--cv-navy);">—</strong>
+                </div>
+                <div>
+                    <span style="color:var(--cv-slate);display:block;font-size:12px;">Status</span>
+                    <span class="cv-badge" style="background:#fef3c7;color:#b45309;font-weight:600;font-size:11px;" id="successStatus">Pending Review</span>
+                </div>
+                <div>
+                    <span style="color:var(--cv-slate);display:block;font-size:12px;">Submitted At</span>
+                    <strong id="successTimestamp" style="color:var(--cv-navy);">Just now</strong>
+                </div>
+            </div>
+        </div>
+
+        <div style="display:flex;justify-content:center;gap:var(--space-3);flex-wrap:wrap;">
+            <a href="@Url.Action("SubmissionHistory", "Student")" class="cv-btn cv-btn-primary" style="display:inline-flex;align-items:center;gap:6px;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                <span>View in Submissions</span>
+            </a>
+            <a href="@Url.Action("Tasks", "Student")" class="cv-btn cv-btn-secondary" style="display:inline-flex;align-items:center;gap:6px;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+                <span>Back to Tasks</span>
+            </a>
+        </div>
+    </div>
+
+    @* ==================== 3. DIRECT 3-STEP SUBMISSION PANEL ==================== *@
+    <div id="submissionMainCard" class="cv-card animate-slide-up stagger-2" style="background:var(--cv-white);border-radius:var(--radius-xl);overflow:hidden;border:1px solid var(--cv-border);box-shadow:var(--shadow-sm);">
+
+        <div style="padding:var(--space-4) var(--space-5);border-bottom:1px solid var(--cv-border);background:linear-gradient(to right, #f8fafc, #ffffff);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--space-2);">
+            <div>
+                <h2 style="font-family:var(--font-heading);font-size:var(--fs-base);font-weight:var(--fw-bold);color:var(--cv-navy);margin:0;">
+                    Upload Assignment File
+                </h2>
+                <p style="font-size:var(--fs-xs);color:var(--cv-slate);margin:2px 0 0 0;">
+                    Select your coursework document, review details, and submit directly for evaluation.
+                </p>
+            </div>
+            <span class="cv-badge" style="background:var(--cv-indigo-pale);color:var(--cv-indigo);font-size:11px;font-weight:600;">
+                Direct Submission
+            </span>
+        </div>
+
+        <form id="submissionForm" onsubmit="handleDirectSubmit(event)" method="post" enctype="multipart/form-data">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="taskId" id="submissionTaskId" value="@taskId" />
+
+            <div style="padding:var(--space-5);">
+
+                @* ---------- STEP 1: SELECT FILE (Dropzone) ---------- *@
+                <div id="dropzoneContainer">
+                    <label class="cv-form-label" style="margin-bottom:var(--space-2);display:flex;align-items:center;gap:6px;">
+                        <span>Step 1 — Select coursework file from your device</span>
+                        <span style="color:var(--cv-danger);">*</span>
+                    </label>
+
+                    <div class="cv-wizard-dropzone" id="fileDropzone" onclick="triggerFileInput()" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)" style="border:2px dashed var(--cv-border-dark);border-radius:var(--radius-lg);padding:var(--space-6) var(--space-4);text-align:center;cursor:pointer;transition:all 0.2s ease;background:var(--cv-bg-alt);">
+                        <div style="width:48px;height:48px;border-radius:50%;background:var(--cv-indigo-pale);color:var(--cv-indigo);display:inline-flex;align-items:center;justify-content:center;margin-bottom:var(--space-3);">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                        </div>
+                        <div style="font-family:var(--font-heading);font-size:var(--fs-base);font-weight:var(--fw-bold);color:var(--cv-navy);margin-bottom:4px;">
+                            Drag &amp; drop your coursework file here
+                        </div>
+                        <p style="font-size:var(--fs-sm);color:var(--cv-slate);margin:0 0 var(--space-3) 0;">
+                            or <span style="color:var(--cv-indigo);font-weight:600;text-decoration:underline;">browse files from your device</span>
+                        </p>
+                        <div style="font-size:12px;color:var(--cv-slate-light);">
+                            Supported formats: <strong>PDF, DOCX, PPTX, ZIP, RAR, CPP, JAVA, PY, TXT</strong> (Max: 25 MB)
+                        </div>
+                    </div>
+
+                    <!-- Hidden Real File Input -->
+                    <input type="file" id="assignmentFileInput" name="document" style="display:none;" accept=".pdf,.doc,.docx,.ppt,.pptx,.zip,.rar,.cpp,.java,.py,.txt" onchange="handleFileSelected(this.files)" />
+                </div>
+
+                @* ---------- STEP 2: REVIEW FILE (Confirmation Area) ---------- *@
+                <div id="fileReviewArea" style="display:none;margin-top:var(--space-4);">
+                    <label class="cv-form-label" style="margin-bottom:var(--space-2);display:flex;align-items:center;gap:6px;">
+                        <span>Step 2 — Review selected file</span>
+                        <span class="cv-badge" style="background:#dcfce7;color:#16a34a;font-size:10.5px;font-weight:600;padding:1px 6px;">File Attached</span>
+                    </label>
+
+                    <div style="background:var(--cv-white);border:1.5px solid var(--cv-indigo);border-radius:var(--radius-lg);padding:var(--space-4);box-shadow:0 4px 12px rgba(37,99,235,0.06);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--space-3);">
+                        <div style="display:flex;align-items:center;gap:var(--space-3);min-width:0;">
+                            <!-- File Icon / Badge -->
+                            <div id="reviewBadge" style="width:46px;height:50px;border-radius:var(--radius-md);background:var(--cv-indigo-pale);color:var(--cv-indigo);display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:var(--fw-bold);font-size:11px;flex-shrink:0;">
+                                PDF
+                            </div>
+                            <div style="min-width:0;">
+                                <div id="reviewFileName" style="font-family:var(--font-heading);font-weight:var(--fw-bold);color:var(--cv-navy);font-size:var(--fs-base);word-break:break-all;">
+                                    coursework_document.pdf
+                                </div>
+                                <div style="display:flex;align-items:center;gap:var(--space-3);font-size:var(--fs-xs);color:var(--cv-slate);margin-top:3px;flex-wrap:wrap;">
+                                    <span>Format: <strong id="reviewFileType" style="color:var(--cv-navy);">PDF Document</strong></span>
+                                    <span>•</span>
+                                    <span>Size: <strong id="reviewFileSize" style="color:var(--cv-navy);">2.4 MB</strong></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Actions: Replace / Remove -->
+                        <div style="display:flex;align-items:center;gap:var(--space-2);">
+                            <button type="button" class="cv-btn cv-btn-secondary cv-btn-sm" onclick="triggerFileInput()" style="font-size:12px;padding:6px 12px;">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                                <span>Change File</span>
+                            </button>
+                            <button type="button" class="cv-btn cv-btn-ghost cv-btn-sm" onclick="clearSelectedFile()" style="color:var(--cv-danger);font-size:12px;padding:6px 12px;">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                                <span>Remove</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                @* ---------- UPLOAD PROGRESS BAR (When active) ---------- *@
+                <div id="uploadProgressBarContainer" style="display:none;margin-top:var(--space-4);">
+                    <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--cv-slate);margin-bottom:4px;">
+                        <span id="uploadProgressLabel">Uploading coursework to secure repository...</span>
+                        <span id="uploadProgressPct" style="font-weight:700;color:var(--cv-indigo);">100%</span>
+                    </div>
+                    <div class="cv-upload-meter" style="height:6px;background:var(--cv-bg-alt);border-radius:3px;overflow:hidden;">
+                        <div class="cv-upload-meter-fill" id="uploadMeterFill" style="width:100%;height:100%;background:linear-gradient(90deg, var(--cv-indigo), var(--cv-gold));border-radius:3px;animation:cvShimmer 1.5s infinite;"></div>
+                    </div>
+                </div>
+
+            </div>
+
+            @* ---------- STEP 3: SUBMIT ACTION BAR ---------- *@
+            <div style="padding:var(--space-4) var(--space-5);border-top:1px solid var(--cv-border);background:var(--cv-bg-alt);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--space-3);">
+                <a href="@Url.Action("Tasks", "Student")" class="cv-btn cv-btn-ghost cv-btn-sm" style="color:var(--cv-slate);">
+                    Cancel
+                </a>
+
+                <div style="display:flex;align-items:center;gap:var(--space-3);">
+                    <button type="submit" id="submitBtn" class="cv-btn cv-btn-gold" style="font-weight:700;display:inline-flex;align-items:center;gap:8px;padding:9px 22px;">
+                        <svg id="submitBtnIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                        <span id="submitBtnText">Submit Assignment</span>
+                    </button>
+                </div>
+            </div>
+        </form>
+
+    </div>
+
+</div>
+
+@section Scripts {
+    <script>
+        var selectedFileObj = null;
+
+        function triggerFileInput() {
+            var input = document.getElementById('assignmentFileInput');
+            if (input) input.click();
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var dz = document.getElementById('fileDropzone');
+            if (dz) {
+                dz.style.borderColor = 'var(--cv-indigo)';
+                dz.style.background = 'var(--cv-indigo-pale)';
+            }
+        }
+
+        function handleDragLeave(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var dz = document.getElementById('fileDropzone');
+            if (dz) {
+                dz.style.borderColor = 'var(--cv-border-dark)';
+                dz.style.background = 'var(--cv-bg-alt)';
+            }
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var dz = document.getElementById('fileDropzone');
+            if (dz) {
+                dz.style.borderColor = 'var(--cv-border-dark)';
+                dz.style.background = 'var(--cv-bg-alt)';
+            }
+            if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                handleFileSelected(e.dataTransfer.files);
+            }
+        }
+
+        function handleFileSelected(files) {
+            hideError();
+            if (!files || files.length === 0) return;
+
+            var file = files[0];
+
+            // 1. Validate file extension
+            var ext = '.' + file.name.split('.').pop().toLowerCase();
+            var allowedExtensions = ['.pdf', '.doc', '.docx', '.ppt', '.pptx', '.zip', '.rar', '.cpp', '.java', '.py', '.txt'];
+            if (allowedExtensions.indexOf(ext) === -1) {
+                showError('Unsupported File Format', 'File type "' + ext + '" is not permitted. Please upload a valid document or archive (.pdf, .doc, .docx, .ppt, .pptx, .zip, .rar).');
+                clearSelectedFile();
+                return;
+            }
+
+            // 2. Validate size (25 MB max)
+            var maxBytes = 25 * 1024 * 1024;
+            if (file.size > maxBytes) {
+                showError('File Too Large', 'Selected file (' + formatFileSize(file.size) + ') exceeds the 25 MB institutional quota.');
+                clearSelectedFile();
+                return;
+            }
+
+            selectedFileObj = file;
+
+            // Update Review Card
+            document.getElementById('reviewFileName').textContent = file.name;
+            document.getElementById('reviewFileSize').textContent = formatFileSize(file.size);
+            document.getElementById('reviewFileType').textContent = getFileTypeName(ext);
+
+            var badge = document.getElementById('reviewBadge');
+            badge.textContent = ext.replace('.', '').toUpperCase();
+
+            // Set badge theme color
+            if (ext === '.pdf') {
+                badge.style.background = '#fee2e2';
+                badge.style.color = '#dc2626';
+            } else if (ext === '.zip' || ext === '.rar') {
+                badge.style.background = '#fef3c7';
+                badge.style.color = '#d97706';
+            } else if (ext === '.doc' || ext === '.docx') {
+                badge.style.background = '#dbeafe';
+                badge.style.color = '#2563eb';
+            } else {
+                badge.style.background = '#e0e7ff';
+                badge.style.color = '#4338ca';
+            }
+
+            // Display review confirmation area
+            document.getElementById('fileReviewArea').style.display = 'block';
+        }
+
+        function clearSelectedFile() {
+            selectedFileObj = null;
+            var input = document.getElementById('assignmentFileInput');
+            if (input) input.value = '';
+            document.getElementById('fileReviewArea').style.display = 'none';
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            var k = 1024;
+            var sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            var i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+        }
+
+        function getFileTypeName(ext) {
+            switch (ext) {
+                case '.pdf': return 'PDF Document';
+                case '.doc':
+                case '.docx': return 'Word Document';
+                case '.ppt':
+                case '.pptx': return 'Presentation File';
+                case '.zip':
+                case '.rar': return 'Archive File';
+                case '.cpp':
+                case '.java':
+                case '.py': return 'Source Code File';
+                default: return 'Document File';
+            }
+        }
+
+        function showError(title, message) {
+            var alertEl = document.getElementById('submitErrorAlert');
+            document.getElementById('submitErrorTitle').textContent = title;
+            document.getElementById('submitErrorMessage').textContent = message;
+            alertEl.style.display = 'flex';
+        }
+
+        function hideError() {
+            var alertEl = document.getElementById('submitErrorAlert');
+            if (alertEl) alertEl.style.display = 'none';
+        }
+
+        // Direct Submission Handler
+        function handleDirectSubmit(e) {
+            e.preventDefault();
+            hideError();
+
+            var fileInput = document.getElementById('assignmentFileInput');
+            var file = selectedFileObj || (fileInput && fileInput.files ? fileInput.files[0] : null);
+
+            if (!file) {
+                showError('File Required', 'Please select or attach your coursework file before clicking Submit.');
+                return;
+            }
+
+            var btn = document.getElementById('submitBtn');
+            var btnText = document.getElementById('submitBtnText');
+            var btnIcon = document.getElementById('submitBtnIcon');
+            var progressBox = document.getElementById('uploadProgressBarContainer');
+
+            // Prevent duplicate clicks & set loading UI
+            btn.disabled = true;
+            btnText.textContent = 'Uploading coursework...';
+            btnIcon.innerHTML = '<circle cx="12" cy="12" r="10" stroke-width="3" stroke-dasharray="32" stroke-linecap="round"></circle>';
+            btnIcon.classList.add('cv-spin');
+            progressBox.style.display = 'block';
+
+            var form = document.getElementById('submissionForm');
+            var formData = new FormData();
+            formData.append('document', file);
+            formData.append('taskId', document.getElementById('submissionTaskId').value);
+
+            // Append CSRF verification token
+            var tokenInput = form.querySelector('input[name="__RequestVerificationToken"]');
+            if (tokenInput) {
+                formData.append('__RequestVerificationToken', tokenInput.value);
+            }
+
+            fetch(form.action, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: formData
+            })
+            .then(function (response) {
+                if (!response.ok) {
+                    return response.text().then(function (text) {
+                        try {
+                            var json = JSON.parse(text);
+                            throw new Error(json.message || 'Server error (' + response.status + ')');
+                        } catch (e) {
+                            throw new Error('Server error (' + response.status + '): ' + (text ? text.substring(0, 150) : response.statusText));
+                        }
+                    });
+                }
+                return response.json();
+            })
+            .then(function (data) {
+                progressBox.style.display = 'none';
+                if (data.success) {
+                    // Hide main form card and show confirmation card
+                    document.getElementById('submissionMainCard').style.display = 'none';
+                    document.getElementById('submitSuccessCard').style.display = 'block';
+
+                    document.getElementById('successFileName').textContent = data.fileName || file.name;
+                    document.getElementById('successFileSize').textContent = data.fileSize || formatFileSize(file.size);
+                    document.getElementById('successStatus').textContent = data.submissionStatus || 'Pending Review';
+                    document.getElementById('successTimestamp').textContent = data.submittedAt || new Date().toLocaleString();
+
+                    try {
+                        if (window.CampusVault && CampusVault.showToast) {
+                            CampusVault.showToast({
+                                type: 'success',
+                                title: 'Submission Saved',
+                                message: data.message || 'Your assignment was successfully submitted!'
+                            });
+                        }
+                    } catch (toastErr) {
+                        console.warn('Toast notification error:', toastErr);
+                    }
+                } else {
+                    btn.disabled = false;
+                    btnText.textContent = 'Submit Assignment';
+                    btnIcon.innerHTML = '<line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>';
+                    btnIcon.classList.remove('cv-spin');
+                    showError('Submission Failed', data.message || 'An error occurred while uploading. Please try again.');
+                }
+            })
+            .catch(function (err) {
+                progressBox.style.display = 'none';
+                btn.disabled = false;
+                btnText.textContent = 'Submit Assignment';
+                btnIcon.innerHTML = '<line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>';
+                btnIcon.classList.remove('cv-spin');
+
+                var isNetwork = (err instanceof TypeError) || (err.message && (err.message.indexOf('Failed to fetch') !== -1 || err.message.indexOf('NetworkError') !== -1));
+                var errorTitle = isNetwork ? 'Network Error' : 'Submission Error';
+                var errorMsg = isNetwork ? 'Connection to server failed or request timed out. Please check your internet connection and try again.' : (err.message || 'An unexpected error occurred while submitting.');
+                showError(errorTitle, errorMsg);
+            });
+        }
+    </script>
+}

@@ -1,0 +1,518 @@
+@model List<CampusVault.Models.Student.StudentTaskItem>
+@{
+    ViewBag.Title = "My Tasks";
+    ViewBag.Role = "Student";
+    ViewBag.UserName = Session["UserName"] as string ?? "Student";
+    ViewBag.UserInitials = Session["UserInitials"] as string ?? "ST";
+    ViewBag.UserRoleDisplay = Session["UserRoleDisplay"] as string ?? "Enrolled Student";
+
+    var tasks = Model ?? new List<CampusVault.Models.Student.StudentTaskItem>();
+    int totalCount = tasks.Count;
+    
+    // Helper function to check status
+    Func<string, bool> isApproved = (status) => !string.IsNullOrEmpty(status) && (
+        status.Equals("Approved", StringComparison.OrdinalIgnoreCase) ||
+        status.Equals("Reviewed", StringComparison.OrdinalIgnoreCase) ||
+        status.Equals("Graded", StringComparison.OrdinalIgnoreCase));
+    
+    Func<string, bool> isSubmitted = (status) => !string.IsNullOrEmpty(status) && (
+        status.Equals("Submitted", StringComparison.OrdinalIgnoreCase) ||
+        status.Equals("PendingReview", StringComparison.OrdinalIgnoreCase) ||
+        status.Equals("Under Review", StringComparison.OrdinalIgnoreCase));
+    
+    Func<string, bool> isRevision = (status) => !string.IsNullOrEmpty(status) && 
+        status.IndexOf("Revision", StringComparison.OrdinalIgnoreCase) >= 0;
+    
+    Func<string, bool> isPending = (status) => string.IsNullOrEmpty(status) || 
+        (!isApproved(status) && !isSubmitted(status) && !isRevision(status));
+    
+    int pendingCount = tasks.Count(t => isPending(t.SubmissionStatus));
+    int overdueCount = tasks.Count(t => t.DueDate < DateTime.Now && isPending(t.SubmissionStatus));
+    int reviewCount = tasks.Count(t => isSubmitted(t.SubmissionStatus));
+    int revisionCount = tasks.Count(t => isRevision(t.SubmissionStatus));
+    int approvedCount = tasks.Count(t => isApproved(t.SubmissionStatus));
+    int upcomingCount = tasks.Count(t => t.DueDate >= DateTime.Now && (t.DueDate - DateTime.Now).TotalDays <= 7);
+
+    var distinctCourses = tasks.Select(t => new { t.CourseCode, t.CourseName }).Distinct().OrderBy(c => c.CourseCode).ToList();
+}
+
+@* ==================== 1. PAGE HEADER ==================== *@
+<div class="cv-page-header animate-slide-up" style="display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-4);flex-wrap:wrap;margin-bottom:var(--space-5);">
+    <div>
+        <div style="display:flex;align-items:center;gap:var(--space-3);margin-bottom:4px;">
+            <div style="width:36px;height:36px;border-radius:var(--radius-md);background:var(--cv-warning-bg);color:var(--cv-warning);display:flex;align-items:center;justify-content:center;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px;">
+                    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+                    <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
+                </svg>
+            </div>
+            <h1 style="font-family:var(--font-heading);font-size:var(--fs-2xl);font-weight:var(--fw-bold);color:var(--cv-navy);letter-spacing:-0.015em;margin:0;">
+                My Tasks
+            </h1>
+        </div>
+        <p style="color:var(--cv-slate);font-size:var(--fs-base);margin:0;">
+            Stay ahead of your academic deadlines and submit course deliverables.
+        </p>
+    </div>
+
+    <!-- Quick Stats Summary Strip -->
+    <div style="display:flex;align-items:center;gap:var(--space-3);flex-wrap:wrap;">
+        <span style="font-size:12px;color:var(--cv-slate);background:var(--cv-white);padding:6px 14px;border-radius:var(--radius-full);border:1px solid var(--cv-border);">
+            <strong style="color:var(--cv-warning);">@pendingCount</strong> Pending
+        </span>
+        <span style="font-size:12px;color:var(--cv-slate);background:var(--cv-white);padding:6px 14px;border-radius:var(--radius-full);border:1px solid var(--cv-border);">
+            <strong style="color:var(--cv-danger);">@overdueCount</strong> Overdue
+        </span>
+        <span style="font-size:12px;color:var(--cv-slate);background:var(--cv-white);padding:6px 14px;border-radius:var(--radius-full);border:1px solid var(--cv-border);">
+            <strong style="color:var(--cv-success);">@approvedCount</strong> Approved
+        </span>
+    </div>
+</div>
+
+@* ==================== 2. TABS & FILTER CARD ==================== *@
+<div class="cv-tasks-header-card animate-slide-up stagger-1">
+    
+    <!-- Primary Task Tabs -->
+    <div class="cv-task-tabs-row" role="tablist">
+        <button type="button" class="cv-task-tab-btn active" onclick="setTaskTab('all')" id="tabBtn-all">
+            <span>All</span>
+            <span class="tab-count" id="count-all">@totalCount</span>
+        </button>
+        <button type="button" class="cv-task-tab-btn" onclick="setTaskTab('upcoming')" id="tabBtn-upcoming">
+            <span>Upcoming</span>
+            <span class="tab-count" id="count-upcoming">@upcomingCount</span>
+        </button>
+        <button type="button" class="cv-task-tab-btn" onclick="setTaskTab('pending')" id="tabBtn-pending">
+            <span>Pending</span>
+            <span class="tab-count" id="count-pending">@pendingCount</span>
+        </button>
+        <button type="button" class="cv-task-tab-btn" onclick="setTaskTab('review')" id="tabBtn-review">
+            <span>Under Review</span>
+            <span class="tab-count" id="count-review">@reviewCount</span>
+        </button>
+        <button type="button" class="cv-task-tab-btn" onclick="setTaskTab('revision')" id="tabBtn-revision">
+            <span>Revision Required</span>
+            <span class="tab-count" id="count-revision">@revisionCount</span>
+        </button>
+        <button type="button" class="cv-task-tab-btn" onclick="setTaskTab('approved')" id="tabBtn-approved">
+            <span>Approved</span>
+            <span class="tab-count" id="count-approved">@approvedCount</span>
+        </button>
+        <button type="button" class="cv-task-tab-btn" onclick="setTaskTab('overdue')" id="tabBtn-overdue">
+            <span>Overdue</span>
+            <span class="tab-count" id="count-overdue" style="background:var(--cv-danger-bg);color:var(--cv-danger);">@overdueCount</span>
+        </button>
+    </div>
+
+    <!-- Live Search & Filters Bar -->
+    <div class="cv-tasks-filter-bar">
+        <div style="display:flex;align-items:center;gap:var(--space-3);flex-wrap:wrap;flex:1;">
+            <!-- Search Box -->
+            <div class="cv-search-input-group" style="max-width:320px;">
+                <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="8"/>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+                <input type="text"
+                       id="taskSearchInput"
+                       placeholder="Search tasks, subject, or faculty..."
+                       oninput="filterTasks()" />
+            </div>
+
+            <!-- Subject Filter -->
+            <div style="display:flex;align-items:center;gap:6px;">
+                <label for="filterSubject" style="font-size:11px;font-weight:600;color:var(--cv-slate);text-transform:uppercase;">Subject:</label>
+                <select id="filterSubject" class="cv-filter-select" onchange="filterTasks()">
+                    <option value="all">All Subjects</option>
+                    @foreach (var c in distinctCourses)
+                    {
+                        <option value="@c.CourseCode">@c.CourseCode @c.CourseName</option>
+                    }
+                </select>
+            </div>
+
+            <!-- Task Type Filter -->
+            <div style="display:flex;align-items:center;gap:6px;">
+                <label for="filterType" style="font-size:11px;font-weight:600;color:var(--cv-slate);text-transform:uppercase;">Type:</label>
+                <select id="filterType" class="cv-filter-select" onchange="filterTasks()">
+                    <option value="all">All Types</option>
+                    <option value="Lab Practical">Lab Practical</option>
+                    <option value="Assignment">Assignment</option>
+                    <option value="Project">Project</option>
+                    <option value="Quiz">Quiz</option>
+                </select>
+            </div>
+
+            <!-- Urgency Filter -->
+            <div style="display:flex;align-items:center;gap:6px;">
+                <label for="filterUrgency" style="font-size:11px;font-weight:600;color:var(--cv-slate);text-transform:uppercase;">Urgency:</label>
+                <select id="filterUrgency" class="cv-filter-select" onchange="filterTasks()">
+                    <option value="all">All Urgency</option>
+                    <option value="Due tomorrow">Due tomorrow</option>
+                    <option value="Due in 3 days">Due in 3 days</option>
+                    <option value="Overdue">Overdue</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Reset Button -->
+        <button type="button" class="cv-btn cv-btn-ghost cv-btn-sm" onclick="resetTaskFilters()" style="padding:4px 8px;font-size:12px;">
+            Reset Filters
+        </button>
+    </div>
+</div>
+
+@* ==================== 3. TASKS LIST ==================== *@
+<div id="tasksListContainer" class="animate-slide-up stagger-2">
+    @if (tasks.Count > 0)
+    {
+        foreach (var task in tasks)
+        {
+            // ---- Status classification (case-insensitive, handles all DB values) ----
+            var s = task.SubmissionStatus ?? "";
+            var taskIsApproved = s.Equals("Approved", StringComparison.OrdinalIgnoreCase)
+                              || s.Equals("Reviewed",  StringComparison.OrdinalIgnoreCase)
+                              || s.Equals("Graded",    StringComparison.OrdinalIgnoreCase);
+            var taskIsReview   = s.Equals("Submitted",     StringComparison.OrdinalIgnoreCase)
+                              || s.Equals("PendingReview", StringComparison.OrdinalIgnoreCase)
+                              || s.Equals("Under Review",  StringComparison.OrdinalIgnoreCase);
+            var taskIsRevision = s.IndexOf("Revision", StringComparison.OrdinalIgnoreCase) >= 0;
+            var taskIsPending  = !taskIsApproved && !taskIsReview && !taskIsRevision;
+
+            // ---- Urgency (only applies to pending/revision tasks) ----
+            var isOverdue  = task.DueDate < DateTime.Now && (taskIsPending || taskIsRevision);
+            var daysLeft   = (int)Math.Ceiling((task.DueDate - DateTime.Now).TotalDays);
+
+            string urgencyClass = "urgency-normal";
+            string urgencyAttr  = "Normal";
+            string deadlineClass = "deadline-ok";
+
+            if (taskIsApproved || taskIsReview)
+            {
+                urgencyClass = "urgency-normal";
+                urgencyAttr  = "Submitted";
+                deadlineClass = "deadline-ok";
+            }
+            else if (isOverdue)
+            {
+                urgencyClass = "urgency-urgent";
+                urgencyAttr  = "Overdue";
+                deadlineClass = "deadline-urgent";
+            }
+            else if (daysLeft <= 1)
+            {
+                urgencyClass = "urgency-urgent";
+                urgencyAttr  = "Due tomorrow";
+                deadlineClass = "deadline-urgent";
+            }
+            else if (daysLeft <= 3)
+            {
+                urgencyClass = "urgency-soon";
+                urgencyAttr  = "Due in 3 days";
+                deadlineClass = "deadline-soon";
+            }
+
+            // ---- Date display: submission date if submitted, due date if pending ----
+            string dateLabel = "";
+            string dateIcon  = "clock";
+            if (taskIsApproved || taskIsReview)
+            {
+                dateLabel = task.SubmittedAt.HasValue
+                    ? "Submitted " + task.SubmittedAt.Value.ToString("MMM dd, yyyy")
+                    : "Submitted recently";
+                deadlineClass = "deadline-ok";
+            }
+            else if (isOverdue)
+            {
+                dateLabel = "Overdue (" + task.DueDate.ToString("MMM dd") + ")";
+            }
+            else if (daysLeft == 0)
+            {
+                dateLabel = "Due today (" + task.DueDate.ToString("hh:mm tt") + ")";
+            }
+            else if (daysLeft == 1)
+            {
+                dateLabel = "Due tomorrow (" + task.DueDate.ToString("MMM dd") + ")";
+            }
+            else
+            {
+                dateLabel = "Due " + task.DueDate.ToString("MMM dd, yyyy");
+            }
+
+            // ---- Tab membership ----
+            var tabList = new List<string> { "all" };
+            if (taskIsApproved)
+            {
+                tabList.Add("approved");
+            }
+            else if (taskIsReview)
+            {
+                tabList.Add("review");
+            }
+            else if (taskIsRevision)
+            {
+                tabList.Add("revision");
+                tabList.Add("pending");
+                if (isOverdue)
+                {
+                    tabList.Add("overdue");
+                }
+            }
+            else
+            {
+                tabList.Add("pending");
+                if (isOverdue)
+                {
+                    tabList.Add("overdue");
+                }
+            }
+            if (daysLeft >= 0 && daysLeft <= 7 && !taskIsApproved)
+            {
+                tabList.Add("upcoming");
+            }
+            
+            string dataTabs    = string.Join(" ", tabList);
+            string searchIndex = (task.Title + " " + task.CourseCode + " " + task.CourseName + " " + task.FacultyName + " " + task.Description).ToLower();
+
+            <div class="cv-task-full-card @urgencyClass"
+                 data-tabs="@dataTabs"
+                 data-subject="@task.CourseCode @task.CourseName"
+                 data-type="@task.TaskType"
+                 data-urgency="@urgencyAttr"
+                 data-status="@s"
+                 data-search="@searchIndex">
+                
+                <div class="cv-task-left-block">
+                    <!-- Task icon: green if approved, blue/orange otherwise -->
+                    <div class="task-icon" style="background:@(taskIsApproved ? "var(--cv-success-bg)" : taskIsReview ? "var(--cv-indigo-pale)" : isOverdue ? "var(--cv-danger-bg)" : daysLeft <= 1 ? "var(--cv-warning-bg)" : "var(--cv-indigo-pale)");color:@(taskIsApproved ? "var(--cv-success)" : taskIsReview ? "var(--cv-indigo)" : isOverdue ? "var(--cv-danger)" : daysLeft <= 1 ? "var(--cv-warning)" : "var(--cv-indigo)");width:44px;height:44px;">
+                        @if (taskIsApproved)
+                        {
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                        }
+                        else if (task.TaskType != null && task.TaskType.ToLower().Contains("lab"))
+                        {
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <ellipse cx="12" cy="5" rx="9" ry="3"/>
+                                <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
+                                <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+                            </svg>
+                        }
+                        else
+                        {
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+                                <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
+                            </svg>
+                        }
+                    </div>
+
+                    <div>
+                        <div style="display:flex;align-items:center;gap:var(--space-2);margin-bottom:2px;">
+                            <span class="cv-task-type-badge">@task.TaskType</span>
+                            <span style="font-size:12px;font-weight:600;color:var(--cv-indigo);">@task.CourseCode — @task.CourseName</span>
+                        </div>
+                        <h3 style="font-family:var(--font-heading);font-size:var(--fs-base);font-weight:var(--fw-bold);color:var(--cv-navy);margin:0 0 4px 0;">
+                            @task.Title
+                        </h3>
+                        <div class="cv-task-sub-meta">
+                            <span style="display:inline-flex;align-items:center;gap:4px;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                                Faculty: <strong>@(string.IsNullOrEmpty(task.FacultyName) ? "Faculty Instructor" : task.FacultyName)</strong>
+                            </span>
+                            <!-- Date: submitted date OR due date -->
+                            <span class="cv-deadline @deadlineClass" style="display:inline-flex;align-items:center;gap:4px;color:@(taskIsApproved || taskIsReview ? "var(--cv-success)" : "inherit");">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                                <strong>@dateLabel</strong>
+                            </span>
+                            @if (taskIsApproved && task.Score.HasValue)
+                            {
+                                <span style="color:var(--cv-success);font-weight:700;">
+                                    Score: @task.Score / @task.MaxScore Pts
+                                </span>
+                            }
+                            else if (taskIsPending || taskIsRevision)
+                            {
+                                <span style="color:var(--cv-slate);">
+                                    Max Score: <strong>@task.MaxScore Pts</strong>
+                                </span>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right: badge + action button -->
+                <div class="cv-task-right-block">
+                    @if (taskIsApproved)
+                    {
+                        <span class="cv-badge cv-badge-dot cv-badge-success">Approved (@(task.Score.HasValue ? task.Score + "/" + task.MaxScore : task.MaxScore + "/" + task.MaxScore))</span>
+                        <a href="@Url.Action("Documents", "Student")" class="cv-btn cv-btn-ghost cv-btn-sm" style="color:var(--cv-success);font-weight:600;">
+                            <span>View in Vault</span>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><polyline points="9 18 15 12 9 6"/></svg>
+                        </a>
+                    }
+                    else if (taskIsReview)
+                    {
+                        <span class="cv-badge cv-badge-dot cv-badge-info">Under Review</span>
+                        <a href="@Url.Action("Documents", "Student")" class="cv-btn cv-btn-ghost cv-btn-sm" style="color:var(--cv-indigo);font-weight:600;">
+                            <span>View Doc</span>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><polyline points="9 18 15 12 9 6"/></svg>
+                        </a>
+                    }
+                    else if (taskIsRevision)
+                    {
+                        <span class="cv-badge cv-badge-dot cv-badge-warning">Revision Required</span>
+                        <a href="@Url.Action("SubmitDocument", "Student", new { id = task.TaskId })" class="cv-btn cv-btn-primary cv-btn-sm" style="background:#d97706;font-weight:600;">
+                            <span>Re-Submit</span>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><polyline points="9 18 15 12 9 6"/></svg>
+                        </a>
+                    }
+                    else
+                    {
+                        <span class="cv-badge cv-badge-dot @(isOverdue ? "cv-badge-danger" : "cv-badge-pending")">@(isOverdue ? "Overdue" : "Pending")</span>
+                        <a href="@Url.Action("SubmitDocument", "Student", new { id = task.TaskId })" class="cv-btn @(isOverdue ? "cv-btn-secondary" : "cv-btn-gold") cv-btn-sm" style="font-weight:600;">
+                            <span>@(isOverdue ? "Submit Late" : "Submit Document")</span>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><polyline points="9 18 15 12 9 6"/></svg>
+                        </a>
+                    }
+                </div>
+            </div>
+        }
+    }
+</div>
+
+@* ==================== 4. DYNAMIC TAB EMPTY STATE ==================== *@
+<div id="tasksEmptyState" class="cv-card animate-fade-in" style="@(tasks.Count == 0 ? "display:block;" : "display:none;")margin-top:var(--space-6);">
+    <div class="cv-empty-state" style="padding:var(--space-12) var(--space-6);">
+        <div class="empty-icon" style="width:68px;height:68px;background:var(--cv-bg-alt);color:var(--cv-slate);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto var(--space-4);opacity:1;">
+            <svg id="emptyIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" style="width:34px;height:34px;">
+                <polyline points="20 6 9 17 4 12"/>
+            </svg>
+        </div>
+        <div class="empty-title" id="emptyStateTitle" style="font-family:var(--font-heading);font-size:var(--fs-xl);font-weight:var(--fw-bold);color:var(--cv-navy);margin-bottom:var(--space-2);">
+            No tasks found.
+        </div>
+        <p class="empty-text" id="emptyStateText" style="color:var(--cv-slate);max-width:440px;margin:0 auto var(--space-6);font-size:var(--fs-base);line-height:var(--lh-relaxed);">
+            You have no active tasks matching your filter criteria.
+        </p>
+        <div>
+            <button type="button" class="cv-btn cv-btn-secondary" onclick="resetTaskFilters()">
+                <span>Reset All Filters</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        var currentTab = 'all';
+
+        var emptyStateMessages = {
+            'all': {
+                title: 'No Tasks Found',
+                text: 'No academic tasks match your search query or filter criteria. Try adjusting your search term.'
+            },
+            'upcoming': {
+                title: 'No Upcoming Tasks',
+                text: 'You have no tasks due in the next 7 days. Excellent work staying ahead of your academic coursework!'
+            },
+            'pending': {
+                title: 'No Pending Tasks',
+                text: 'Great job! You have submitted all active assignments and laboratory deliverables.'
+            },
+            'review': {
+                title: 'No Tasks Under Review',
+                text: 'There are currently no tasks awaiting faculty review or grading.'
+            },
+            'revision': {
+                title: 'No Revisions Required',
+                text: 'All your submitted work meets faculty criteria and academic rubrics. No revisions needed!'
+            },
+            'approved': {
+                title: 'No Approved Tasks Yet',
+                text: 'Once faculty review and sign off on your submissions, they will be archived here in your permanent vault.'
+            },
+            'overdue': {
+                title: 'No Overdue Tasks',
+                text: 'Congratulations! You have zero overdue tasks across all your enrolled classrooms.'
+            }
+        };
+
+        function setTaskTab(tab) {
+            currentTab = tab;
+
+            // Update Tab Button States
+            var tabs = ['all', 'upcoming', 'pending', 'review', 'revision', 'approved', 'overdue'];
+            tabs.forEach(function (t) {
+                var btn = document.getElementById('tabBtn-' + t);
+                if (btn) {
+                    if (t === tab) btn.classList.add('active');
+                    else btn.classList.remove('active');
+                }
+            });
+
+            filterTasks();
+        }
+
+        function filterTasks() {
+            var search = (document.getElementById('taskSearchInput').value || '').trim().toLowerCase();
+            var subject = document.getElementById('filterSubject').value;
+            var type = document.getElementById('filterType').value;
+            var urgency = document.getElementById('filterUrgency').value;
+
+            var cards = document.querySelectorAll('.cv-task-full-card');
+            var visibleCount = 0;
+
+            cards.forEach(function (card) {
+                var cardTabs = card.getAttribute('data-tabs') || '';
+                var cardSubject = card.getAttribute('data-subject') || '';
+                var cardType = card.getAttribute('data-type') || '';
+                var cardUrgency = card.getAttribute('data-urgency') || '';
+                var cardSearch = card.getAttribute('data-search') || '';
+
+                var matchesTab = currentTab === 'all' || cardTabs.indexOf(currentTab) !== -1;
+                var matchesSearch = !search || cardSearch.indexOf(search) !== -1;
+                var matchesSubject = subject === 'all' || cardSubject.indexOf(subject) !== -1;
+                var matchesType = type === 'all' || cardType === type;
+                var matchesUrgency = urgency === 'all' || cardUrgency.indexOf(urgency) !== -1;
+
+                if (matchesTab && matchesSearch && matchesSubject && matchesType && matchesUrgency) {
+                    card.style.display = 'flex';
+                    visibleCount++;
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+
+            // Toggle Empty State
+            var container = document.getElementById('tasksListContainer');
+            var emptyState = document.getElementById('tasksEmptyState');
+            var titleEl = document.getElementById('emptyStateTitle');
+            var textEl = document.getElementById('emptyStateText');
+
+            if (visibleCount === 0) {
+                if (container) container.style.display = 'none';
+                if (emptyState) {
+                    emptyState.style.display = 'block';
+                    var info = emptyStateMessages[currentTab] || emptyStateMessages['all'];
+                    if (titleEl) titleEl.textContent = info.title;
+                    if (textEl) textEl.textContent = info.text;
+                }
+            } else {
+                if (container) container.style.display = 'block';
+                if (emptyState) emptyState.style.display = 'none';
+            }
+        }
+
+        function resetTaskFilters() {
+            document.getElementById('taskSearchInput').value = '';
+            document.getElementById('filterSubject').value = 'all';
+            document.getElementById('filterType').value = 'all';
+            document.getElementById('filterUrgency').value = 'all';
+            setTaskTab('all');
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            filterTasks();
+        });
+    </script>
+}

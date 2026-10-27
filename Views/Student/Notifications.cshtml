@@ -1,0 +1,402 @@
+@model List<CampusVault.Models.Student.StudentNotificationItem>
+@{
+    ViewBag.Title = "Notifications";
+    ViewBag.Role = "Student";
+    ViewBag.UserName        = Session["UserName"]        as string ?? "Student";
+    ViewBag.UserInitials    = Session["UserInitials"]    as string ?? "ST";
+    ViewBag.UserRoleDisplay = Session["UserRoleDisplay"] as string ?? "Enrolled Student";
+
+    var notifs      = Model ?? new List<CampusVault.Models.Student.StudentNotificationItem>();
+    int totalCount  = notifs.Count;
+    int unreadCount = notifs.Count(n => n.IsUnread);
+    int taskCount   = notifs.Count(n => n.Category == "tasks");
+    int subCount    = notifs.Count(n => n.Category == "submissions");
+    int revCount    = notifs.Count(n => n.Category == "revisions");
+    int classCount  = notifs.Count(n => n.Category == "classrooms");
+    int matCount    = notifs.Count(n => n.Category == "materials");
+
+    // Relative time helper
+    Func<DateTime, string> relTime = (dt) => {
+        var diff = DateTime.Now - dt;
+        if (diff.TotalMinutes < 1)  { return "Just now"; }
+        if (diff.TotalMinutes < 60) { return (int)diff.TotalMinutes + "m ago"; }
+        if (diff.TotalHours < 24)   { return (int)diff.TotalHours + "h ago"; }
+        if (diff.TotalDays < 2)     { return "Yesterday"; }
+        return dt.ToString("MMM dd, yyyy");
+    };
+}
+
+@* ==================== 1. PAGE HEADER ==================== *@
+<div class="animate-slide-up" style="display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-4);flex-wrap:wrap;margin-bottom:var(--space-5);">
+    <div>
+        <div style="display:flex;align-items:center;gap:var(--space-3);margin-bottom:4px;">
+            <div style="width:38px;height:38px;border-radius:var(--radius-md);background:var(--cv-navy);color:var(--cv-gold);display:flex;align-items:center;justify-content:center;position:relative;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                @if (unreadCount > 0)
+                {
+                    <span style="position:absolute;top:-4px;right:-4px;width:16px;height:16px;border-radius:50%;background:#ef4444;color:white;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid white;">@(unreadCount > 9 ? "9+" : unreadCount.ToString())</span>
+                }
+            </div>
+            <h1 style="font-family:var(--font-heading);font-size:var(--fs-2xl);font-weight:var(--fw-bold);color:var(--cv-navy);margin:0;display:flex;align-items:center;gap:var(--space-2);">
+                Notifications
+                @if (unreadCount > 0)
+                {
+                    <span style="font-size:11px;font-weight:700;padding:2px 9px;border-radius:var(--radius-full);background:#fef3c7;color:#92400e;border:1px solid #fde68a;" id="headerUnreadBadge">
+                        @unreadCount Unread
+                    </span>
+                }
+                else
+                {
+                    <span style="font-size:11px;font-weight:600;padding:2px 9px;border-radius:var(--radius-full);background:#ecfdf5;color:#065f46;border:1px solid #a7f3d0;" id="headerUnreadBadge">
+                        All Caught Up ✓
+                    </span>
+                }
+            </h1>
+        </div>
+        <p style="color:var(--cv-slate);font-size:var(--fs-sm);margin:0;">
+            Real-time alerts for evaluations, revision requests, tasks, and classroom updates.
+        </p>
+    </div>
+
+    <button type="button" onclick="markAllAsRead()"
+            style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--cv-navy);background:var(--cv-white);border:1px solid var(--cv-border);border-radius:var(--radius-md);padding:8px 16px;cursor:pointer;box-shadow:var(--shadow-xs);">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+        Mark All as Read
+    </button>
+</div>
+
+@* ==================== 2. FILTER CARD ==================== *@
+<div class="animate-slide-up stagger-1" style="background:var(--cv-white);border:1px solid var(--cv-border);border-radius:var(--radius-xl);overflow:hidden;box-shadow:var(--shadow-sm);margin-bottom:var(--space-5);">
+
+    <!-- Search row -->
+    <div style="padding:var(--space-3) var(--space-4);border-bottom:1px solid var(--cv-border-light);display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);">
+        <div style="position:relative;flex:1;min-width:240px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--cv-slate);pointer-events:none;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="notifSearchInput" class="cv-input" placeholder="Search notifications by keyword, course, or faculty..." oninput="filterNotifications()"
+                   style="padding-left:34px;width:100%;font-size:var(--fs-xs);border-radius:var(--radius-md);" />
+        </div>
+        <span style="font-size:11px;color:var(--cv-slate);white-space:nowrap;">
+            Showing <strong id="notifVisibleCount">@totalCount</strong> alerts
+        </span>
+    </div>
+
+    <!-- Category tabs -->
+    <div style="display:flex;align-items:center;gap:0;overflow-x:auto;padding:0 var(--space-2);">
+        @{
+            var cats = new[] {
+                new { Key="all",         Label="All",         Count=totalCount, Icon="bell" },
+                new { Key="tasks",       Label="Tasks",       Count=taskCount,  Icon="task" },
+                new { Key="submissions", Label="Submissions", Count=subCount,   Icon="check" },
+                new { Key="revisions",   Label="Revisions",   Count=revCount,   Icon="refresh" },
+                new { Key="classrooms",  Label="Classrooms",  Count=classCount, Icon="book" },
+                new { Key="materials",   Label="Materials",   Count=matCount,   Icon="file" }
+            };
+        }
+        @foreach (var cat in cats)
+        {
+            <button type="button" id="cat-@cat.Key" onclick="setNotifCategory('@cat.Key')"
+                    class="notif-tab-btn @(cat.Key == "all" ? "active" : "")"
+                    style="display:inline-flex;align-items:center;gap:5px;padding:12px 16px;font-size:12px;font-weight:600;color:var(--cv-slate);background:none;border:none;border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap;transition:all 0.15s;">
+                @if (cat.Key == "all")
+                {
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                }
+                else if (cat.Key == "tasks")
+                {
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
+                }
+                else if (cat.Key == "submissions")
+                {
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                }
+                else if (cat.Key == "revisions")
+                {
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                }
+                else if (cat.Key == "classrooms")
+                {
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                }
+                else
+                {
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                }
+                @cat.Label
+                <span id="catCount-@cat.Key"
+                      style="min-width:18px;height:18px;padding:0 5px;border-radius:999px;font-size:10px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;
+                             background:@(cat.Count > 0 ? "var(--cv-indigo)" : "var(--cv-bg-alt)");
+                             color:@(cat.Count > 0 ? "white" : "var(--cv-slate)");">
+                    @cat.Count
+                </span>
+            </button>
+        }
+    </div>
+</div>
+
+@* ==================== 3. NOTIFICATIONS LIST ==================== *@
+<div class="animate-slide-up stagger-2" style="display:flex;flex-direction:column;gap:var(--space-3);" id="notificationsListContainer">
+    @if (notifs.Count > 0)
+    {
+        foreach (var notif in notifs)
+        {
+            // Color scheme per badge type
+            string iconBg    = "#eff6ff"; string iconColor = "#2563eb";
+            string borderL   = "#2563eb";
+            string badgeBg   = "#dbeafe"; string badgeColor = "#1e40af";
+
+            if (notif.BadgeType == "success")
+            {
+                iconBg = "#ecfdf5"; iconColor = "#059669";
+                borderL = "#059669";
+                badgeBg = "#dcfce7"; badgeColor = "#166534";
+            }
+            else if (notif.BadgeType == "warning")
+            {
+                iconBg = "#fef3c7"; iconColor = "#d97706";
+                borderL = "#d97706";
+                badgeBg = "#fef3c7"; badgeColor = "#92400e";
+            }
+            else if (notif.BadgeType == "danger")
+            {
+                iconBg = "#fee2e2"; iconColor = "#dc2626";
+                borderL = "#dc2626";
+                badgeBg = "#fee2e2"; badgeColor = "#991b1b";
+            }
+            else if (notif.Category == "revisions")
+            {
+                iconBg = "#faf5ff"; iconColor = "#7e22ce";
+                borderL = "#7e22ce";
+                badgeBg = "#f3e8ff"; badgeColor = "#6b21a8";
+            }
+
+            <div class="cv-notif-page-item @(notif.IsUnread ? "unread" : "")"
+                 id="notif-item-@notif.Id"
+                 data-id="@notif.Id"
+                 data-category="@notif.Category"
+                 style="display:flex;align-items:flex-start;gap:var(--space-4);background:var(--cv-white);border:1px solid @(notif.IsUnread ? borderL : "var(--cv-border)");border-left:3px solid @borderL;border-radius:var(--radius-xl);padding:var(--space-4) var(--space-5);box-shadow:@(notif.IsUnread ? "0 2px 12px rgba(0,0,0,0.06)" : "var(--shadow-xs)");transition:all 0.2s;position:relative;">
+
+                @* Unread dot *@
+                @if (notif.IsUnread)
+                {
+                    <span style="position:absolute;top:16px;right:16px;width:8px;height:8px;border-radius:50%;background:@borderL;"></span>
+                }
+
+                @* Icon *@
+                <div style="width:40px;height:40px;border-radius:var(--radius-md);background:@iconBg;color:@iconColor;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    @if (notif.BadgeType == "success")
+                    {
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                    }
+                    else if (notif.BadgeType == "warning" || notif.Category == "revisions")
+                    {
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                    }
+                    else if (notif.BadgeType == "danger")
+                    {
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    }
+                    else
+                    {
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
+                    }
+                </div>
+
+                @* Content *@
+                <div style="flex:1;min-width:0;">
+                    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px;">
+                        <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:var(--radius-full);background:@badgeBg;color:@badgeColor;">
+                            @notif.BadgeText
+                        </span>
+                        <span style="font-size:11px;color:var(--cv-slate);">@notif.ContextInfo</span>
+                    </div>
+
+                    <div style="font-family:var(--font-heading);font-size:var(--fs-sm);font-weight:var(--fw-bold);color:var(--cv-navy);margin-bottom:4px;">
+                        @notif.Title
+                    </div>
+
+                    <div style="font-size:12px;color:var(--cv-slate);line-height:1.5;margin-bottom:var(--space-3);">
+                        @notif.Message
+                    </div>
+
+                    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--space-2);">
+                        <span style="font-size:11px;color:var(--cv-slate-light);display:inline-flex;align-items:center;gap:4px;">
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/></svg>
+                            @relTime(notif.Timestamp) &bull; @notif.Timestamp.ToString("MMM dd, yyyy, hh:mm tt")
+                        </span>
+
+                        <div style="display:flex;align-items:center;gap:6px;">
+                            @if (!string.IsNullOrEmpty(notif.ActionUrl))
+                            {
+                                <a href="@notif.ActionUrl"
+                                   style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;color:white;background:@iconColor;padding:5px 12px;border-radius:var(--radius-md);text-decoration:none;">
+                                    @notif.ActionText
+                                </a>
+                            }
+                            <button type="button" onclick="toggleReadState('@notif.Id', event)"
+                                    id="readBtn-@notif.Id"
+                                    style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:var(--cv-slate);background:var(--cv-white);border:1px solid var(--cv-border);padding:5px 10px;border-radius:var(--radius-md);cursor:pointer;">
+                                @(notif.IsUnread ? "Mark as Read" : "Mark as Unread")
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+</div>
+
+@* Empty State *@
+<div id="noNotifsFound" style="@(totalCount == 0 ? "display:block;" : "display:none;") background:var(--cv-white);border:1px solid var(--cv-border);border-radius:var(--radius-xl);padding:var(--space-12) var(--space-4);text-align:center;box-shadow:var(--shadow-sm);">
+    <div style="width:52px;height:52px;border-radius:50%;background:var(--cv-bg-alt);color:var(--cv-slate);display:inline-flex;align-items:center;justify-content:center;margin-bottom:var(--space-3);">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+    </div>
+    <div style="font-family:var(--font-heading);font-size:var(--fs-lg);font-weight:var(--fw-bold);color:var(--cv-navy);margin-bottom:6px;">No Notifications</div>
+    <div style="font-size:var(--fs-sm);color:var(--cv-slate);max-width:360px;margin:0 auto var(--space-4);">
+        You're all caught up! Submit coursework to receive faculty evaluation alerts here.
+    </div>
+    <a href="@Url.Action("Tasks","Student")" style="display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:white;background:var(--cv-indigo);padding:9px 20px;border-radius:var(--radius-md);text-decoration:none;">
+        View Active Tasks
+    </a>
+</div>
+
+@* Tab + filter active indicator CSS *@
+<style>
+    .notif-tab-btn.active {
+        color: var(--cv-indigo) !important;
+        border-bottom-color: var(--cv-indigo) !important;
+    }
+    .notif-tab-btn:hover:not(.active) {
+        color: var(--cv-navy) !important;
+        background: var(--cv-bg-alt) !important;
+    }
+    .cv-notif-page-item:hover {
+        box-shadow: 0 4px 16px rgba(0,0,0,0.08) !important;
+        transform: translateY(-1px);
+    }
+</style>
+
+@* ==================== 4. JAVASCRIPT ==================== *@
+<script>
+    let currentCategory = 'all';
+
+    function setNotifCategory(cat) {
+        currentCategory = cat;
+        document.querySelectorAll('.notif-tab-btn').forEach(function (b) {
+            b.classList.toggle('active', b.id === 'cat-' + cat);
+        });
+        filterNotifications();
+    }
+
+    function filterNotifications() {
+        var query = (document.getElementById('notifSearchInput').value || '').trim().toLowerCase();
+        var items = document.querySelectorAll('#notificationsListContainer .cv-notif-page-item');
+        var visible = 0;
+
+        items.forEach(function (item) {
+            var itemCat  = item.getAttribute('data-category') || '';
+            var itemText = item.innerText.toLowerCase();
+            var matchCat  = currentCategory === 'all' || itemCat === currentCategory;
+            var matchText = !query || itemText.indexOf(query) !== -1;
+
+            var show = matchCat && matchText;
+            item.style.display = show ? 'flex' : 'none';
+            if (show) { visible++; }
+        });
+
+        document.getElementById('notifVisibleCount').textContent = visible;
+        document.getElementById('noNotifsFound').style.display = (visible === 0) ? 'block' : 'none';
+    }
+
+    function toggleReadState(id, evt) {
+        if (evt) { evt.stopPropagation(); }
+        var item = document.getElementById('notif-item-' + id);
+        var btn  = document.getElementById('readBtn-' + id);
+        var dot  = item ? item.querySelector('[style*="border-radius:50%"]') : null;
+
+        if (!item || !btn) { return; }
+
+        var wasUnread = item.classList.contains('unread');
+        if (wasUnread) {
+            item.classList.remove('unread');
+            if (dot) { dot.style.display = 'none'; }
+            btn.textContent = 'Mark as Unread';
+            item.style.borderTopColor    = 'var(--cv-border)';
+            item.style.borderRightColor  = 'var(--cv-border)';
+            item.style.borderBottomColor = 'var(--cv-border)';
+            item.style.boxShadow = 'var(--shadow-xs)';
+
+            // Persist to database
+            fetch('@Url.Action("MarkNotificationAsRead", "Student")', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'notificationId=' + encodeURIComponent(id)
+            }).catch(function(e) {});
+        } else {
+            item.classList.add('unread');
+            if (dot) { dot.style.display = 'block'; }
+            btn.textContent = 'Mark as Read';
+        }
+        recalcUnread();
+        showToast(wasUnread ? 'Marked as Read' : 'Marked as Unread', wasUnread ? 'success' : 'info');
+    }
+
+    function markAllAsRead() {
+        document.querySelectorAll('#notificationsListContainer .cv-notif-page-item.unread').forEach(function (item) {
+            var id  = item.getAttribute('data-id');
+            var btn = document.getElementById('readBtn-' + id);
+            item.classList.remove('unread');
+            if (btn) { btn.textContent = 'Mark as Unread'; }
+            item.style.borderTopColor    = 'var(--cv-border)';
+            item.style.borderRightColor  = 'var(--cv-border)';
+            item.style.borderBottomColor = 'var(--cv-border)';
+            item.style.boxShadow = 'var(--shadow-xs)';
+        });
+        recalcUnread();
+
+        // Persist to database
+        fetch('@Url.Action("MarkAllNotificationsAsRead", "Student")', {
+            method: 'POST'
+        }).catch(function(e) {});
+
+        showToast('All Caught Up', 'All notifications marked as read.', 'success');
+    }
+
+    function recalcUnread() {
+        var n = document.querySelectorAll('#notificationsListContainer .cv-notif-page-item.unread').length;
+        var badge = document.getElementById('headerUnreadBadge');
+        if (badge) {
+            if (n > 0) {
+                badge.textContent = n + ' Unread';
+                badge.style.background = '#fef3c7';
+                badge.style.color = '#92400e';
+                badge.style.borderColor = '#fde68a';
+            } else {
+                badge.textContent = 'All Caught Up ✓';
+                badge.style.background = '#ecfdf5';
+                badge.style.color = '#065f46';
+                badge.style.borderColor = '#a7f3d0';
+            }
+        }
+    }
+
+    function showToast(title, type) {
+        var c = document.getElementById('cv-toast-box');
+        if (!c) {
+            c = document.createElement('div');
+            c.id = 'cv-toast-box';
+            Object.assign(c.style, { position:'fixed', bottom:'24px', right:'24px', zIndex:'99999', display:'flex', flexDirection:'column', gap:'8px' });
+            document.body.appendChild(c);
+        }
+        var t = document.createElement('div');
+        t.style.cssText = 'background:' + (type==='success'?'#064e3b':'#0f172a') + ';color:#fff;border:1px solid ' + (type==='success'?'#059669':'#334155') + ';border-radius:8px;padding:10px 16px;font-size:12px;font-weight:600;min-width:200px;box-shadow:0 8px 20px rgba(0,0,0,0.25);animation:cvFadeIn 0.2s ease;';
+        t.textContent = title;
+        c.appendChild(t);
+        setTimeout(function () {
+            t.style.opacity = '0';
+            t.style.transition = 'opacity 0.3s';
+            setTimeout(function () { t.remove(); }, 300);
+        }, 2500);
+    }
+
+    document.addEventListener('DOMContentLoaded', function () { filterNotifications(); });
+</script>

@@ -1,0 +1,345 @@
+@model CampusVault.Models.Academic.ClassroomDetailsViewModel
+@{
+    var classroom = Model?.Classroom;
+    var tasks = Model?.Tasks ?? new List<CampusVault.Models.Academic.ClassroomTask>();
+    var students = Model?.EnrolledStudents ?? new List<CampusVault.Models.Academic.EnrolledStudent>();
+    var classroomId = ViewBag.ClassroomId ?? (classroom?.ClassroomId ?? 0);
+
+    ViewBag.Title = (classroom?.CourseName ?? "Classroom") + " — Faculty Classroom Management";
+    ViewBag.Role = "Faculty";
+    ViewBag.UserName = Session["UserName"] as string ?? "Faculty";
+    ViewBag.UserInitials = Session["UserInitials"] as string ?? "FA";
+    ViewBag.UserRoleDisplay = Session["UserRoleDisplay"] as string ?? "Faculty Mentor";
+}
+
+@* Back Link Breadcrumb *@
+<div style="margin-bottom:var(--space-4);" class="animate-fade-in">
+    <a href="@Url.Action("Classrooms", "Faculty")" class="cv-btn cv-btn-ghost cv-btn-sm" style="display:inline-flex;align-items:center;gap:6px;color:var(--cv-slate);padding:4px 8px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;">
+            <polyline points="15 18 9 12 15 6"/>
+        </svg>
+        <span>Back to Faculty Classrooms</span>
+    </a>
+</div>
+
+@* ==================== 1. CLASSROOM HEADER HERO ==================== *@
+<div class="cv-classroom-hero animate-slide-up">
+    <div class="cv-classroom-hero-content">
+        <div class="cv-classroom-title-row">
+            <div>
+                <div style="display:flex;align-items:center;gap:var(--space-2);margin-bottom:var(--space-2);flex-wrap:wrap;">
+                    <span class="cv-course-code-pill" style="background:rgba(217,164,65,0.25);border-color:var(--cv-gold);color:var(--cv-gold-light);font-size:12px;padding:3px 10px;">
+                        @(classroom?.CourseCode ?? "—")
+                    </span>
+                    <span style="font-size:12px;color:rgba(255,255,255,0.75);letter-spacing:0.02em;">
+                        @(classroom?.Department ?? "Department") &bull; Semester @(classroom?.Semester) &bull; @(classroom?.AcademicYear ?? "Academic Year")
+                    </span>
+                    <span class="cv-badge cv-badge-success" style="font-size:10px;">Active Section</span>
+                </div>
+                <h1 style="font-family:var(--font-heading);font-size:clamp(1.8rem, 2.6vw, 2.35rem);font-weight:var(--fw-bold);color:var(--cv-white);margin-bottom:var(--space-2);line-height:1.2;">
+                    @(classroom?.CourseName ?? "Classroom")
+                </h1>
+                <p style="color:rgba(255,255,255,0.8);font-size:var(--fs-sm);margin:0;max-width:640px;line-height:var(--lh-relaxed);">
+                    Classroom managed by @(classroom?.FacultyName ?? Session["UserName"] ?? "Faculty")
+                    @if (!string.IsNullOrEmpty(classroom?.FacultyDesignation)) {
+                        <text> &bull; @classroom.FacultyDesignation</text>
+                    }
+                </p>
+            </div>
+
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:var(--space-2);">
+                <span style="font-size:11px;color:rgba(255,255,255,0.65);text-transform:uppercase;letter-spacing:0.05em;">Student Enrollment Key</span>
+                <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);padding:6px 12px;border-radius:var(--radius-md);backdrop-filter:blur(6px);">
+                    <span style="font-family:monospace;font-size:13px;font-weight:600;color:var(--cv-gold-light);letter-spacing:0.08em;" id="classJoinCode">@(classroom?.JoinCode ?? "—")</span>
+                    <button type="button" onclick="copyClassCode()" style="background:none;border:none;color:rgba(255,255,255,0.8);cursor:pointer;padding:2px;display:flex;" title="Copy enrollment key">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        @* Quick Faculty Metrics Bar *@
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(130px, 1fr));gap:var(--space-3);margin-top:var(--space-4);padding-top:var(--space-4);border-top:1px solid rgba(255,255,255,0.15);">
+            <div>
+                <span style="display:block;font-size:11px;color:rgba(255,255,255,0.6);text-transform:uppercase;">Enrolled Students</span>
+                <strong style="font-size:var(--fs-lg);color:#ffffff;">@students.Count</strong>
+            </div>
+            <div>
+                <span style="display:block;font-size:11px;color:rgba(255,255,255,0.6);text-transform:uppercase;">Course Tasks</span>
+                <strong style="font-size:var(--fs-lg);color:var(--cv-gold-light);">@tasks.Count Tasks</strong>
+            </div>
+            <div>
+                <span style="display:block;font-size:11px;color:rgba(255,255,255,0.6);text-transform:uppercase;">Pending Review</span>
+                <strong style="font-size:var(--fs-lg);color:#fbbf24;">@(Model?.PendingSubmissionCount ?? 0) Submissions</strong>
+            </div>
+            <div>
+                <span style="display:block;font-size:11px;color:rgba(255,255,255,0.6);text-transform:uppercase;">Active Tasks</span>
+                <strong style="font-size:var(--fs-lg);color:#34d399;">@tasks.Count(t => t.Status == "Active")</strong>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* ==================== 2. FACULTY ACTION TOOLBAR & TABS ==================== *@
+<div style="display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);flex-wrap:wrap;margin:var(--space-5) 0 var(--space-4);">
+    @* Tab Controls *@
+    <div class="cv-tabs" style="border-bottom:none;margin:0;">
+        <button type="button" class="cv-tab-item active" data-tab="stream" onclick="switchFacultyTab('stream')">Overview &amp; Stream</button>
+        <button type="button" class="cv-tab-item" data-tab="tasks" onclick="switchFacultyTab('tasks')">Course Tasks (@tasks.Count)</button>
+        <button type="button" class="cv-tab-item" data-tab="roster" onclick="switchFacultyTab('roster')">Student Roster (@students.Count)</button>
+    </div>
+
+    @* Action Buttons *@
+    <div style="display:flex;align-items:center;gap:var(--space-2);flex-wrap:wrap;">
+        <a href="@Url.Action("CreateTask", "Faculty", new { classroomId = classroomId })" class="cv-btn cv-btn-primary cv-btn-sm" style="gap:6px;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Create Task
+        </a>
+        <a href="@Url.Action("Submissions", "Faculty")" class="cv-btn cv-btn-secondary cv-btn-sm" style="gap:6px;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            View Submissions
+        </a>
+    </div>
+</div>
+
+@* ==================== TAB 1: STREAM & OVERVIEW ==================== *@
+<div id="tab-stream" class="cv-faculty-tab-pane animate-fade-in" style="display:block;">
+    <div style="display:grid;grid-template-columns:2fr 1fr;gap:var(--space-5);">
+        @* Left: Pending Reviews *@
+        <div style="display:flex;flex-direction:column;gap:var(--space-4);">
+            <div class="cv-card" style="padding:var(--space-4);">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-3);border-bottom:1px solid var(--cv-border-light);padding-bottom:var(--space-2);">
+                    <h3 style="font-family:var(--font-heading);font-size:var(--fs-base);font-weight:var(--fw-bold);color:var(--cv-navy);margin:0;">
+                        Submissions Requiring Review
+                    </h3>
+                    <a href="@Url.Action("Submissions", "Faculty")" style="font-size:12px;color:var(--cv-gold-dark);font-weight:600;text-decoration:none;">View All Submissions &rarr;</a>
+                </div>
+
+                @if (tasks.Count == 0) {
+                    <div style="text-align:center;padding:var(--space-6) var(--space-4);color:var(--cv-slate);">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:40px;height:40px;margin-bottom:12px;opacity:0.4;"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                        <p style="margin:0;font-size:13px;">No pending submissions yet.<br>Create a task to get started.</p>
+                    </div>
+                } else {
+                    <div class="cv-table-responsive">
+                        <table class="cv-table">
+                            <thead>
+                                <tr>
+                                    <th>Task</th>
+                                    <th>Deadline</th>
+                                    <th>Type</th>
+                                    <th>Status</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var task in tasks) {
+                                    <tr>
+                                        <td>
+                                            <div style="font-weight:600;color:var(--cv-navy);">@task.Title</div>
+                                            @if (!string.IsNullOrEmpty(task.Description)) {
+                                                <div style="font-size:11px;color:var(--cv-slate);">@(task.Description.Length > 60 ? task.Description.Substring(0, 60) + "…" : task.Description)</div>
+                                            }
+                                        </td>
+                                        <td>@task.DueDate.ToString("dd MMM yyyy")</td>
+                                        <td><span class="cv-badge cv-badge-subtle">@task.TaskType</span></td>
+                                        <td>
+                                            @if (task.Status == "Active") {
+                                                <span class="cv-badge cv-badge-success">Active</span>
+                                            } else if (task.Status == "Graded") {
+                                                <span class="cv-badge cv-badge-subtle">Graded</span>
+                                            } else {
+                                                <span class="cv-badge">@task.Status</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            <a href="@Url.Action("Submissions", "Faculty")" class="cv-btn cv-btn-primary cv-btn-xs">Review</a>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+
+        @* Right: Classroom Profile Card *@
+        <div style="display:flex;flex-direction:column;gap:var(--space-4);">
+            <div class="cv-card" style="padding:var(--space-4);">
+                <h3 style="font-family:var(--font-heading);font-size:var(--fs-sm);font-weight:var(--fw-bold);color:var(--cv-navy);text-transform:uppercase;letter-spacing:0.04em;margin:0 0 var(--space-3) 0;border-bottom:1px solid var(--cv-border-light);padding-bottom:var(--space-2);">
+                    Classroom Profile
+                </h3>
+                <div class="cv-profile-data-row">
+                    <span class="cv-profile-data-label">Instructor</span>
+                    <span class="cv-profile-data-value">@(classroom?.FacultyName ?? Session["UserName"] ?? "Faculty")</span>
+                </div>
+                <div class="cv-profile-data-row">
+                    <span class="cv-profile-data-label">Course Code</span>
+                    <span class="cv-profile-data-value">@(classroom?.CourseCode ?? "—")</span>
+                </div>
+                <div class="cv-profile-data-row">
+                    <span class="cv-profile-data-label">Department</span>
+                    <span class="cv-profile-data-value">@(classroom?.Department ?? "—")</span>
+                </div>
+                <div class="cv-profile-data-row">
+                    <span class="cv-profile-data-label">Semester</span>
+                    <span class="cv-profile-data-value">Semester @(classroom?.Semester)</span>
+                </div>
+                <div class="cv-profile-data-row">
+                    <span class="cv-profile-data-label">Academic Year</span>
+                    <span class="cv-profile-data-value">@(classroom?.AcademicYear ?? "—")</span>
+                </div>
+                @if (!string.IsNullOrEmpty(classroom?.FacultyOffice)) {
+                    <div class="cv-profile-data-row">
+                        <span class="cv-profile-data-label">Office</span>
+                        <span class="cv-profile-data-value">@classroom.FacultyOffice</span>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@* ==================== TAB 2: COURSE TASKS ==================== *@
+<div id="tab-tasks" class="cv-faculty-tab-pane animate-fade-in" style="display:none;">
+    <div class="cv-card" style="padding:var(--space-4);">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-3);border-bottom:1px solid var(--cv-border-light);padding-bottom:var(--space-2);">
+            <h3 style="font-family:var(--font-heading);font-size:var(--fs-base);font-weight:var(--fw-bold);color:var(--cv-navy);margin:0;">
+                Assigned Course Tasks
+            </h3>
+            <a href="@Url.Action("CreateTask", "Faculty", new { classroomId = classroomId })" class="cv-btn cv-btn-primary cv-btn-xs">+ New Task</a>
+        </div>
+
+        @if (tasks.Count == 0) {
+            <div style="text-align:center;padding:var(--space-8) var(--space-4);color:var(--cv-slate);">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:48px;height:48px;margin-bottom:16px;opacity:0.35;"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                <p style="margin:0 0 12px 0;font-size:14px;font-weight:600;color:var(--cv-navy);">No tasks created yet</p>
+                <p style="margin:0 0 16px 0;font-size:13px;">Create a task so students can start submitting documents.</p>
+                <a href="@Url.Action("CreateTask", "Faculty", new { classroomId = classroomId })" class="cv-btn cv-btn-primary cv-btn-sm">+ Create First Task</a>
+            </div>
+        } else {
+            <div class="cv-table-responsive">
+                <table class="cv-table">
+                    <thead>
+                        <tr>
+                            <th>Task Title</th>
+                            <th>Deadline</th>
+                            <th>Max Score</th>
+                            <th>Type</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var task in tasks) {
+                            <tr>
+                                <td>
+                                    <div style="font-weight:600;color:var(--cv-navy);">@task.Title</div>
+                                    @if (!string.IsNullOrEmpty(task.Description)) {
+                                        <div style="font-size:11px;color:var(--cv-slate);">@(task.Description.Length > 70 ? task.Description.Substring(0, 70) + "…" : task.Description)</div>
+                                    }
+                                </td>
+                                <td>@task.DueDate.ToString("dd MMM yyyy")</td>
+                                <td>@task.MaxScore Marks</td>
+                                <td><span class="cv-badge cv-badge-subtle">@task.TaskType</span></td>
+                                <td>
+                                    @if (task.Status == "Active") {
+                                        <span class="cv-badge cv-badge-success">Active</span>
+                                    } else if (task.Status == "Graded") {
+                                        <span class="cv-badge cv-badge-subtle">Graded</span>
+                                    } else {
+                                        <span class="cv-badge">@(task.Status ?? "Draft")</span>
+                                    }
+                                </td>
+                                <td>
+                                    <a href="@Url.Action("Submissions", "Faculty")" class="cv-btn cv-btn-secondary cv-btn-xs">Submissions</a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+@* ==================== TAB 3: STUDENT ROSTER ==================== *@
+<div id="tab-roster" class="cv-faculty-tab-pane animate-fade-in" style="display:none;">
+    <div class="cv-card" style="padding:var(--space-4);">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-3);border-bottom:1px solid var(--cv-border-light);padding-bottom:var(--space-2);">
+            <h3 style="font-family:var(--font-heading);font-size:var(--fs-base);font-weight:var(--fw-bold);color:var(--cv-navy);margin:0;">
+                Enrolled Students (Roster)
+            </h3>
+            <span class="cv-badge cv-badge-info">@students.Count Verified Students</span>
+        </div>
+
+        @if (students.Count == 0) {
+            <div style="text-align:center;padding:var(--space-8) var(--space-4);color:var(--cv-slate);">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:48px;height:48px;margin-bottom:16px;opacity:0.35;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                <p style="margin:0 0 8px 0;font-size:14px;font-weight:600;color:var(--cv-navy);">No students enrolled yet</p>
+                <p style="margin:0;font-size:13px;">Share the enrollment key <strong>@(classroom?.JoinCode ?? "—")</strong> with your students.</p>
+            </div>
+        } else {
+            <div class="cv-table-responsive">
+                <table class="cv-table">
+                    <thead>
+                        <tr>
+                            <th>Enrollment No</th>
+                            <th>Student Name</th>
+                            <th>Institutional Email</th>
+                            <th>Tasks Submitted</th>
+                            <th>On-Time Rate</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var student in students) {
+                            <tr>
+                                <td><strong>@(student.RollNo ?? "—")</strong></td>
+                                <td>@student.FullName</td>
+                                <td>@student.Email</td>
+                                <td>@student.TasksSubmitted / @student.TotalTasks</td>
+                                <td>
+                                    @{
+                                        double rate = student.TotalTasks > 0 ? (double)student.TasksSubmitted / student.TotalTasks * 100 : 0;
+                                        string rateColor = rate >= 80 ? "#059669" : rate >= 50 ? "#f59e0b" : "#dc2626";
+                                    }
+                                    <span style="color:@rateColor;font-weight:600;">@student.OnTimeRate</span>
+                                </td>
+                                <td><span class="cv-badge cv-badge-success">@(student.Status ?? "Active")</span></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+<script>
+    function copyClassCode() {
+        var code = document.getElementById('classJoinCode')?.textContent?.trim() || '';
+        if (navigator.clipboard && code) {
+            navigator.clipboard.writeText(code);
+            if (window.CampusVault && window.CampusVault.showToast) {
+                window.CampusVault.showToast({
+                    type: 'success',
+                    title: 'Code Copied',
+                    message: 'Enrollment key ' + code + ' copied to clipboard.'
+                });
+            }
+        }
+    }
+
+    function switchFacultyTab(tabName) {
+        document.querySelectorAll('.cv-tab-item').forEach(function(btn) {
+            btn.classList.toggle('active', btn.getAttribute('data-tab') === tabName);
+        });
+        document.querySelectorAll('.cv-faculty-tab-pane').forEach(function(pane) {
+            pane.style.display = 'none';
+        });
+        var activePane = document.getElementById('tab-' + tabName);
+        if (activePane) activePane.style.display = 'block';
+    }
+</script>

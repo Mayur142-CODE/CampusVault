@@ -1,0 +1,224 @@
+@{
+    var role = Session["Role"] as string ?? ViewBag.Role as string ?? "Student";
+    var userName = Session["UserName"] as string ?? ViewBag.UserName as string ?? "User";
+    var userInitials = Session["UserInitials"] as string ?? ViewBag.UserInitials as string ?? "CV";
+    var userRole = Session["UserRoleDisplay"] as string ?? ViewBag.UserRoleDisplay as string ?? "Enrolled User";
+    var curCtrl = ViewContext.RouteData.Values["controller"]?.ToString() ?? "";
+    var curAct = ViewContext.RouteData.Values["action"]?.ToString() ?? "";
+
+    int currentUserId = Session["UserId"] != null ? (int)Session["UserId"] : 0;
+    List<CampusVault.Models.Academic.Classroom> studentJoinedClassrooms = null;
+    int activeClassroomId = 0;
+    if (ViewBag.ClassroomId != null) {
+        int.TryParse(ViewBag.ClassroomId.ToString(), out activeClassroomId);
+    } else if (Request.RequestContext.RouteData.Values["id"] != null) {
+        int.TryParse(Request.RequestContext.RouteData.Values["id"].ToString(), out activeClassroomId);
+    }
+
+    if (role == "Student" && currentUserId > 0)
+    {
+        try {
+            studentJoinedClassrooms = new CampusVault.Services.ClassroomRepository().GetStudentClassrooms(currentUserId);
+        } catch { }
+    }
+
+    bool isClassroomsActive = curCtrl.Equals("Student", StringComparison.OrdinalIgnoreCase) && 
+        (curAct.Equals("Classrooms", StringComparison.OrdinalIgnoreCase) || curAct.Equals("ClassroomDetails", StringComparison.OrdinalIgnoreCase));
+}
+<aside class="cv-sidebar" id="cvSidebar">
+    @* Toggle button *@
+    <button class="cv-sidebar-toggle" id="sidebarToggle" title="Toggle sidebar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+
+    @* Brand Logo (links to role-specific dashboard) *@
+    @{
+        string brandDashboardUrl = role == "Admin" ? Url.Action("Dashboard", "Admin") : (role == "Faculty" ? Url.Action("Dashboard", "Faculty") : Url.Action("Dashboard", "Student"));
+    }
+    <a href="@brandDashboardUrl" class="cv-sidebar-brand" style="text-decoration:none;color:inherit;" title="CampusVault Dashboard">
+        <div class="brand-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+        </div>
+        <span class="brand-text">CampusVault</span>
+    </a>
+
+    @* Navigation *@
+    <nav class="cv-sidebar-nav">
+        @if (role == "Student")
+        {
+            <div class="cv-nav-section">
+                <div class="cv-nav-section-label">Academic Portal</div>
+
+                @* 1. Dashboard *@
+                <a href="@Url.Action("Dashboard", "Student")" class="cv-nav-item @(curCtrl.Equals("Student", StringComparison.OrdinalIgnoreCase) && curAct.Equals("Dashboard", StringComparison.OrdinalIgnoreCase) ? "active" : "")">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                    <span class="nav-label">Dashboard</span>
+                </a>
+
+                @* 2. Classrooms (Prominent navigation with expandable joined classrooms) *@
+                <div class="cv-nav-classroom-group" style="position:relative;">
+                    <div style="display:flex;align-items:center;width:100%;">
+                        <a href="@Url.Action("Classrooms", "Student")" class="cv-nav-item @(isClassroomsActive && activeClassroomId == 0 ? "active" : "")" style="flex:1;">
+                            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                            <span class="nav-label">Classrooms</span>
+                        </a>
+                        @if (studentJoinedClassrooms != null && studentJoinedClassrooms.Count > 0)
+                        {
+                            <button type="button" class="cv-nav-expand-btn" onclick="toggleSidebarClassrooms(event)" title="Toggle joined classrooms list" aria-label="Toggle joined classrooms" style="background:none;border:none;color:var(--cv-slate-400);cursor:pointer;padding:6px 10px;display:flex;align-items:center;justify-content:center;transition:transform var(--transition-fast);">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" id="classroomChevron" style="@(isClassroomsActive ? "transform:rotate(180deg);" : "")"><polyline points="6 9 12 15 18 9"/></svg>
+                            </button>
+                        }
+                    </div>
+
+                    @* Joined Classrooms Sub-List *@
+                    @if (studentJoinedClassrooms != null && studentJoinedClassrooms.Count > 0)
+                    {
+                        <div class="cv-sidebar-classrooms-sub" id="sidebarClassroomsSub" style="display:@(isClassroomsActive ? "flex" : "none");flex-direction:column;gap:2px;padding:2px 0 6px 36px;">
+                            @foreach (var c in studentJoinedClassrooms)
+                            {
+                                var isThisActive = curCtrl.Equals("Student", StringComparison.OrdinalIgnoreCase) && activeClassroomId == c.ClassroomId;
+                                <a href="@Url.Action("ClassroomDetails", "Student", new { id = c.ClassroomId })" class="cv-sidebar-sub-link @(isThisActive ? "active" : "")" title="@c.CourseName" style="display:flex;align-items:center;gap:7px;padding:5px 8px;border-radius:var(--radius-md);font-size:12px;color:@(isThisActive ? "var(--cv-gold)" : "rgba(255,255,255,0.72)");background:@(isThisActive ? "rgba(217,164,65,0.12)" : "transparent");text-decoration:none;transition:all 0.15s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                                    <span style="width:6px;height:6px;border-radius:50%;background:@(isThisActive ? "var(--cv-gold)" : "rgba(255,255,255,0.4)");flex-shrink:0;"></span>
+                                    <span style="overflow:hidden;text-overflow:ellipsis;">@(c.CourseCode ?? c.CourseName)</span>
+                                </a>
+                            }
+                        </div>
+                    }
+                </div>
+
+                @* 3. Tasks *@
+                <a href="@Url.Action("Tasks", "Student")" class="cv-nav-item @(curCtrl.Equals("Student", StringComparison.OrdinalIgnoreCase) && (curAct.Equals("Tasks", StringComparison.OrdinalIgnoreCase) || curAct.Equals("TaskDetails", StringComparison.OrdinalIgnoreCase) || curAct.Equals("SubmitDocument", StringComparison.OrdinalIgnoreCase)) ? "active" : "")">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><line x1="16" y1="11" x2="8" y2="11"/><line x1="16" y1="15" x2="8" y2="15"/></svg>
+                    <span class="nav-label">Tasks</span>
+                </a>
+
+                @* 4. Calendar *@
+                <a href="@Url.Action("Calendar", "Student")" class="cv-nav-item @(curCtrl.Equals("Student", StringComparison.OrdinalIgnoreCase) && curAct.Equals("Calendar", StringComparison.OrdinalIgnoreCase) ? "active" : "")">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    <span class="nav-label">Calendar</span>
+                </a>
+
+                @* 5. My Documents *@
+                <a href="@Url.Action("Documents", "Student")" class="cv-nav-item @(curCtrl.Equals("Student", StringComparison.OrdinalIgnoreCase) && (curAct.Equals("Documents", StringComparison.OrdinalIgnoreCase) || curAct.Equals("DocumentDetails", StringComparison.OrdinalIgnoreCase)) ? "active" : "")">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    <span class="nav-label">My Documents</span>
+                </a>
+
+                @* 6. Submissions *@
+                <a href="@Url.Action("SubmissionHistory", "Student")" class="cv-nav-item @(curCtrl.Equals("Student", StringComparison.OrdinalIgnoreCase) && curAct.Equals("SubmissionHistory", StringComparison.OrdinalIgnoreCase) ? "active" : "")">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                    <span class="nav-label">Submissions</span>
+                </a>
+            </div>
+        }
+        else if (role == "Faculty")
+        {
+            <div class="cv-nav-section">
+                @* 1. Dashboard *@
+                <a href="@Url.Action("Dashboard", "Faculty")" class="cv-nav-item @(curCtrl.Equals("Faculty", StringComparison.OrdinalIgnoreCase) && curAct.Equals("Dashboard", StringComparison.OrdinalIgnoreCase) ? "active" : "")">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                    <span class="nav-label">Dashboard</span>
+                </a>
+
+                @* 2. My Classrooms *@
+                <a href="@Url.Action("Classrooms", "Faculty")" class="cv-nav-item @(curCtrl.Equals("Faculty", StringComparison.OrdinalIgnoreCase) && (curAct.Equals("Classrooms", StringComparison.OrdinalIgnoreCase) || curAct.Equals("ClassroomDetails", StringComparison.OrdinalIgnoreCase) || curAct.Equals("CreateClassroom", StringComparison.OrdinalIgnoreCase)) ? "active" : "")">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                    <span class="nav-label">My Classrooms</span>
+                </a>
+
+                @* 3. Tasks & Assignments *@
+                <a href="@Url.Action("Tasks", "Faculty")" class="cv-nav-item @(curCtrl.Equals("Faculty", StringComparison.OrdinalIgnoreCase) && (curAct.Equals("Tasks", StringComparison.OrdinalIgnoreCase) || curAct.Equals("TaskDetails", StringComparison.OrdinalIgnoreCase) || curAct.Equals("CreateTask", StringComparison.OrdinalIgnoreCase)) ? "active" : "")">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><line x1="16" y1="11" x2="8" y2="11"/><line x1="16" y1="15" x2="8" y2="15"/></svg>
+                    <span class="nav-label">Tasks &amp; Assignments</span>
+                </a>
+
+                @* 4. Submissions & Reviews *@
+                <a href="@Url.Action("Submissions", "Faculty")" class="cv-nav-item @(curCtrl.Equals("Faculty", StringComparison.OrdinalIgnoreCase) && (curAct.Equals("Submissions", StringComparison.OrdinalIgnoreCase) || curAct.Equals("ReviewSubmission", StringComparison.OrdinalIgnoreCase) || curAct.Equals("Revisions", StringComparison.OrdinalIgnoreCase) || curAct.Equals("Documents", StringComparison.OrdinalIgnoreCase)) ? "active" : "")">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                    <span class="nav-label">Submissions &amp; Reviews</span>
+                </a>
+
+                @* 5. Learning Materials *@
+                <a href="@Url.Action("Materials", "Faculty")" class="cv-nav-item @(curCtrl.Equals("Faculty", StringComparison.OrdinalIgnoreCase) && curAct.Equals("Materials", StringComparison.OrdinalIgnoreCase) ? "active" : "")">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                    <span class="nav-label">Learning Materials</span>
+                </a>
+
+                @* 6. Student Analytics *@
+                <a href="@Url.Action("Analytics", "Faculty")" class="cv-nav-item @(curCtrl.Equals("Faculty", StringComparison.OrdinalIgnoreCase) && curAct.Equals("Analytics", StringComparison.OrdinalIgnoreCase) ? "active" : "")">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                    <span class="nav-label">Student Analytics</span>
+                </a>
+
+                @* 7. Profile *@
+                <a href="@Url.Action("Profile", "Faculty")" class="cv-nav-item @(curCtrl.Equals("Faculty", StringComparison.OrdinalIgnoreCase) && curAct.Equals("Profile", StringComparison.OrdinalIgnoreCase) ? "active" : "")">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    <span class="nav-label">Profile</span>
+                </a>
+            </div>
+        }
+        else if (role == "Admin")
+        {
+            <div class="cv-nav-section">
+                <div class="cv-nav-section-label">Main</div>
+                <a href="@Url.Action("Dashboard", "Admin")" class="cv-nav-item">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                    <span class="nav-label">Dashboard</span>
+                </a>
+                <a href="@Url.Action("Users", "Admin")" class="cv-nav-item">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    <span class="nav-label">Users</span>
+                </a>
+                <a href="@Url.Action("Classrooms", "Admin")" class="cv-nav-item">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                    <span class="nav-label">Classrooms</span>
+                </a>
+                <a href="@Url.Action("Tasks", "Admin")" class="cv-nav-item">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
+                    <span class="nav-label">Tasks</span>
+                </a>
+                <a href="@Url.Action("Documents", "Admin")" class="cv-nav-item">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    <span class="nav-label">Documents</span>
+                </a>
+            </div>
+            <div class="cv-nav-section">
+                <div class="cv-nav-section-label">Analytics</div>
+                <a href="@Url.Action("Reports", "Admin")" class="cv-nav-item">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                    <span class="nav-label">Reports</span>
+                </a>
+                <a href="@Url.Action("Activity", "Admin")" class="cv-nav-item">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                    <span class="nav-label">Activity</span>
+                </a>
+            </div>
+            <div class="cv-nav-section">
+                <div class="cv-nav-section-label">Account</div>
+                <a href="@Url.Action("Profile", "Admin")" class="cv-nav-item">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    <span class="nav-label">Profile</span>
+                </a>
+            </div>
+        }
+    </nav>
+
+    @* Footer *@
+    <div class="cv-sidebar-footer">
+        <div class="cv-sidebar-semester">
+            <span class="semester-dot"></span>
+            <span>Academic Year 2026-2027</span>
+        </div>
+        <div class="cv-sidebar-user">
+            <div class="user-avatar">@userInitials</div>
+            <div class="user-info">
+                <div class="user-name">@userName</div>
+                <div class="user-role">@userRole</div>
+            </div>
+        </div>
+        <a href="@Url.Action("Logout", "Account")" class="cv-nav-item nav-logout" title="Sign out of CampusVault">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            <span class="nav-label">Logout</span>
+        </a>
+    </div>
+</aside>

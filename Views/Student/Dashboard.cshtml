@@ -1,0 +1,395 @@
+@model CampusVault.Models.Student.StudentDashboardViewModel
+@{
+    ViewBag.Title = "Dashboard";
+    ViewBag.Role = "Student";
+    ViewBag.UserName = Model?.FullName ?? ViewBag.UserName ?? "Student";
+    ViewBag.UserInitials = (Model != null && !string.IsNullOrEmpty(Model.FirstName))
+        ? (Model.FirstName.Substring(0, 1) + (Model.LastName?.Length > 0 ? Model.LastName.Substring(0, 1) : ""))
+        : (ViewBag.UserInitials ?? "ST");
+    ViewBag.UserRoleDisplay = (Model != null && !string.IsNullOrEmpty(Model.Department))
+        ? ("B.Tech " + Model.Department + " — Sem " + Model.Semester)
+        : (ViewBag.UserRoleDisplay ?? "Student");
+
+    var dueSoonTasks = Model?.DueSoonTasks ?? new List<CampusVault.Models.Student.StudentDueSoonTaskItem>();
+    var upcomingDeadlines = dueSoonTasks.Where(t => t.DueDate >= DateTime.Now).OrderBy(t => t.DueDate).ToList();
+    var overdueTasks = dueSoonTasks.Where(t => t.DueDate < DateTime.Now && (string.IsNullOrEmpty(t.SubmissionStatus) || t.SubmissionStatus == "Pending")).OrderBy(t => t.DueDate).ToList();
+    var classrooms = Model?.EnrolledClassrooms ?? new List<CampusVault.Models.Student.StudentClassroomSummaryItem>();
+}
+
+<div class="cv-student-dashboard" style="display:flex;flex-direction:column;gap:var(--space-6);">
+
+    @* ==================== A. DASHBOARD HEADER ==================== *@
+    <div class="cv-dashboard-header animate-slide-up" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--space-4);padding-bottom:var(--space-4);border-bottom:1px solid var(--cv-border);">
+        <div>
+            <h1 style="font-family:var(--font-heading);font-size:var(--fs-3xl);font-weight:var(--fw-bold);color:var(--cv-navy);margin:0 0 4px 0;letter-spacing:-0.015em;">
+                My Classrooms
+            </h1>
+            <p style="font-size:var(--fs-sm);color:var(--cv-slate);margin:0;">
+                Access your enrolled courses, view deadlines, and submit academic coursework.
+            </p>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:var(--space-3);">
+            <button type="button" class="cv-btn cv-btn-primary" onclick="openJoinClassroomModal()" id="btnOpenJoinModal" style="display:inline-flex;align-items:center;gap:8px;padding:9px 18px;font-weight:600;font-size:var(--fs-sm);box-shadow:var(--shadow-sm);">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                <span>Add Classroom</span>
+            </button>
+        </div>
+    </div>
+
+    @* ==================== C. CLASS LEARNING TOOLS SHORTCUTS ==================== *@
+    <div class="cv-learning-tools-grid animate-slide-up stagger-1" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(210px, 1fr));gap:var(--space-3);">
+        <a href="@Url.Action("Tasks", "Student")" class="cv-card cv-tool-shortcut" style="display:flex;align-items:center;gap:var(--space-3);padding:var(--space-4);background:var(--cv-white);border:1px solid var(--cv-border);border-radius:var(--radius-xl);text-decoration:none;transition:all 0.2s;box-shadow:var(--shadow-xs);">
+            <div style="width:42px;height:42px;border-radius:var(--radius-lg);background:#eff6ff;color:#2563eb;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><line x1="16" y1="11" x2="8" y2="11"/><line x1="16" y1="15" x2="8" y2="15"/></svg>
+            </div>
+            <div>
+                <div style="font-weight:600;font-size:var(--fs-sm);color:var(--cv-navy);">Tasks</div>
+                <div style="font-size:var(--fs-xs);color:var(--cv-slate);">Assignments &amp; labs</div>
+            </div>
+        </a>
+
+        <a href="@Url.Action("Calendar", "Student")" class="cv-card cv-tool-shortcut" style="display:flex;align-items:center;gap:var(--space-3);padding:var(--space-4);background:var(--cv-white);border:1px solid var(--cv-border);border-radius:var(--radius-xl);text-decoration:none;transition:all 0.2s;box-shadow:var(--shadow-xs);">
+            <div style="width:42px;height:42px;border-radius:var(--radius-lg);background:#fef3c7;color:#d97706;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            </div>
+            <div>
+                <div style="font-weight:600;font-size:var(--fs-sm);color:var(--cv-navy);">Calendar</div>
+                <div style="font-size:var(--fs-xs);color:var(--cv-slate);">Upcoming deadlines</div>
+            </div>
+        </a>
+
+        <a href="@Url.Action("Documents", "Student")" class="cv-card cv-tool-shortcut" style="display:flex;align-items:center;gap:var(--space-3);padding:var(--space-4);background:var(--cv-white);border:1px solid var(--cv-border);border-radius:var(--radius-xl);text-decoration:none;transition:all 0.2s;box-shadow:var(--shadow-xs);">
+            <div style="width:42px;height:42px;border-radius:var(--radius-lg);background:#f0fdf4;color:#16a34a;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            </div>
+            <div>
+                <div style="font-weight:600;font-size:var(--fs-sm);color:var(--cv-navy);">My Documents</div>
+                <div style="font-size:var(--fs-xs);color:var(--cv-slate);">Vault &amp; archives</div>
+            </div>
+        </a>
+
+        <a href="@Url.Action("SubmissionHistory", "Student")" class="cv-card cv-tool-shortcut" style="display:flex;align-items:center;gap:var(--space-3);padding:var(--space-4);background:var(--cv-white);border:1px solid var(--cv-border);border-radius:var(--radius-xl);text-decoration:none;transition:all 0.2s;box-shadow:var(--shadow-xs);">
+            <div style="width:42px;height:42px;border-radius:var(--radius-lg);background:#faf5ff;color:#9333ea;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+            </div>
+            <div>
+                <div style="font-weight:600;font-size:var(--fs-sm);color:var(--cv-navy);">Submissions</div>
+                <div style="font-size:var(--fs-xs);color:var(--cv-slate);">Graded &amp; pending</div>
+            </div>
+        </a>
+    </div>
+
+    @* ==================== B. DUE SOON SECTION ==================== *@
+    <div class="cv-due-soon-section animate-slide-up stagger-2">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-3);">
+            <h2 style="font-family:var(--font-heading);font-size:var(--fs-lg);font-weight:var(--fw-bold);color:var(--cv-navy);margin:0;display:flex;align-items:center;gap:8px;">
+                <span>Due Soon</span>
+                @if (upcomingDeadlines.Count > 0)
+                {
+                    <span class="cv-badge" style="background:var(--cv-indigo-pale);color:var(--cv-indigo);font-size:11px;font-weight:600;padding:2px 8px;border-radius:12px;">@upcomingDeadlines.Count</span>
+                }
+            </h2>
+            @if (upcomingDeadlines.Count > 0)
+            {
+                <a href="@Url.Action("Calendar", "Student")" style="font-size:var(--fs-xs);color:var(--cv-indigo);font-weight:600;text-decoration:none;">View Calendar &rarr;</a>
+            }
+        </div>
+
+        @if (upcomingDeadlines.Count > 0)
+        {
+            <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(310px, 1fr));gap:var(--space-3);">
+                @foreach (var item in upcomingDeadlines.Take(4))
+                {
+                    var isSubmitted = !string.IsNullOrEmpty(item.SubmissionStatus) && item.SubmissionStatus != "Pending";
+                    var daysUntil = (item.DueDate.Date - DateTime.Now.Date).Days;
+                    
+                    <div class="cv-card" style="padding:var(--space-4);background:var(--cv-white);border:1px solid var(--cv-border);border-radius:var(--radius-lg);box-shadow:var(--shadow-xs);display:flex;flex-direction:column;justify-content:space-between;gap:var(--space-3);">
+                        <div>
+                            <div style="display:flex;align-items:center;justify-content:space-between;gap:var(--space-2);margin-bottom:6px;">
+                                <span class="cv-badge" style="background:var(--cv-bg-alt);color:var(--cv-slate-700);font-size:11px;font-weight:600;padding:2px 7px;border-radius:4px;">
+                                    @(item.CourseCode ?? "Course")
+                                </span>
+                                @if (isSubmitted)
+                                {
+                                    <span class="cv-badge" style="background:#dcfce7;color:#15803d;font-size:11px;font-weight:600;padding:2px 8px;border-radius:12px;">Submitted</span>
+                                }
+                                else if (daysUntil == 0)
+                                {
+                                    <span class="cv-badge" style="background:#fee2e2;color:#b91c1c;font-size:11px;font-weight:700;padding:2px 8px;border-radius:12px;">Due Today</span>
+                                }
+                                else if (daysUntil == 1)
+                                {
+                                    <span class="cv-badge" style="background:#fef3c7;color:#b45309;font-size:11px;font-weight:600;padding:2px 8px;border-radius:12px;">Due Tomorrow</span>
+                                }
+                                else
+                                {
+                                    <span class="cv-badge" style="background:var(--cv-bg-alt);color:var(--cv-slate);font-size:11px;font-weight:500;padding:2px 8px;border-radius:12px;">In @daysUntil days</span>
+                                }
+                            </div>
+                            <h3 style="font-family:var(--font-heading);font-size:var(--fs-sm);font-weight:var(--fw-bold);color:var(--cv-navy);margin:0 0 4px 0;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="@item.Title">
+                                @item.Title
+                            </h3>
+                            <div style="font-size:12px;color:var(--cv-slate);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                                @item.CourseName • @(string.IsNullOrEmpty(item.FacultyName) ? "Faculty Instructor" : item.FacultyName)
+                            </div>
+                        </div>
+
+                        <div style="display:flex;align-items:center;justify-content:space-between;padding-top:var(--space-2);border-top:1px solid var(--cv-border-light);">
+                            <div style="font-size:11px;color:var(--cv-slate);display:inline-flex;align-items:center;gap:4px;">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                                <span>@item.DueDate.ToString("MMM dd, hh:mm tt")</span>
+                            </div>
+                            <a href="@Url.Action("TaskDetails", "Student", new { id = item.TaskId })" class="cv-btn cv-btn-secondary cv-btn-sm" style="font-size:11px;padding:3px 10px;font-weight:600;">
+                                Open Task
+                            </a>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="cv-card" style="padding:var(--space-6) var(--space-4);background:var(--cv-white);border:1px solid var(--cv-border);border-radius:var(--radius-xl);text-align:center;box-shadow:var(--shadow-xs);">
+                <div style="width:36px;height:36px;border-radius:50%;background:#f0fdf4;color:#16a34a;display:inline-flex;align-items:center;justify-content:center;margin-bottom:6px;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                </div>
+                <div style="font-weight:600;font-size:var(--fs-sm);color:var(--cv-navy);">
+                    You're all caught up. No upcoming deadlines.
+                </div>
+                <div style="font-size:var(--fs-xs);color:var(--cv-slate);margin-top:2px;">
+                    Check your individual classrooms or tasks list for future assignments.
+                </div>
+            </div>
+        }
+
+        @* Overdue Notice if applicable *@
+        @if (overdueTasks.Count > 0)
+        {
+            <div style="margin-top:var(--space-3);padding:10px 14px;background:#fef2f2;border:1px solid #fecaca;border-radius:var(--radius-lg);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+                <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:#991b1b;font-weight:500;">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    <span>You have <strong>@overdueTasks.Count overdue @(overdueTasks.Count == 1 ? "task" : "tasks")</strong> awaiting submission.</span>
+                </div>
+                <a href="@Url.Action("Tasks", "Student")" style="font-size:11px;font-weight:700;color:#991b1b;text-decoration:underline;">Review Overdue Tasks &rarr;</a>
+            </div>
+        }
+    </div>
+
+    @* ==================== D. CLASSROOM CARDS ==================== *@
+    <div class="cv-classrooms-section animate-slide-up stagger-3">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-4);">
+            <h2 style="font-family:var(--font-heading);font-size:var(--fs-lg);font-weight:var(--fw-bold);color:var(--cv-navy);margin:0;">
+                Enrolled Classrooms
+            </h2>
+            <span style="font-size:var(--fs-xs);color:var(--cv-slate);">
+                @classrooms.Count @(classrooms.Count == 1 ? "Classroom" : "Classrooms")
+            </span>
+        </div>
+
+        @if (classrooms.Count > 0)
+        {
+            <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(290px, 1fr));gap:var(--space-5);">
+                @foreach (var c in classrooms)
+                {
+                    var gradientStyle = !string.IsNullOrEmpty(c.ThemeGradient) 
+                        ? c.ThemeGradient 
+                        : "linear-gradient(135deg, #0b1f3a 0%, #1e3a5f 100%)";
+
+                    <div class="cv-card cv-classroom-card" style="display:flex;flex-direction:column;justify-content:space-between;border-radius:var(--radius-xl);background:var(--cv-white);border:1px solid var(--cv-border);box-shadow:var(--shadow-sm);overflow:hidden;transition:all 0.25s ease;">
+                        
+                        @* Card Visual Header *@
+                        <div style="background:@gradientStyle;padding:var(--space-5);color:#ffffff;position:relative;">
+                            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;">
+                                <span style="background:rgba(255,255,255,0.2);backdrop-filter:blur(4px);color:#ffffff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px;letter-spacing:0.04em;">
+                                    @c.CourseCode
+                                </span>
+                                @if (c.ActiveTaskCount > 0)
+                                {
+                                    <span style="background:var(--cv-gold);color:var(--cv-navy);font-size:11px;font-weight:700;padding:2px 8px;border-radius:12px;">
+                                        @c.ActiveTaskCount @(c.ActiveTaskCount == 1 ? "Task" : "Tasks")
+                                    </span>
+                                }
+                            </div>
+                            <h3 style="font-family:var(--font-heading);font-size:var(--fs-lg);font-weight:700;color:#ffffff;margin:0 0 4px 0;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="@c.CourseName">
+                                @c.CourseName
+                            </h3>
+                            <div style="font-size:12px;color:rgba(255,255,255,0.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                                @(string.IsNullOrEmpty(c.FacultyName) ? "Faculty Mentor" : c.FacultyName)
+                            </div>
+                        </div>
+
+                        @* Card Body *@
+                        <div style="padding:var(--space-4) var(--space-5);flex:1;display:flex;flex-direction:column;justify-content:space-between;">
+                            <div style="display:flex;align-items:center;justify-content:space-between;font-size:12px;color:var(--cv-slate);margin-bottom:var(--space-4);">
+                                <span>@c.Department</span>
+                                <span>Sem @c.Semester</span>
+                            </div>
+
+                            <a href="@Url.Action("ClassroomDetails", "Student", new { id = c.ClassroomId })" class="cv-btn cv-btn-primary w-full" style="text-align:center;justify-content:center;font-size:13px;padding:8px 14px;border-radius:var(--radius-lg);">
+                                <span>Open Classroom</span>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                            </a>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="cv-card" style="text-align:center;padding:var(--space-12) var(--space-6);background:var(--cv-white);border-radius:var(--radius-xl);border:1px solid var(--cv-border);box-shadow:var(--shadow-sm);">
+                <div style="width:54px;height:54px;border-radius:50%;background:var(--cv-bg-alt);color:var(--cv-indigo);display:inline-flex;align-items:center;justify-content:center;margin-bottom:var(--space-3);">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                </div>
+                <h3 style="font-family:var(--font-heading);font-size:var(--fs-xl);font-weight:var(--fw-bold);color:var(--cv-navy);margin:0 0 6px 0;">
+                    No Classrooms Yet
+                </h3>
+                <p style="font-size:var(--fs-sm);color:var(--cv-slate);margin:0 auto var(--space-5) auto;max-width:420px;line-height:1.5;">
+                    You are not enrolled in any classrooms right now. Ask your course instructor for a 6-character class code to join.
+                </p>
+                <button type="button" class="cv-btn cv-btn-primary" onclick="openJoinClassroomModal()" style="display:inline-flex;align-items:center;gap:6px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    <span>Join Classroom</span>
+                </button>
+            </div>
+        }
+    </div>
+
+</div>
+
+@* ==================== E. JOIN CLASSROOM MODAL ==================== *@
+<div id="joinClassroomModal" class="cv-modal-backdrop" style="display:none;align-items:center;justify-content:center;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(11,25,44,0.65);z-index:9999;backdrop-filter:blur(4px);padding:var(--space-4);" onclick="if(event.target === this) closeJoinClassroomModal();">
+    <div class="cv-modal-card" style="max-width:440px;width:100%;background:var(--cv-white);border-radius:var(--radius-2xl);box-shadow:var(--shadow-xl);overflow:hidden;border:1px solid var(--cv-border);" onclick="event.stopPropagation();">
+        <div style="padding:var(--space-5) var(--space-6);border-bottom:1px solid var(--cv-border);display:flex;align-items:center;justify-content:space-between;">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <div style="width:34px;height:34px;border-radius:var(--radius-md);background:var(--cv-indigo-pale);color:var(--cv-indigo);display:flex;align-items:center;justify-content:center;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                </div>
+                <h3 style="font-family:var(--font-heading);font-size:var(--fs-base);font-weight:var(--fw-bold);color:var(--cv-navy);margin:0;">
+                    Join Classroom
+                </h3>
+            </div>
+            <button type="button" onclick="closeJoinClassroomModal()" style="background:none;border:none;color:var(--cv-slate);cursor:pointer;padding:4px;border-radius:var(--radius-sm);display:flex;align-items:center;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+
+        <form id="joinClassroomForm" onsubmit="handleJoinClassroomSubmit(event)" style="padding:var(--space-6);">
+            <div style="font-size:var(--fs-xs);color:var(--cv-slate);margin-bottom:var(--space-4);line-height:1.5;">
+                Ask your instructor for the class code, then enter it here to join their academic classroom.
+            </div>
+
+            <div class="cv-form-group" style="margin-bottom:var(--space-4);">
+                <label class="cv-form-label" for="txtClassroomCode" style="font-weight:600;font-size:var(--fs-xs);color:var(--cv-navy);margin-bottom:6px;display:block;">
+                    Classroom Join Code <span style="color:var(--cv-danger);">*</span>
+                </label>
+                <div class="cv-input-wrapper">
+                    <input type="text" id="txtClassroomCode" class="cv-input" placeholder="e.g. CS101A" maxlength="20" autocomplete="off" spellcheck="false" style="font-family:monospace;letter-spacing:1px;text-transform:uppercase;font-size:var(--fs-base);font-weight:600;" />
+                </div>
+                <div id="joinCodeError" class="cv-form-error" style="display:none;margin-top:6px;color:var(--cv-danger);font-size:12px;"></div>
+            </div>
+
+            <div style="display:flex;align-items:center;justify-content:flex-end;gap:var(--space-3);padding-top:var(--space-2);">
+                <button type="button" class="cv-btn cv-btn-secondary cv-btn-sm" onclick="closeJoinClassroomModal()" style="font-size:13px;padding:8px 16px;">
+                    Cancel
+                </button>
+                <button type="submit" class="cv-btn cv-btn-primary cv-btn-sm" id="btnSubmitJoin" style="font-size:13px;padding:8px 18px;font-weight:600;">
+                    <span>Join</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function openJoinClassroomModal() {
+            var modal = document.getElementById('joinClassroomModal');
+            if (modal) {
+                modal.style.display = 'flex';
+                var inp = document.getElementById('txtClassroomCode');
+                if (inp) {
+                    inp.value = '';
+                    inp.focus();
+                }
+                var err = document.getElementById('joinCodeError');
+                if (err) err.style.display = 'none';
+            }
+        }
+
+        function closeJoinClassroomModal() {
+            var modal = document.getElementById('joinClassroomModal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+
+        // Close on Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeJoinClassroomModal();
+            }
+        });
+
+        async function handleJoinClassroomSubmit(e) {
+            e.preventDefault();
+            var codeInp = document.getElementById('txtClassroomCode');
+            var errEl = document.getElementById('joinCodeError');
+            var btn = document.getElementById('btnSubmitJoin');
+            var code = codeInp ? codeInp.value.trim() : '';
+
+            if (!code) {
+                if (errEl) {
+                    errEl.textContent = 'Please enter a valid classroom join code.';
+                    errEl.style.display = 'block';
+                }
+                if (codeInp) codeInp.focus();
+                return;
+            }
+
+            if (errEl) errEl.style.display = 'none';
+            btn.disabled = true;
+            btn.innerHTML = '<span>Joining...</span>';
+
+            try {
+                var response = await fetch('@Url.Action("JoinClassroom", "Student")', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: 'joinCode=' + encodeURIComponent(code)
+                });
+
+                var data = await response.json();
+                if (data.success) {
+                    if (window.CampusVault && CampusVault.showToast) {
+                        CampusVault.showToast({ type: 'success', title: 'Joined Classroom!', message: data.message || 'You have successfully joined the classroom.' });
+                    }
+                    closeJoinClassroomModal();
+                    setTimeout(function () {
+                        if (data.classroomId) {
+                            window.location.href = '@Url.Action("ClassroomDetails", "Student")/' + data.classroomId;
+                        } else {
+                            window.location.reload();
+                        }
+                    }, 500);
+                } else {
+                    btn.disabled = false;
+                    btn.innerHTML = '<span>Join</span>';
+                    if (errEl) {
+                        errEl.textContent = data.message || 'Invalid classroom code. Please check with your instructor.';
+                        errEl.style.display = 'block';
+                    }
+                }
+            } catch (ex) {
+                btn.disabled = false;
+                btn.innerHTML = '<span>Join</span>';
+                if (errEl) {
+                    errEl.textContent = 'Unable to join classroom: ' + ex.message;
+                    errEl.style.display = 'block';
+                }
+            }
+        }
+    </script>
+}

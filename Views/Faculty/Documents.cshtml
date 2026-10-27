@@ -1,0 +1,545 @@
+@model List<CampusVault.Models.Faculty.FacultySubmissionItem>
+@{
+    ViewBag.Title = "Documents";
+    ViewBag.Role = "Faculty";
+    ViewBag.UserName = Session["UserName"] as string ?? "Faculty";
+    ViewBag.UserInitials = Session["UserInitials"] as string ?? "FA";
+    ViewBag.UserRoleDisplay = Session["UserRoleDisplay"] as string ?? "Faculty Mentor";
+
+    var docs = Model ?? new List<CampusVault.Models.Faculty.FacultySubmissionItem>();
+    int totalDocCount = docs.Count;
+    int pendingCount = docs.Count(d => (d.Status ?? "").Contains("Review") || (d.Status ?? "").Contains("Pending") || string.IsNullOrEmpty(d.Status));
+    int approvedCount = docs.Count(d => (d.Status ?? "").Contains("Approved") || (d.Status ?? "").Contains("Reviewed"));
+    int revisionCount = docs.Count(d => (d.Status ?? "").Contains("Revision"));
+
+    var classrooms = docs.Where(d => !string.IsNullOrEmpty(d.ClassroomName)).Select(d => d.ClassroomName).Distinct().OrderBy(c => c).ToList();
+    var subjects = docs.Where(d => !string.IsNullOrEmpty(d.CourseCode) || !string.IsNullOrEmpty(d.CourseName))
+                       .Select(d => !string.IsNullOrEmpty(d.CourseName) ? d.CourseName : d.CourseCode)
+                       .Distinct().OrderBy(s => s).ToList();
+    var tasks = docs.Where(d => !string.IsNullOrEmpty(d.TaskTitle)).Select(d => d.TaskTitle).Distinct().OrderBy(t => t).ToList();
+}
+
+@* ==================== 1. FACULTY DOCUMENTS HERO HEADER ==================== *@
+<div class="cv-fac-docs-hero animate-slide-up">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-4);flex-wrap:wrap;">
+        <div style="flex:1;min-width:300px;">
+            <div style="display:flex;align-items:center;gap:var(--space-2);margin-bottom:var(--space-2);">
+                <div style="width:28px;height:28px;border-radius:var(--radius-md);background:var(--cv-gold);color:var(--cv-navy);display:flex;align-items:center;justify-content:center;font-weight:bold;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;flex-shrink:0;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                </div>
+                <span style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--cv-gold);font-weight:var(--fw-bold);">
+                    Faculty Document Repository
+                </span>
+            </div>
+
+            <h1 style="font-family:var(--font-heading);font-size:var(--fs-2xl);font-weight:var(--fw-bold);color:var(--cv-white);margin:0 0 var(--space-2) 0;letter-spacing:-0.015em;">
+                Student Documents
+            </h1>
+
+            <p style="color:rgba(255, 255, 255, 0.82);font-size:var(--fs-sm);margin:0;max-width:680px;line-height:1.5;">
+                Central archive of verified academic manuscripts, laboratory records, and coursework files submitted by students.
+            </p>
+        </div>
+
+        @* Repository Status Card *@
+        <div style="background:rgba(255, 255, 255, 0.08);border:1px solid rgba(255, 255, 255, 0.16);border-radius:var(--radius-lg);padding:var(--space-3) var(--space-4);text-align:right;min-width:180px;">
+            <div style="font-size:10px;color:rgba(255, 255, 255, 0.7);text-transform:uppercase;letter-spacing:0.06em;">Vault Ingestion</div>
+            <div style="font-size:var(--fs-xl);font-weight:var(--fw-extrabold);color:var(--cv-gold);margin:1px 0;" id="heroTotalDocCount">@totalDocCount Documents</div>
+            <div style="font-size:11px;color:#A7F3D0;display:inline-flex;align-items:center;gap:4px;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:12px;height:12px;flex-shrink:0;"><polyline points="20 6 9 17 4 12"/></svg>
+                <span>Database Synced</span>
+            </div>
+        </div>
+    </div>
+
+    @* Quick Status Breakdown Strip *@
+    <div class="cv-fac-docs-stats-row">
+        <div class="cv-fac-stat-pill">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;color:var(--cv-gold);flex-shrink:0;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+            <span>Faculty Department: <strong>@ViewBag.UserRoleDisplay</strong></span>
+        </div>
+        <div class="cv-fac-stat-pill">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;color:#34d399;flex-shrink:0;"><polyline points="20 6 9 17 4 12"/></svg>
+            <span>Approved: <strong>@approvedCount Files</strong></span>
+        </div>
+        <div class="cv-fac-stat-pill">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;color:#fbbf24;flex-shrink:0;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/></svg>
+            <span>Under Review: <strong>@pendingCount Files</strong></span>
+        </div>
+        <div class="cv-fac-stat-pill">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;color:#d8b4fe;flex-shrink:0;"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+            <span>Revision Required: <strong>@revisionCount Files</strong></span>
+        </div>
+    </div>
+</div>
+
+@* ==================== 2. FILTERS (Classroom, Subject, Student, Task, Status, Version) ==================== *@
+<div class="cv-fac-filter-card animate-slide-up stagger-1">
+    @* Row 1: Student Search, Classroom, Subject *@
+    <div class="cv-fac-filter-grid">
+        @* Filter 1: Student (Search) *@
+        <div class="cv-filter-item">
+            <label class="cv-filter-label" for="docFilterStudent">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;flex-shrink:0;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                Student
+            </label>
+            <div class="cv-filter-input-wrap">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;flex-shrink:0;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="text" id="docFilterStudent" class="cv-filter-input" placeholder="Search student or roll no (e.g. Prit, 24CE014)..." oninput="applyDocumentFilters()" />
+            </div>
+        </div>
+
+        @* Filter 2: Classroom *@
+        <div class="cv-filter-item">
+            <label class="cv-filter-label" for="docFilterClassroom">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;flex-shrink:0;"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                Classroom
+            </label>
+            <select id="docFilterClassroom" class="cv-filter-select" onchange="applyDocumentFilters()">
+                <option value="all">All Classrooms (@classrooms.Count)</option>
+                @foreach (var c in classrooms)
+                {
+                    <option value="@c">@c</option>
+                }
+            </select>
+        </div>
+
+        @* Filter 3: Subject *@
+        <div class="cv-filter-item">
+            <label class="cv-filter-label" for="docFilterSubject">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;flex-shrink:0;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                Subject
+            </label>
+            <select id="docFilterSubject" class="cv-filter-select" onchange="applyDocumentFilters()">
+                <option value="all">All Subjects (@subjects.Count)</option>
+                @foreach (var s in subjects)
+                {
+                    <option value="@s">@s</option>
+                }
+            </select>
+        </div>
+    </div>
+
+    @* Row 2: Task, Status, Version & Reset *@
+    <div class="cv-fac-filter-grid-bottom">
+        @* Filter 4: Task *@
+        <div class="cv-filter-item">
+            <label class="cv-filter-label" for="docFilterTask">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;flex-shrink:0;"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
+                Task
+            </label>
+            <select id="docFilterTask" class="cv-filter-select" onchange="applyDocumentFilters()">
+                <option value="all">All Academic Tasks (@tasks.Count)</option>
+                @foreach (var t in tasks)
+                {
+                    <option value="@t">@t</option>
+                }
+            </select>
+        </div>
+
+        @* Filter 5: Status *@
+        <div class="cv-filter-item">
+            <label class="cv-filter-label" for="docFilterStatus">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;flex-shrink:0;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/></svg>
+                Status
+            </label>
+            <select id="docFilterStatus" class="cv-filter-select" onchange="applyDocumentFilters()">
+                <option value="all">All Statuses</option>
+                <option value="Approved">Approved</option>
+                <option value="Under Review">Under Review</option>
+                <option value="Revision Required">Revision Required</option>
+                <option value="Submitted">Submitted</option>
+                <option value="Resubmitted">Resubmitted</option>
+                <option value="Late">Late</option>
+            </select>
+        </div>
+
+        @* Filter 6: Version *@
+        <div class="cv-filter-item">
+            <label class="cv-filter-label" for="docFilterVersion">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;flex-shrink:0;"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                Version
+            </label>
+            <select id="docFilterVersion" class="cv-filter-select" onchange="applyDocumentFilters()">
+                <option value="all">All Versions</option>
+                <option value="Version 1">Version 1 (Initial)</option>
+                <option value="Version 2">Version 2 (Revision/Resubmission)</option>
+                <option value="Version 3">Version 3 (Final)</option>
+            </select>
+        </div>
+
+        @* Reset Button *@
+        <div>
+            <button type="button" class="cv-btn cv-btn-secondary cv-btn-sm" onclick="resetDocFilters()" style="font-size:11px;padding:7px 14px;gap:5px;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;flex-shrink:0;"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                Reset Filters
+            </button>
+        </div>
+    </div>
+</div>
+
+@* ==================== 3. DOCUMENTS TABLE ==================== *@
+<div class="cv-fac-docs-table-card animate-slide-up stagger-2">
+    
+    @* Table Topbar with Count *@
+    <div style="padding:var(--space-3) var(--space-5);background:var(--cv-slate-50);border-bottom:1px solid var(--cv-border);display:flex;align-items:center;justify-content:space-between;font-size:var(--fs-xs);color:var(--cv-slate);flex-wrap:wrap;gap:var(--space-3);">
+        <div style="display:flex;align-items:center;gap:var(--space-2);">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;color:var(--cv-navy);flex-shrink:0;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <strong style="color:var(--cv-navy);">Archive Registry:</strong>
+            <span id="docCountNotice">Showing <strong style="color:var(--cv-navy);" id="visibleDocCount">@totalDocCount</strong> of <strong style="color:var(--cv-navy);">@totalDocCount</strong> verified submissions</span>
+        </div>
+        <div style="font-size:11px;color:var(--cv-slate);">
+            Click <strong>Review</strong> to open the split-screen grading workspace.
+        </div>
+    </div>
+
+    @* Responsive Table *@
+    <div style="overflow-x:auto;">
+        <table class="cv-fac-docs-table" id="facDocsMasterTable">
+            <thead>
+                <tr>
+                    <th style="min-width:240px;">Filename</th>
+                    <th style="min-width:180px;">Student</th>
+                    <th style="min-width:200px;">Task</th>
+                    <th style="min-width:100px;">Version</th>
+                    <th style="min-width:130px;">Status</th>
+                    <th style="min-width:150px;">Last Updated</th>
+                    <th style="min-width:180px;text-align:right;">Action</th>
+                </tr>
+            </thead>
+            <tbody id="facDocsTableBody">
+                @if (docs != null && docs.Any())
+                {
+                    foreach (var doc in docs)
+                    {
+                        var status = doc.Status ?? "Under Review";
+                        var isApproved = status.IndexOf("Approved", System.StringComparison.OrdinalIgnoreCase) >= 0;
+                        var isRev = status.IndexOf("Revision", System.StringComparison.OrdinalIgnoreCase) >= 0;
+                        var avatarLetters = !string.IsNullOrEmpty(doc.StudentName) && doc.StudentName.Trim().Length > 0
+                            ? (doc.StudentName.Trim().Split(' ').Length > 1 
+                                ? (doc.StudentName.Trim().Split(' ')[0][0].ToString() + doc.StudentName.Trim().Split(' ')[1][0].ToString()) 
+                                : doc.StudentName.Substring(0, 1))
+                            : "ST";
+                        var fileExt = (System.IO.Path.GetExtension(doc.FileName ?? "")?.TrimStart('.')?.ToUpper());
+                        if (string.IsNullOrEmpty(fileExt)) { fileExt = "PDF"; }
+                        <tr class="doc-row" data-filename="@(doc.FileName ?? "Document.pdf")" data-student="@(doc.StudentName) @(doc.RollNo)" data-classroom="@(doc.ClassroomName)" data-subject="@(doc.ClassroomName)" data-task="@(doc.TaskTitle)" data-status="@status" data-version="@(doc.Version ?? "Version 1")">
+                            <td data-label="Filename">
+                                <div class="cv-fac-file-cell">
+                                    <div class="cv-file-icon-badge">@fileExt</div>
+                                    <div>
+                                        <div class="cv-file-name-text">@(doc.FileName ?? "Document.pdf")</div>
+                                        <div class="cv-file-meta-text">
+                                            <span>@(string.IsNullOrEmpty(doc.FileSize) ? "Document" : doc.FileSize)</span>
+                                            @if (!string.IsNullOrEmpty(doc.FileHash))
+                                            {
+                                                <span>&bull;</span>
+                                                <span style="font-family:monospace;font-size:10px;color:var(--cv-indigo);" title="@doc.FileHash">SHA: @(doc.FileHash.Length > 8 ? doc.FileHash.Substring(0, 8) : doc.FileHash)</span>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td data-label="Student">
+                                <div class="cv-sub-student-cell">
+                                    <div class="cv-sub-avatar" style="background: linear-gradient(135deg, #1e3a8a, #3b82f6); width:30px; height:30px; font-size:11px;">
+                                        @avatarLetters
+                                    </div>
+                                    <div>
+                                        <div style="font-weight:bold;color:var(--cv-navy);font-size:12px;">@doc.StudentName</div>
+                                        <div style="font-size:11px;color:var(--cv-slate);">@(doc.RollNo ?? "Enrolled") &bull; @(doc.ClassroomName ?? "Classroom")</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td data-label="Task">
+                                <div style="font-weight:bold;color:var(--cv-navy);font-size:12px;">@doc.TaskTitle</div>
+                                <div style="font-size:11px;color:var(--cv-slate-500);">@(doc.ClassroomName ?? "Classroom")</div>
+                            </td>
+                            <td data-label="Version">
+                                <span class="cv-version-tag">@(doc.Version ?? "Version 1")</span>
+                            </td>
+                            <td data-label="Status">
+                                <span class="cv-doc-badge @(isApproved ? "status-approved" : (isRev ? "status-revision" : "status-review"))">
+                                    @status
+                                </span>
+                            </td>
+                            <td data-label="Last Updated">
+                                <div style="font-size:12px;color:var(--cv-navy);font-weight:500;">@(doc.SubmittedDate ?? "Recent")</div>
+                            </td>
+                            <td data-label="Action" style="text-align:right;">
+                                <div style="display:inline-flex;gap:6px;justify-content:flex-end;align-items:center;">
+                                    @if (!string.IsNullOrEmpty(doc.CloudUrl))
+                                    {
+                                        <a href="@doc.CloudUrl" target="_blank" class="cv-fac-action-btn" style="text-decoration:none;display:inline-flex;align-items:center;padding:5px 8px;" title="View / Download Source">
+                                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                        </a>
+                                    }
+                                    <a href="@Url.Action("ReviewSubmission", "Faculty", new { id = doc.SubmissionId })" class="cv-fac-action-btn btn-view" style="text-decoration:none;display:inline-flex;align-items:center;">
+                                        Review
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="7" style="text-align:center;padding:var(--space-8);color:var(--cv-slate);">
+                            <div style="font-weight:600;font-size:14px;color:var(--cv-navy);margin-bottom:4px;">No Submissions Found</div>
+                            <div style="font-size:12px;">All student coursework submissions have been reviewed or are pending student submission.</div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @* Empty Search State *@
+    <div id="emptyFacDocsState" class="cv-sub-empty-state" style="display:none;">
+        <div class="cv-sub-empty-icon">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:26px;height:26px;flex-shrink:0;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </div>
+        <h3 style="font-size:var(--fs-base);font-weight:var(--fw-bold);color:var(--cv-navy);margin-bottom:4px;">
+            No Documents Match Filters
+        </h3>
+        <p style="font-size:var(--fs-xs);color:var(--cv-slate);max-width:340px;margin:0 auto var(--space-4);">
+            No student documents match your selected classroom, subject, task, or version filter.
+        </p>
+        <button type="button" class="cv-btn cv-btn-secondary cv-btn-sm" onclick="resetDocFilters()">
+            Reset All Filters
+        </button>
+    </div>
+
+    @* Table Pagination Footer *@
+    <div style="padding:var(--space-3) var(--space-5);background:var(--cv-slate-50);border-top:1px solid var(--cv-border);display:flex;align-items:center;justify-content:space-between;font-size:var(--fs-xs);color:var(--cv-slate);flex-wrap:wrap;gap:var(--space-2);">
+        <div>
+            Institutional Storage: <strong style="color:var(--cv-navy);">@totalDocCount Total Documents</strong> &bull; Cloud Status: <strong style="color:var(--cv-navy);">Storage Synchronized</strong>
+        </div>
+        <div style="display:flex;align-items:center;gap:var(--space-2);">
+            <button type="button" class="cv-btn cv-btn-secondary cv-btn-xs" disabled style="opacity:0.6;font-size:11px;">
+                &larr; Previous
+            </button>
+            <span style="font-size:11px;font-weight:bold;padding:2px 8px;background:var(--cv-navy);color:white;border-radius:4px;">1</span>
+            <span style="font-size:11px;padding:2px 8px;color:var(--cv-slate);">2</span>
+            <button type="button" class="cv-btn cv-btn-secondary cv-btn-xs" style="font-size:11px;">
+                Next &rarr;
+            </button>
+        </div>
+    </div>
+</div>
+
+@* ==================== 4. MODAL: QUICK DOCUMENT PREVIEW ==================== *@
+<div class="cv-fac-preview-modal-backdrop" id="docPreviewModalBackdrop">
+    <div class="cv-fac-preview-modal">
+        <div style="padding:var(--space-4) var(--space-6);background:linear-gradient(135deg, #0f172a 0%, #1e293b 100%);color:white;display:flex;align-items:center;justify-content:space-between;">
+            <div style="display:flex;align-items:center;gap:var(--space-2);">
+                <div style="width:24px;height:24px;border-radius:4px;background:#dc2626;color:white;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;">
+                    PDF
+                </div>
+                <strong style="font-size:var(--fs-sm);" id="modalDocFilename">DBMS_Practical_04.pdf</strong>
+            </div>
+            <button type="button" onclick="closeDocModal()" style="background:none;border:none;color:white;font-size:18px;cursor:pointer;line-height:1;">&times;</button>
+        </div>
+
+        <div style="padding:var(--space-6);">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-3);background:var(--cv-slate-50);border:1px solid var(--cv-border);border-radius:var(--radius-lg);padding:var(--space-4);margin-bottom:var(--space-4);font-size:var(--fs-xs);">
+                <div>
+                    <span style="color:var(--cv-slate);display:block;">Student:</span>
+                    <strong style="color:var(--cv-navy);" id="modalDocStudent">Student</strong>
+                </div>
+                <div>
+                    <span style="color:var(--cv-slate);display:block;">Task:</span>
+                    <strong style="color:var(--cv-navy);" id="modalDocTask">DBMS Practical 4</strong>
+                </div>
+                <div>
+                    <span style="color:var(--cv-slate);display:block;">Version:</span>
+                    <strong style="color:var(--cv-navy);" id="modalDocVersion">Version 2</strong>
+                </div>
+                <div>
+                    <span style="color:var(--cv-slate);display:block;">Status:</span>
+                    <span id="modalDocStatus" class="cv-status-badge status-under-review">Under Review</span>
+                </div>
+            </div>
+
+            @* Mock Manuscript Snippet *@
+            <div style="border:1px solid var(--cv-border);border-radius:var(--radius-md);background:var(--cv-white);padding:var(--space-4);box-shadow:var(--shadow-inner);max-height:220px;overflow-y:auto;font-size:11px;line-height:1.6;color:var(--cv-slate-700);">
+                <div style="text-align:center;border-bottom:1px solid var(--cv-border-light);padding-bottom:var(--space-2);margin-bottom:var(--space-3);">
+                    <div style="font-weight:bold;color:var(--cv-navy);font-size:12px;">Gujarat Technological University &bull; Computer Engineering</div>
+                    <div style="color:var(--cv-slate-500);font-size:10px;">Institutional Archive Copy &bull; SHA-256 Authenticated</div>
+                </div>
+                <p style="margin:0 0 8px 0;">
+                    <strong>Abstract:</strong> This document represents verified student laboratory work submitted for academic evaluation. All relational functional dependencies and BCNF decomposition proofs comply with syllabus guidelines.
+                </p>
+                <div style="background:#f1f5f9;padding:6px 10px;border-radius:4px;font-family:monospace;font-size:10px;">
+                    Digital Signature: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+                </div>
+            </div>
+
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-top:var(--space-4);">
+                <span style="font-size:11px;color:var(--cv-slate);" id="modalDocSize">Size: 3.4 MB</span>
+                <div style="display:flex;gap:var(--space-2);">
+                    <button type="button" class="cv-btn cv-btn-secondary cv-btn-sm" onclick="closeDocModal()">
+                        Close
+                    </button>
+                    <button type="button" class="cv-btn cv-btn-primary cv-btn-sm" onclick="downloadModalDoc()">
+                        Download PDF
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* ==================== 5. JAVASCRIPT LOGIC ==================== *@
+<script>
+    function onClassroomChanged() {
+        var cls = document.getElementById("docFilterClassroom").value;
+        var subSelect = document.getElementById("docFilterSubject");
+        
+        if (cls.indexOf("Data Structures") > -1) subSelect.value = "Data Structures";
+        else if (cls.indexOf("DBMS") > -1) subSelect.value = "DBMS";
+        else if (cls.indexOf("Web Technology") > -1) subSelect.value = "Web Technology";
+        else if (cls.indexOf("OOP") > -1) subSelect.value = "OOP";
+        else if (cls.indexOf("Computer Networks") > -1) subSelect.value = "Computer Networks";
+        else subSelect.value = "all";
+
+        applyDocumentFilters();
+    }
+
+    function applyDocumentFilters() {
+        var studentQuery = (document.getElementById("docFilterStudent").value || "").toLowerCase().trim();
+        var selectedClassroom = document.getElementById("docFilterClassroom").value;
+        var selectedSubject = document.getElementById("docFilterSubject").value;
+        var selectedTask = document.getElementById("docFilterTask").value;
+        var selectedStatus = document.getElementById("docFilterStatus").value;
+        var selectedVersion = document.getElementById("docFilterVersion").value;
+
+        var rows = document.querySelectorAll("#facDocsTableBody .doc-row");
+        var visibleCount = 0;
+
+        rows.forEach(function(row) {
+            var filename = (row.getAttribute("data-filename") || "").toLowerCase();
+            var student = (row.getAttribute("data-student") || "").toLowerCase();
+            var classroom = row.getAttribute("data-classroom") || "";
+            var subject = row.getAttribute("data-subject") || "";
+            var task = row.getAttribute("data-task") || "";
+            var status = row.getAttribute("data-status") || "";
+            var version = row.getAttribute("data-version") || "";
+
+            // 1. Student / Roll query
+            var matchesStudent = true;
+            if (studentQuery.length > 0) {
+                matchesStudent = (student.indexOf(studentQuery) > -1 || filename.indexOf(studentQuery) > -1);
+            }
+
+            // 2. Classroom
+            var matchesClassroom = true;
+            if (selectedClassroom !== "all") {
+                matchesClassroom = (classroom === selectedClassroom);
+            }
+
+            // 3. Subject
+            var matchesSubject = true;
+            if (selectedSubject !== "all") {
+                matchesSubject = (subject === selectedSubject);
+            }
+
+            // 4. Task
+            var matchesTask = true;
+            if (selectedTask !== "all") {
+                matchesTask = (task.indexOf(selectedTask) > -1);
+            }
+
+            // 5. Status
+            var matchesStatus = true;
+            if (selectedStatus !== "all") {
+                matchesStatus = (status.indexOf(selectedStatus) > -1);
+            }
+
+            // 6. Version
+            var matchesVersion = true;
+            if (selectedVersion !== "all") {
+                matchesVersion = (version === selectedVersion);
+            }
+
+            if (matchesStudent && matchesClassroom && matchesSubject && matchesTask && matchesStatus && matchesVersion) {
+                row.style.display = "";
+                visibleCount++;
+            } else {
+                row.style.display = "none";
+            }
+        });
+
+        var countEl = document.getElementById("visibleDocCount");
+        if (countEl) countEl.textContent = visibleCount;
+
+        var emptyEl = document.getElementById("emptyFacDocsState");
+        var tableEl = document.getElementById("facDocsMasterTable");
+        if (emptyEl && tableEl) {
+            if (visibleCount === 0) {
+                emptyEl.style.display = "block";
+                tableEl.style.display = "none";
+            } else {
+                emptyEl.style.display = "none";
+                tableEl.style.display = "table";
+            }
+        }
+    }
+
+    function resetDocFilters() {
+        document.getElementById("docFilterStudent").value = "";
+        document.getElementById("docFilterClassroom").value = "all";
+        document.getElementById("docFilterSubject").value = "all";
+        document.getElementById("docFilterTask").value = "all";
+        document.getElementById("docFilterStatus").value = "all";
+        document.getElementById("docFilterVersion").value = "all";
+
+        applyDocumentFilters();
+    }
+
+    // Quick Modal Preview
+    var activeModalFilename = "";
+    function previewDocModal(filename, student, task, version, status, size, date) {
+        activeModalFilename = filename;
+        document.getElementById("modalDocFilename").textContent = filename;
+        document.getElementById("modalDocStudent").textContent = student;
+        document.getElementById("modalDocTask").textContent = task;
+        document.getElementById("modalDocVersion").textContent = version;
+        document.getElementById("modalDocSize").textContent = "File Size: " + size + " • Submitted: " + date;
+        
+        var statusBadge = document.getElementById("modalDocStatus");
+        statusBadge.textContent = status;
+        if (status.indexOf("Approved") > -1) {
+            statusBadge.className = "cv-status-badge status-approved";
+        } else if (status.indexOf("Under Review") > -1) {
+            statusBadge.className = "cv-status-badge status-under-review";
+        } else if (status.indexOf("Revision") > -1) {
+            statusBadge.className = "cv-status-badge status-revision-required";
+        } else if (status.indexOf("Resubmitted") > -1) {
+            statusBadge.className = "cv-status-badge status-resubmitted";
+        } else {
+            statusBadge.className = "cv-status-badge status-submitted";
+        }
+
+        document.getElementById("docPreviewModalBackdrop").classList.add("open");
+    }
+
+    function closeDocModal() {
+        document.getElementById("docPreviewModalBackdrop").classList.remove("open");
+    }
+
+    function downloadModalDoc() {
+        downloadFile(activeModalFilename);
+    }
+
+    function downloadFile(filename) {
+        var content = "%PDF-1.4\n% CampusVault Faculty Document Archive\nDocument: " + filename + "\nDigitally Sealed & Verified\n";
+        var blob = new Blob([content], { type: 'application/pdf' });
+        var link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+</script>

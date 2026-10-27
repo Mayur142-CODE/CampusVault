@@ -1,0 +1,457 @@
+@model List<CampusVault.Models.Faculty.FacultyTaskItem>
+@{
+    ViewBag.Title = "Academic Tasks";
+    ViewBag.Role = "Faculty";
+    ViewBag.UserName = Session["UserName"] as string ?? "Prof. Patel";
+    ViewBag.UserInitials = Session["UserInitials"] as string ?? "PP";
+    ViewBag.UserRoleDisplay = Session["UserRoleDisplay"] as string ?? "Computer Engineering";
+    int activeCount = Model != null ? Model.Count(t => (t.Status ?? "Active").Equals("Active", System.StringComparison.OrdinalIgnoreCase)) : 0;
+    int pendingCount = Model != null ? Model.Sum(t => t.PendingReviewCount) : 0;
+    int totalCount = Model != null ? Model.Count : 0;
+}
+@* ==================== 1. PAGE HEADER ==================== *@
+<div class="cv-faculty-tasks-header animate-slide-up">
+    <div>
+        <div style="display:flex;align-items:center;gap:var(--space-3);margin-bottom:4px;">
+            <div class="cv-faculty-classrooms-icon" style="background: rgba(99, 102, 241, 0.12); color: var(--cv-indigo);">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:22px;height:22px;flex-shrink:0;">
+                    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+                    <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
+                    <line x1="16" y1="11" x2="8" y2="11"/>
+                    <line x1="16" y1="15" x2="8" y2="15"/>
+                </svg>
+            </div>
+            <h1 style="font-family:var(--font-heading);font-size:var(--fs-2xl);font-weight:var(--fw-bold);color:var(--cv-navy);letter-spacing:-0.015em;margin:0;">
+                Academic Tasks
+            </h1>
+        </div>
+        <p style="color:var(--cv-slate);font-size:var(--fs-base);margin:0;">
+            Coursework assignments, lab practicals, submission intake, and grading queues.
+        </p>
+    </div>
+
+    @* Top Summary & Action Button *@
+    <div style="display:flex;align-items:center;gap:var(--space-3);flex-wrap:wrap;">
+        <div class="cv-tasks-summary-strip">
+            <span class="cv-tasks-summary-pill">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;color:var(--cv-indigo);flex-shrink:0;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/></svg>
+                <span><strong></strong> Active</span>
+            </span>
+            <span class="cv-tasks-summary-pill" style="border-color:#fde68a;background:#fef3c7;color:#92400e;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;color:#d97706;flex-shrink:0;"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                <span><strong></strong> Pending Reviews</span>
+            </span>
+            <span class="cv-tasks-summary-pill" style="border-color:#e9d5ff;background:#faf5ff;color:#7e22ce;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;color:#9333ea;flex-shrink:0;"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                <span><strong>8</strong> Revisions</span>
+            </span>
+        </div>
+
+        <a href="@Url.Action("CreateTask", "Faculty")" class="cv-btn cv-btn-primary" style="gap:6px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex-shrink:0;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <span>Create Task</span>
+        </a>
+    </div>
+</div>
+
+@* ==================== 2. TABS & FILTER BAR ==================== *@
+<div class="cv-filter-card animate-slide-up stagger-1 mb-6">
+    <div style="border-bottom:1px solid var(--cv-border);padding:var(--space-2) var(--space-4) 0;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--space-3);">
+        @* Primary Task Tabs: Active, Draft, Closed *@
+        <div class="cv-task-tabs-row" role="tablist" style="margin:0;border:none;">
+            <button type="button" class="cv-task-tab-btn active" onclick="switchTaskTab('active')" id="tabBtnActive">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;flex-shrink:0;"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                <span>Active</span>
+                <span class="tab-count" id="countActive">@activeCount</span>
+            </button>
+            <button type="button" class="cv-task-tab-btn" onclick="switchTaskTab('draft')" id="tabBtnDraft">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;flex-shrink:0;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                <span>Draft</span>
+                <span class="tab-count" id="countDraft">3</span>
+            </button>
+            <button type="button" class="cv-task-tab-btn" onclick="switchTaskTab('closed')" id="tabBtnClosed">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;flex-shrink:0;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <span>Closed</span>
+                <span class="tab-count" id="countClosed">3</span>
+            </button>
+        </div>
+
+        <div style="font-size:var(--fs-xs);color:var(--cv-slate);padding-bottom:var(--space-2);">
+            Showing <strong id="visibleTasksCount">@totalCount</strong> tasks
+        </div>
+    </div>
+
+    @* Filters controls *@
+    <div class="cv-filter-bar" style="padding-top:var(--space-3);">
+        <div class="cv-filter-controls">
+            @* Search by title or subject *@
+            <div class="cv-search-input-group">
+                <svg class="input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex-shrink:0;">
+                    <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+                <input type="text"
+                       id="taskSearchInput"
+                       placeholder="Search by task title, topic, or subject..."
+                       oninput="filterTasksTable()" />
+            </div>
+
+            @* Filter: Classroom *@
+            <div style="display:flex;align-items:center;gap:6px;">
+                <label for="filterTaskClassroom" style="font-size:var(--fs-xs);font-weight:600;color:var(--cv-slate);text-transform:uppercase;letter-spacing:0.04em;">Classroom:</label>
+                <select id="filterTaskClassroom" class="cv-filter-select" onchange="filterTasksTable()">
+                    <option value="all">All Classrooms</option>
+                    <option value="Data Structures">Data Structures (EC6)</option>
+                    <option value="DBMS">DBMS (EC6)</option>
+                    <option value="Web Technology">Web Technology (EC6)</option>
+                    <option value="OOP">OOP (EC7)</option>
+                    <option value="Computer Networks">Computer Networks (CE-A)</option>
+                </select>
+            </div>
+
+            @* Filter: Review Urgency *@
+            <div style="display:flex;align-items:center;gap:6px;">
+                <label for="filterTaskUrgency" style="font-size:var(--fs-xs);font-weight:600;color:var(--cv-slate);text-transform:uppercase;letter-spacing:0.04em;">Queue:</label>
+                <select id="filterTaskUrgency" class="cv-filter-select" onchange="filterTasksTable()">
+                    <option value="all">All Queues</option>
+                    <option value="pending">Requires Review (&gt; 0)</option>
+                    <option value="revision">Has Revisions</option>
+                    <option value="completed">All Graded</option>
+                </select>
+            </div>
+        </div>
+
+        <button type="button" class="cv-btn cv-btn-ghost cv-btn-sm" onclick="resetTaskFilters()" style="padding:4px 8px;font-size:12px;">
+            Reset
+        </button>
+    </div>
+</div>
+
+@* ==================== 3. TASKS MANAGEMENT TABLE ==================== *@
+<div class="cv-tasks-table-card animate-slide-up stagger-2">
+    <div class="cv-table-responsive" style="border:none;">
+        <table class="cv-tasks-table" id="facultyTasksTable">
+            <thead>
+                <tr>
+                    <th style="width:28%;">Task & Classroom</th>
+                    <th style="width:16%;">Deadline</th>
+                    <th style="width:15%;">Intake Progress</th>
+                    <th style="width:20%;">Evaluation Queue</th>
+                    <th style="width:9%;">Status</th>
+                    <th style="width:12%;text-align:right;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+@if (Model != null && Model.Count > 0)
+{
+    foreach (var t in Model)
+    {
+        var isUrgent = t.PendingReviewCount > 0;
+        var tabType = (t.Status ?? "Active").ToLower() == "active" ? "active" : ((t.Status ?? "").ToLower() == "draft" ? "draft" : "closed");
+        var daysLeft = (t.DueDate - DateTime.Now).Days;
+        var dueText = daysLeft < 0 ? "Past Due" : (daysLeft == 0 ? "Due Today" : $"Due in {daysLeft} days");
+        var searchTerms = $"{t.Title} {t.CourseName} {t.CourseCode} {t.TaskType}".ToLower();
+
+        <tr class="task-row" data-tab="@tabType" data-classroom="@t.CourseName" data-has-pending="@(isUrgent ? "true" : "false")" data-has-revision="false" data-search="@searchTerms">
+            <td data-label="Task">
+                <div class="cv-task-title-group">
+                    <div class="cv-task-title-text">
+                        @t.Title
+                        <span class="cv-badge cv-badge-urgent" style="font-size:10px;padding:1px 6px;">@(t.TaskType ?? "Assignment")</span>
+                    </div>
+                    <div class="cv-task-meta-sub">
+                        <span class="cv-tag cv-tag-indigo" style="font-size:10px;padding:1px 6px;">@t.CourseCode &bull; @t.CourseName</span>
+                        <span>Max: @t.MaxScore Marks</span>
+                    </div>
+                </div>
+            </td>
+            <td data-label="Deadline">
+                <div class="cv-deadline-box">
+                    <span class="cv-deadline-date">@t.DueDate.ToString("MMM dd, yyyy â€¢ hh:mm tt")</span>
+                    <span class="cv-deadline-pill @(daysLeft <= 2 ? "soon" : "")">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:10px;height:10px;flex-shrink:0;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/></svg>
+                        @dueText
+                    </span>
+                </div>
+            </td>
+            <td data-label="Submitted">
+                <div class="cv-intake-wrapper">
+                    <div class="cv-intake-counts">
+                        <span class="cv-intake-ratio">@t.SubmissionCount Submissions</span>
+                    </div>
+                    <div class="cv-intake-bar">
+                        <div class="cv-intake-bar-fill" style="width: @(Math.Min(100, t.SubmissionCount * 20))%;"></div>
+                    </div>
+                    <div style="font-size:10px;color:var(--cv-slate);margin-top:2px;">Turned in</div>
+                </div>
+            </td>
+            <td data-label="Queue">
+                <div class="cv-review-matrix">
+                    <a href="@Url.Action("Submissions", "Faculty", new { taskId = t.TaskId })" class="cv-review-tag tag-pending" title="Submissions awaiting evaluation">
+                        @t.PendingReviewCount Pending
+                    </a>
+                </div>
+            </td>
+            <td data-label="Status">
+                <span class="cv-task-status status-active">
+                    <span class="cv-live-badge-dot"></span>
+                    @(t.Status ?? "Active")
+                </span>
+            </td>
+            <td data-label="Actions" style="text-align:right;">
+                <div class="cv-task-actions-group" style="display:inline-flex;gap:6px;align-items:center;">
+                    <a href="@Url.Action("Submissions", "Faculty", new { taskId = t.TaskId })" class="cv-btn cv-btn-primary" style="padding:4px 10px;font-size:12px;">Submissions</a>
+                    <a href="@Url.Action("CreateTask", "Faculty", new { id = t.TaskId })" class="cv-btn cv-btn-secondary" style="padding:4px 8px;font-size:12px;text-decoration:none;">Edit</a>
+                    <button type="button" class="cv-btn" style="padding:4px 8px;font-size:12px;background:#fee2e2;color:#dc2626;border:1px solid #fca5a5;" onclick="deleteTask(@t.TaskId)">Delete</button>
+                </div>
+            </td>
+        </tr>
+    }
+}
+else
+{
+    <tr>
+        <td colspan="6" style="text-align:center;padding:30px;color:var(--cv-slate);">
+            No academic tasks created yet. Click "Create Task" to publish your first assignment or lab practical.
+        </td>
+    </tr>
+}
+            </tbody>
+        </table>
+    </div>
+
+    @* Empty State Inside Table *@
+    <div id="tasksEmptyState" style="display:none;padding:var(--space-10) var(--space-6);text-align:center;">
+        <div style="width:56px;height:56px;border-radius:50%;background:var(--cv-slate-100);display:flex;align-items:center;justify-content:center;margin:0 auto var(--space-3);color:var(--cv-slate);">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:26px;height:26px;flex-shrink:0;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </div>
+        <h3 style="font-size:var(--fs-base);font-weight:var(--fw-bold);color:var(--cv-navy);margin-bottom:var(--space-1);">No Academic Tasks Found</h3>
+        <p style="color:var(--cv-slate);font-size:var(--fs-xs);max-width:380px;margin:0 auto var(--space-4);">
+            No tasks match the active tab and filter criteria. Adjust your search keywords or clear filters.
+        </p>
+        <button type="button" class="cv-btn cv-btn-secondary cv-btn-sm" onclick="resetTaskFilters()">
+            Clear Filters
+        </button>
+    </div>
+</div>
+
+@* ==================== 4. EDIT TASK MODAL ==================== *@
+<div class="cv-modal-backdrop" id="editTaskModal">
+    <div class="cv-modal-dialog">
+        <div class="cv-modal-header">
+            <h3 class="cv-modal-title">Edit Academic Task</h3>
+            <button type="button" class="cv-btn cv-btn-ghost cv-btn-icon" onclick="closeEditTaskModal()" title="Close dialog">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;flex-shrink:0;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+        <div class="cv-modal-body">
+            <form id="editTaskForm" onsubmit="saveTaskChanges(event)">
+                <div class="cv-form-group mb-4">
+                    <label class="cv-label" for="editTaskTitle">Task Title</label>
+                    <input type="text" id="editTaskTitle" class="cv-input" required />
+                </div>
+                <div class="cv-form-group mb-4">
+                    <label class="cv-label" for="editTaskDescription">Task Description / Instructions</label>
+                    <input type="hidden" id="editTaskId" />
+                    <textarea id="editTaskDescription" class="cv-input" rows="3" style="resize:vertical;"></textarea>
+                </div>
+                <div style="display:grid;grid-template-columns:1.5fr 1fr;gap:var(--space-4);" class="mb-4">
+                    <div class="cv-form-group">
+                        <label class="cv-label" for="editTaskDeadline">Deadline</label>
+                        <input type="datetime-local" id="editTaskDeadline" class="cv-input" required />
+                    </div>
+                    <div class="cv-form-group">
+                        <label class="cv-label" for="editTaskMarks">Maximum Marks</label>
+                        <input type="number" id="editTaskMarks" class="cv-input" min="5" max="100" required />
+                    </div>
+                </div>
+                <div class="cv-form-group">
+                    <label class="cv-label" for="editTaskType">Task Type</label>
+                    <select id="editTaskType" class="cv-input">
+                        <option value="Assignment">Assignment</option>
+                        <option value="Lab Practical">Lab Practical</option>
+                        <option value="Mini Project">Mini Project</option>
+                        <option value="Quiz">Quiz</option>
+                        <option value="Term Paper">Term Paper</option>
+
+
+                    </select>
+                </div>
+            </form>
+        </div>
+        <div class="cv-modal-footer">
+            <button type="button" class="cv-btn cv-btn-secondary" onclick="closeEditTaskModal()">Cancel</button>
+            <button type="button" class="cv-btn cv-btn-primary" onclick="submitEditTaskForm()">Save Changes</button>
+        </div>
+    </div>
+</div>
+
+@* ==================== 5. TOAST NOTIFICATION ==================== *@
+<div class="cv-toast" id="taskToast">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;color:var(--cv-emerald);flex-shrink:0;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+    <span id="taskToastMsg">Task notification</span>
+</div>
+
+@* ==================== 6. CLIENT INTERACTIVE SCRIPTS ==================== *@
+<script>
+    var currentActiveTab = 'active';
+
+    function showTaskToast(msg) {
+        var toast = document.getElementById('taskToast');
+        document.getElementById('taskToastMsg').innerText = msg;
+        toast.classList.add('show');
+        setTimeout(function () {
+            toast.classList.remove('show');
+        }, 3200);
+    }
+
+    // Switch between Active, Draft, and Closed tabs
+    function switchTaskTab(tabKey) {
+        currentActiveTab = tabKey;
+
+        document.getElementById('tabBtnActive').classList.toggle('active', tabKey === 'active');
+        document.getElementById('tabBtnDraft').classList.toggle('active', tabKey === 'draft');
+        document.getElementById('tabBtnClosed').classList.toggle('active', tabKey === 'closed');
+
+        filterTasksTable();
+    }
+
+    // Live Search and Filters Logic
+    function filterTasksTable() {
+        var query = (document.getElementById('taskSearchInput').value || '').toLowerCase().trim();
+        var classroomFilter = document.getElementById('filterTaskClassroom').value;
+        var urgencyFilter = document.getElementById('filterTaskUrgency').value;
+
+        var table = document.getElementById('facultyTasksTable');
+        var rows = table.querySelectorAll('tbody tr.task-row');
+        var visibleCount = 0;
+
+        rows.forEach(function (row) {
+            var rowTab = row.getAttribute('data-tab');
+            var rowClassroom = row.getAttribute('data-classroom');
+            var hasPending = row.getAttribute('data-has-pending') === 'true';
+            var hasRevision = row.getAttribute('data-has-revision') === 'true';
+            var searchData = (row.getAttribute('data-search') || '').toLowerCase();
+
+            var matchesTab = (rowTab === currentActiveTab);
+            var matchesQuery = !query || searchData.indexOf(query) > -1;
+            var matchesClassroom = classroomFilter === 'all' || rowClassroom === classroomFilter;
+            var matchesUrgency = urgencyFilter === 'all' ||
+                (urgencyFilter === 'pending' && hasPending) ||
+                (urgencyFilter === 'revision' && hasRevision) ||
+                (urgencyFilter === 'completed' && !hasPending && !hasRevision);
+
+            if (matchesTab && matchesQuery && matchesClassroom && matchesUrgency) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        document.getElementById('visibleTasksCount').innerText = visibleCount;
+
+        var emptyState = document.getElementById('tasksEmptyState');
+        if (visibleCount === 0) {
+            emptyState.style.display = 'block';
+        } else {
+            emptyState.style.display = 'none';
+        }
+    }
+
+    function resetTaskFilters() {
+        document.getElementById('taskSearchInput').value = '';
+        document.getElementById('filterTaskClassroom').value = 'all';
+        document.getElementById('filterTaskUrgency').value = 'all';
+        filterTasksTable();
+    }
+
+    // Modal Edit logic
+    function openEditTaskModal(id, title, desc, type, marks, deadline) {
+        document.getElementById('editTaskTitle').value = title;
+        document.getElementById('editTaskId').value = id;
+        document.getElementById('editTaskDescription').value = desc || '';
+        document.getElementById('editTaskType').value = type || 'Assignment';
+        document.getElementById('editTaskDeadline').value = deadline;
+        document.getElementById('editTaskMarks').value = marks;
+
+
+        document.getElementById('editTaskModal').classList.add('active');
+    }
+
+    function closeEditTaskModal() {
+        document.getElementById('editTaskModal').classList.remove('active');
+    }
+
+    function submitEditTaskForm() {
+        var form = document.getElementById('editTaskForm');
+        if (!form.checkValidity()) {
+            form.reportValidity();
+            return;
+        }
+
+        var fd = new FormData();
+        fd.append('taskId', document.getElementById('editTaskId').value);
+        fd.append('title', document.getElementById('editTaskTitle').value);
+        fd.append('description', document.getElementById('editTaskDescription').value);
+        fd.append('taskType', document.getElementById('editTaskType').value);
+        fd.append('maxScore', document.getElementById('editTaskMarks').value);
+        fd.append('dueDate', document.getElementById('editTaskDeadline').value);
+
+        fetch('@Url.Action("UpdateTask", "Faculty")', {
+            method: 'POST',
+            body: new URLSearchParams(fd)
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(res) {
+            if (res.success) {
+                closeEditTaskModal();
+                alert('Task updated successfully!');
+                window.location.reload();
+            } else {
+                alert(res.message || 'Failed to update task.');
+            }
+        })
+        .catch(function(err) {
+            alert('An error occurred. Please try again.');
+        });
+        return;
+        var form = document.getElementById('editTaskForm');
+        if (form.checkValidity()) {
+            closeEditTaskModal();
+            showTaskToast('Task "' + document.getElementById('editTaskTitle').value + '" updated successfully!');
+        } else {
+            form.reportValidity();
+        }
+    }
+
+    function deleteTask(taskId) {
+        if (!confirm('Are you sure you want to permanently delete this task? All student submissions for this task will also be deleted.')) {
+            return;
+        }
+
+        var fd = new FormData();
+        fd.append('taskId', taskId);
+
+        fetch('@Url.Action("DeleteTask", "Faculty")', {
+            method: 'POST',
+            body: new URLSearchParams(fd)
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(res) {
+            if (res.success) {
+                alert('Task deleted successfully!');
+                window.location.reload();
+            } else {
+                alert(res.message || 'Failed to delete task.');
+            }
+        })
+        .catch(function(err) {
+            alert('An error occurred. Please try again.');
+        });
+    }
+
+    function saveTaskChanges(e) {
+        e.preventDefault();
+        submitEditTaskForm();
+    }
+</script>
