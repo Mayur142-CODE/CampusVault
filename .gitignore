@@ -361,3 +361,22 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# =============================================================================
+# CampusVault Project Exclusions
+# =============================================================================
+
+# Local Secrets and Environment Overrides
+Web.Secrets.config
+*.env
+*.env.local
+*.local.config
+
+# User-uploaded files (preserve directory structure via .gitkeep)
+Content/Uploads/**
+!Content/Uploads/**/
+!Content/Uploads/**/.gitkeep
+
+# Master database setup script and migration scripts must be tracked
+!Database/CampusVault.sql
+!Database/Scripts/*.sql
